@@ -20,5 +20,6 @@ type User struct {
 type UserNameHistory struct {
 	UserId int
 	Name   string
-	Date   time.Time
+
+	UpdatedAt time.Time
 }

@@ -2,12 +2,29 @@ package models
 
 import "time"
 
+type Perk = int
+
+const (
+	Berserker Perk = iota
+	Commando
+	Medic
+	Sharpshooter
+	Gunslinger
+	Support
+	Swat
+	Demolitionist
+	Firebug
+	Survivalist
+)
+
 // Composite primary key by 4 columns
 type PlayerStats struct {
-	PlayerId  int
 	SessionId int
+	PlayerId  int
 	Wave      int
 	Attempt   int
+
+	Perk Perk
 
 	Accuracy   float32
 	HSAccuracy float32
