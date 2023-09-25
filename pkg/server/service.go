@@ -82,3 +82,10 @@ func (s *ServerService) GetById(id int) (*Server, error) {
 
 	return &server, nil
 }
+
+func (s *ServerService) UpdateName(data UpdateNameRequest) error {
+	_, err := s.db.Exec(`UPDATE server SET name = $1 WHERE id = $2`,
+		data.Name, data.Id)
+
+	return err
+}

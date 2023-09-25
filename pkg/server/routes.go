@@ -7,11 +7,12 @@ import (
 )
 
 func RegisterRoutes(r *gin.RouterGroup, db *sql.DB) {
-	serverController := NewServerController(db)
+	serverController := newServerController(db)
 
 	routes := r.Group("/servers")
 
-	routes.POST("/", serverController.Add)
-	routes.GET("/", serverController.GetByPattern)
-	routes.GET("/:id", serverController.GetById)
+	routes.POST("/", serverController.add)
+	routes.GET("/", serverController.getByPattern)
+	routes.GET("/:id", serverController.getById)
+	routes.PUT("/name", serverController.updateName)
 }

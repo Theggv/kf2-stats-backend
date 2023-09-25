@@ -13,3 +13,8 @@ type AddServerResponse struct {
 type GetByPatternResponse struct {
 	Items []Server `json:"items"`
 }
+
+type UpdateNameRequest struct {
+	Id   int    `json:"id"`
+	Name string `json:"name" binding:"required"`
+}
