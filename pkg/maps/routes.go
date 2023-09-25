@@ -14,5 +14,5 @@ func RegisterRoutes(r *gin.RouterGroup, mapsService *MapsService) {
 	routes.POST("/", controller.add)
 	routes.GET("/", controller.getByPattern)
 	routes.GET("/:id", controller.getById)
-	routes.PUT("/name", controller.updatePreview)
+	routes.PUT("/preview", controller.updatePreview)
 }
