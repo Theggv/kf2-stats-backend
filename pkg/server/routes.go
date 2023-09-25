@@ -1,18 +1,18 @@
 package server
 
 import (
-	"database/sql"
-
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(r *gin.RouterGroup, db *sql.DB) {
-	serverController := newServerController(db)
+func RegisterRoutes(r *gin.RouterGroup, serverService *ServerService) {
+	controller := serverController{
+		service: serverService,
+	}
 
 	routes := r.Group("/servers")
 
-	routes.POST("/", serverController.add)
-	routes.GET("/", serverController.getByPattern)
-	routes.GET("/:id", serverController.getById)
-	routes.PUT("/name", serverController.updateName)
+	routes.POST("/", controller.add)
+	routes.GET("/", controller.getByPattern)
+	routes.GET("/:id", controller.getById)
+	routes.PUT("/name", controller.updateName)
 }
