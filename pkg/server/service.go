@@ -1,6 +1,8 @@
 package server
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 type ServerService struct {
 	db *sql.DB
@@ -13,7 +15,10 @@ func (s *ServerService) initTables() {
 		name TEXT, 
 		address TEXT,
 		type INTEGER 
-	);`)
+	);
+	
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_server_address ON server (address);
+	`)
 }
 
 func NewServerService(db *sql.DB) *ServerService {
@@ -40,7 +45,10 @@ func (s *ServerService) CreateServer(req AddServerRequest) (int, error) {
 }
 
 func (s *ServerService) GetByPattern(pattern string) ([]Server, error) {
-	rows, err := s.db.Query(`SELECT * FROM server WHERE address like '%$1%'`, pattern)
+	rows, err := s.db.Query(`
+		SELECT * FROM server 
+		WHERE (address LIKE $1) OR (name LIKE $1)`,
+		"%"+pattern+"%")
 	if err != nil {
 		return nil, err
 	}
