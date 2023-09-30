@@ -11,6 +11,12 @@ type mapsController struct {
 	service *MapsService
 }
 
+// @Summary Creates a new map
+// @Tags 	Maps
+// @Produce json
+// @Param   map body    AddMapRequest true "Map JSON"
+// @Success 201 {object} AddMapResponse
+// @Router /maps [post]
 func (c *mapsController) add(ctx *gin.Context) {
 	var req AddMapRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -29,6 +35,12 @@ func (c *mapsController) add(ctx *gin.Context) {
 	})
 }
 
+// @Summary Get map by id
+// @Tags 	Maps
+// @Produce json
+// @Param   id path   	 int true "Map id"
+// @Success 200 {object} Map
+// @Router /maps/{id} [get]
 func (c *mapsController) getById(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))
 	if err != nil {
@@ -45,6 +57,12 @@ func (c *mapsController) getById(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, item)
 }
 
+// @Summary Get maps by pattern
+// @Tags 	Maps
+// @Produce json
+// @Param   pattern query string false "Get maps by pattern"
+// @Success 200 {array} Map
+// @Router /maps [get]
 func (c *mapsController) getByPattern(ctx *gin.Context) {
 	pattern := ctx.Query("pattern")
 
@@ -59,6 +77,12 @@ func (c *mapsController) getByPattern(ctx *gin.Context) {
 	})
 }
 
+// @Summary Update map preview
+// @Tags 	Maps
+// @Produce json
+// @Param   body body UpdatePreviewRequest true "Body"
+// @Success 200
+// @Router /maps/preview [put]
 func (c *mapsController) updatePreview(ctx *gin.Context) {
 	var req UpdatePreviewRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {

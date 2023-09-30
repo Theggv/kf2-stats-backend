@@ -9,8 +9,16 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/stats"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
+
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	_ "github.com/theggv/kf2-stats-backend/docs"
 )
 
+// @title KF2 Stats Backend API
+// @version 1.0
+
+// @BasePath /api
 func main() {
 	db := database.NewSQLiteDB()
 
@@ -24,6 +32,8 @@ func main() {
 	session.RegisterRoutes(api, rootStore.Sessions)
 	stats.RegisterRoutes(api, rootStore.Stats)
 	users.RegisterRoutes(api, rootStore.Users)
+
+	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	r.Run("localhost:3000")
 }

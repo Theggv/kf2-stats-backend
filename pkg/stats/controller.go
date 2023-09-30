@@ -10,6 +10,12 @@ type statsController struct {
 	service *StatsService
 }
 
+// @Summary Creates a stats
+// @Tags 	Stats
+// @Produce json
+// @Param   stats body    	CreateStatsRequest true "Stats JSON"
+// @Success 201
+// @Router /stats [post]
 func (c *statsController) create(ctx *gin.Context) {
 	var req CreateStatsRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
