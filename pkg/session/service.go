@@ -93,8 +93,6 @@ func (s *SessionService) FilterSessions(req FilterSessionsRequest) (*FilterSessi
 		strings.Join(conditions, " AND "), page*limit, limit,
 	)
 
-	fmt.Printf("QUERY: %v\n", sql)
-
 	// Execute filter query
 	rows, err := s.db.Query(sql)
 	if err != nil {
