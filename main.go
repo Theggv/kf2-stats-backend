@@ -8,6 +8,7 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/stats"
+	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
 func main() {
@@ -22,6 +23,7 @@ func main() {
 	maps.RegisterRoutes(api, rootStore.Maps)
 	session.RegisterRoutes(api, rootStore.Sessions)
 	stats.RegisterRoutes(api, rootStore.Stats)
+	users.RegisterRoutes(api, rootStore.Users)
 
 	r.Run("localhost:3000")
 }

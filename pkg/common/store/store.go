@@ -7,6 +7,7 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/stats"
+	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
 type Store struct {
@@ -14,6 +15,7 @@ type Store struct {
 	Maps     *maps.MapsService
 	Sessions *session.SessionService
 	Stats    *stats.StatsService
+	Users    *users.UserService
 }
 
 func New(db *sql.DB) *Store {
@@ -22,5 +24,6 @@ func New(db *sql.DB) *Store {
 		Maps:     maps.NewMapsService(db),
 		Sessions: session.NewSessionService(db),
 		Stats:    stats.NewStatsService(db),
+		Users:    users.NewUserService(db),
 	}
 }
