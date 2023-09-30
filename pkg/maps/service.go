@@ -13,7 +13,7 @@ func (s *MapsService) initTables() {
 	CREATE TABLE IF NOT EXISTS maps (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT, 
-		preview TEXT, 
+		preview TEXT
 	);
 	
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_maps_name ON maps (name);
