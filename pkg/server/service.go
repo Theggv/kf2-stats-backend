@@ -13,8 +13,7 @@ func (s *ServerService) initTables() {
 	CREATE TABLE IF NOT EXISTS server (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT, 
-		address TEXT,
-		type INTEGER 
+		address TEXT
 	);
 	
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_server_address ON server (address);
@@ -32,8 +31,8 @@ func NewServerService(db *sql.DB) *ServerService {
 }
 
 func (s *ServerService) CreateServer(req AddServerRequest) (int, error) {
-	res, err := s.db.Exec(`INSERT INTO server (name, address, type) VALUES ($1, $2, $3)`,
-		req.Name, req.Address, req.Type)
+	res, err := s.db.Exec(`INSERT INTO server (name, address) VALUES ($1, $2)`,
+		req.Name, req.Address)
 
 	if err != nil {
 		return 0, err
@@ -59,7 +58,7 @@ func (s *ServerService) GetByPattern(pattern string) ([]Server, error) {
 	for rows.Next() {
 		server := Server{}
 
-		err := rows.Scan(&server.Id, &server.Name, &server.Address, &server.Type)
+		err := rows.Scan(&server.Id, &server.Name, &server.Address)
 		if err != nil {
 			continue
 		}
@@ -75,7 +74,7 @@ func (s *ServerService) GetById(id int) (*Server, error) {
 
 	server := Server{}
 
-	err := row.Scan(&server.Id, &server.Name, &server.Address, &server.Type)
+	err := row.Scan(&server.Id, &server.Name, &server.Address)
 	if err != nil {
 		return nil, err
 	}
