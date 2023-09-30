@@ -16,7 +16,7 @@ func (s *SessionService) initTables() {
 	s.db.Exec(`
 	CREATE TABLE IF NOT EXISTS session (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id INTEGER NOT NULL,
+		server_id INTEGER NOT NULL REFERENCES server(id) ON UPDATE CASCADE,
 		map_id INTEGER NOT NULL,
 
 		mode INTEGER NOT NULL,
