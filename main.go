@@ -20,11 +20,17 @@ import (
 
 // @BasePath /api
 func main() {
-	db := database.NewSQLiteDB()
-
-	rootStore := store.New(db)
+	rootStore := store.New(database.NewSQLiteDB())
 
 	r := gin.Default()
+
+	// Load templates
+	r.LoadHTMLGlob("./public/templates/**/*")
+
+	// Set static folder
+	r.Static("/static", "./public")
+
+	// Register api routes
 	api := r.Group("/api")
 
 	server.RegisterRoutes(api, rootStore.Servers)
@@ -33,7 +39,9 @@ func main() {
 	stats.RegisterRoutes(api, rootStore.Stats)
 	users.RegisterRoutes(api, rootStore.Users)
 
+	// Setup swagger
 	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	// Run app
 	r.Run("localhost:3000")
 }

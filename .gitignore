@@ -23,5 +23,11 @@ go.work
 # Generated Swagger docs
 docs/
 
+# Air temp files
+tmp/
+
 # SQLite database
 store.db
+
+# Tailwind
+node_modules/
