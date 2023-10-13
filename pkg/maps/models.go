@@ -1,7 +1,7 @@
 package maps
 
 type Map struct {
-	Id      int
-	Name    string
-	Preview string
+	Id      int    `json:"id"`
+	Name    string `json:"name"`
+	Preview string `json:"preview"`
 }

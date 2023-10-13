@@ -18,8 +18,8 @@ type User struct {
 }
 
 type UserNameHistory struct {
-	UserId int
-	Name   string
+	UserId int    `json:"user_id"`
+	Name   string `json:"name"`
 
-	UpdatedAt time.Time
+	UpdatedAt time.Time `json:"updated_at"`
 }
