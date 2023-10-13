@@ -28,6 +28,3 @@ tmp/
 
 # SQLite database
 store.db
-
-# Tailwind
-node_modules/

@@ -24,12 +24,6 @@ func main() {
 
 	r := gin.Default()
 
-	// Load templates
-	r.LoadHTMLGlob("./public/templates/**/*")
-
-	// Set static folder
-	r.Static("/static", "./public")
-
 	// Register api routes
 	api := r.Group("/api")
 
