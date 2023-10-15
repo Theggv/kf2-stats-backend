@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/theggv/kf2-stats-backend/pkg/common/database"
 	"github.com/theggv/kf2-stats-backend/pkg/common/store"
@@ -23,6 +24,9 @@ func main() {
 	rootStore := store.New(database.NewSQLiteDB())
 
 	r := gin.Default()
+
+	// Setup cors
+	r.Use(cors.Default())
 
 	// Register api routes
 	api := r.Group("/api")
