@@ -6,7 +6,7 @@ go install github.com/cosmtrek/air@latest
 air
 ```
 
-### Swagger Docs:
+### Swagger Docs
 ```
 go install github.com/swaggo/swag/cmd/swag@latest
 swag init
