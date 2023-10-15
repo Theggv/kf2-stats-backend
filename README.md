@@ -7,6 +7,9 @@ air
 ```
 
 ### Swagger Docs:
-- Init: `swag init`
-- URL: http://localhost:3000/docs/index.html
+```
+go install github.com/swaggo/swag/cmd/swag@latest
+swag init
+```
+Generated docs: http://localhost:3000/docs/index.html
 - You have to init docs every time when you change api
