@@ -10,7 +10,7 @@ type statsController struct {
 	service *StatsService
 }
 
-// @Summary Creates a stats
+// @Summary Creates stats
 // @Tags 	Stats
 // @Produce json
 // @Param   stats body    	CreateStatsRequest true "Stats JSON"
