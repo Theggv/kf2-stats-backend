@@ -24,7 +24,7 @@ func (c *mapsController) add(ctx *gin.Context) {
 		return
 	}
 
-	id, err := c.service.Create(req)
+	id, err := c.service.FindCreateFind(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		return

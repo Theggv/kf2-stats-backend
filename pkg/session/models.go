@@ -37,6 +37,16 @@ const (
 	Lose
 )
 
+type SessionMap struct {
+	Name    *string `json:"name"`
+	Preview *string `json:"preview"`
+}
+
+type SessionServer struct {
+	Name    *string `json:"name"`
+	Address *string `json:"address"`
+}
+
 type Session struct {
 	Id       int `json:"id"`
 	ServerId int `json:"server_id"`
@@ -50,4 +60,7 @@ type Session struct {
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
+	Map    *SessionMap    `json:"map"`
+	Server *SessionServer `json:"server"`
 }

@@ -24,7 +24,7 @@ func (c *sessionController) create(ctx *gin.Context) {
 		return
 	}
 
-	id, err := c.service.CreateSession(req)
+	id, err := c.service.Create(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		return
@@ -70,7 +70,7 @@ func (c *sessionController) filter(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.service.FilterSessions(req)
+	res, err := c.service.Filter(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		return

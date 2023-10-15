@@ -40,7 +40,7 @@ func NewSessionService(db *sql.DB) *SessionService {
 	return &service
 }
 
-func (s *SessionService) CreateSession(req CreateSessionRequest) (int, error) {
+func (s *SessionService) Create(req CreateSessionRequest) (int, error) {
 	res, err := s.db.Exec(`
 		INSERT INTO session (server_id, map_id, mode, length, diff) 
 		VALUES ($1, $2, $3, $4, $5)`,
@@ -55,11 +55,31 @@ func (s *SessionService) CreateSession(req CreateSessionRequest) (int, error) {
 	return int(id), err
 }
 
-func (s *SessionService) FilterSessions(req FilterSessionsRequest) (*FilterSessionsResponse, error) {
+func (s *SessionService) Filter(req FilterSessionsRequest) (*FilterSessionsResponse, error) {
 	page, limit := parsePagination(req.Pager)
 
-	// Prepare filter query
+	attributes := []string{}
 	conditions := []string{}
+	joins := []string{}
+
+	// Prepare fields
+	attributes = append(attributes,
+		"session.id", "session.server_id", "session.map_id",
+		"session.mode", "session.length", "session.diff",
+		"session.status", "session.created_at", "session.updated_at",
+	)
+
+	if req.IncludeMap {
+		attributes = append(attributes, "maps.name", "maps.preview")
+		joins = append(joins, "LEFT JOIN maps ON maps.id = session.map_id")
+	}
+
+	if req.IncludeServer {
+		attributes = append(attributes, "server.name", "server.address")
+		joins = append(joins, "LEFT JOIN server ON server.id = session.server_id")
+	}
+
+	// Prepare filter query
 	conditions = append(conditions, "1") // in case if no filters passed
 
 	if len(req.ServerId) > 0 {
@@ -87,9 +107,12 @@ func (s *SessionService) FilterSessions(req FilterSessionsRequest) (*FilterSessi
 	}
 
 	sql := fmt.Sprintf(`
-		SELECT * FROM session
+		SELECT %v FROM session
+		%v
 		WHERE %v
 		LIMIT %v, %v`,
+		strings.Join(attributes, " , "),
+		strings.Join(joins, "\n"),
 		strings.Join(conditions, " AND "), page*limit, limit,
 	)
 
@@ -105,15 +128,35 @@ func (s *SessionService) FilterSessions(req FilterSessionsRequest) (*FilterSessi
 	// Parsing results
 	for rows.Next() {
 		item := Session{}
+		itemMap := SessionMap{}
+		itemServer := SessionServer{}
 
-		err := rows.Scan(
+		fields := []any{
 			&item.Id, &item.ServerId, &item.MapId,
 			&item.Mode, &item.Length, &item.Difficulty,
 			&item.Status, &item.CreatedAt, &item.UpdatedAt,
-		)
+		}
+
+		if req.IncludeMap {
+			fields = append(fields, &itemMap.Name, &itemMap.Preview)
+		}
+
+		if req.IncludeServer {
+			fields = append(fields, &itemServer.Name, &itemServer.Address)
+		}
+
+		err := rows.Scan(fields...)
 		if err != nil {
 			fmt.Print(err)
 			continue
+		}
+
+		if req.IncludeMap {
+			item.Map = &itemMap
+		}
+
+		if req.IncludeServer {
+			item.Server = &itemServer
 		}
 
 		items = append(items, item)

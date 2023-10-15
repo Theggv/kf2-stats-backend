@@ -23,6 +23,9 @@ type FilterSessionsRequest struct {
 	Length     Length     `json:"length"`
 	Difficulty Difficulty `json:"diff"`
 
+	IncludeServer bool `json:"include_server"`
+	IncludeMap    bool `json:"include_map"`
+
 	Pager models.PaginationRequest `json:"pager"`
 }
 

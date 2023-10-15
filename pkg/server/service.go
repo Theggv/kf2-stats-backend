@@ -30,17 +30,24 @@ func NewServerService(db *sql.DB) *ServerService {
 	return &service
 }
 
-func (s *ServerService) CreateServer(req AddServerRequest) (int, error) {
-	res, err := s.db.Exec(`INSERT INTO server (name, address) VALUES ($1, $2)`,
+func (s *ServerService) FindCreateFind(req AddServerRequest) (int, error) {
+	data, err := s.getByAddress(req.Address)
+	if err == nil {
+		return data.Id, nil
+	}
+
+	_, err = s.db.Exec(`
+		INSERT INTO server (name, address) VALUES ($1, $2)
+			ON CONFLICT(address) DO UPDATE SET name = $1`,
 		req.Name, req.Address)
 
 	if err != nil {
 		return 0, err
 	}
 
-	id, err := res.LastInsertId()
+	data, err = s.getByAddress(req.Name)
 
-	return int(id), err
+	return data.Id, err
 }
 
 func (s *ServerService) GetByPattern(pattern string) ([]Server, error) {
@@ -71,6 +78,19 @@ func (s *ServerService) GetByPattern(pattern string) ([]Server, error) {
 
 func (s *ServerService) GetById(id int) (*Server, error) {
 	row := s.db.QueryRow(`SELECT * FROM server WHERE id = $1`, id)
+
+	server := Server{}
+
+	err := row.Scan(&server.Id, &server.Name, &server.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	return &server, nil
+}
+
+func (s *ServerService) getByAddress(address string) (*Server, error) {
+	row := s.db.QueryRow(`SELECT * FROM server WHERE address = $1`, address)
 
 	server := Server{}
 

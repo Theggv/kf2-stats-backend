@@ -30,17 +30,24 @@ func NewMapsService(db *sql.DB) *MapsService {
 	return &service
 }
 
-func (s *MapsService) Create(req AddMapRequest) (int, error) {
-	res, err := s.db.Exec(`INSERT INTO maps (name, preview) VALUES ($1, $2)`,
+func (s *MapsService) FindCreateFind(req AddMapRequest) (int, error) {
+	data, err := s.getByName(req.Name)
+	if err == nil {
+		return data.Id, nil
+	}
+
+	_, err = s.db.Exec(`
+		INSERT INTO maps (name, preview) VALUES ($1, $2)
+			ON CONFLICT(name) DO UPDATE SET preview = $2`,
 		req.Name, req.Preview)
 
 	if err != nil {
 		return 0, err
 	}
 
-	id, err := res.LastInsertId()
+	data, err = s.getByName(req.Name)
 
-	return int(id), err
+	return data.Id, err
 }
 
 func (s *MapsService) GetByPattern(pattern string) ([]Map, error) {
@@ -71,6 +78,19 @@ func (s *MapsService) GetByPattern(pattern string) ([]Map, error) {
 
 func (s *MapsService) GetById(id int) (*Map, error) {
 	row := s.db.QueryRow(`SELECT * FROM maps WHERE id = $1`, id)
+
+	item := Map{}
+
+	err := row.Scan(&item.Id, &item.Name, &item.Preview)
+	if err != nil {
+		return nil, err
+	}
+
+	return &item, nil
+}
+
+func (s *MapsService) getByName(name string) (*Map, error) {
+	row := s.db.QueryRow(`SELECT * FROM maps WHERE name = $1`, name)
 
 	item := Map{}
 
