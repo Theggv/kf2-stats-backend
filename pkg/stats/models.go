@@ -18,7 +18,8 @@ const (
 )
 
 // Composite primary key by 4 columns
-type PlayerStats struct {
+type WavePlayerStats struct {
+	Id        int `json:"id"`
 	SessionId int `json:"session_id"`
 	PlayerId  int `json:"player_id"`
 	Wave      int `json:"wave"`
@@ -26,19 +27,14 @@ type PlayerStats struct {
 
 	Perk Perk `json:"perk"`
 
-	Accuracy   float32 `json:"accuracy"`
-	HSAccuracy float32 `json:"hs_accuracy"`
+	ShotsFired int `json:"shots_fired"`
+	ShotsHit   int `json:"shots_hit"`
+	ShotsHS    int `json:"shots_hs"`
 
-	TrashKills  int `json:"trash_kills"`
-	MediumKills int `json:"medium_kills"`
-	ScrakeKills int `json:"scrake_kills"`
-	FPKills     int `json:"fp_kills"`
-	MiniFPKills int `json:"minifp_kills"`
-	BossKills   int `json:"boss_kills"`
+	DoshEarned int `json:"dosh_earned"`
 
-	HuskNormalKills   int `json:"husk_n"`
-	HuskBackpackKills int `json:"husk_b"`
-	HuskRages         int `json:"husk_r"`
+	HealsGiven    int `json:"heals_given"`
+	HealsReceived int `json:"heals_recv"`
 
 	DamageDealt int `json:"damage_dealt"`
 	DamageTaken int `json:"damage_taken"`

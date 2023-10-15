@@ -23,7 +23,7 @@ func (c *statsController) create(ctx *gin.Context) {
 		return
 	}
 
-	err := c.service.CreateStats(req)
+	err := c.service.Create(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		return

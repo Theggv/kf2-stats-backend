@@ -1,5 +1,29 @@
 package stats
 
+type CreateStatsRequestKills struct {
+	Cyst         int `json:"cyst"`
+	AlphaClot    int `json:"alpha_clot"`
+	Slasher      int `json:"slasher"`
+	Stalker      int `json:"stalker"`
+	Crawler      int `json:"crawler"`
+	Gorefast     int `json:"gorefast"`
+	Rioter       int `json:"rioter"`
+	EliteCrawler int `json:"elite_crawler"`
+	Gorefiend    int `json:"gorefiend"`
+
+	Siren        int `json:"siren"`
+	Bloat        int `json:"bloat"`
+	Edar         int `json:"edar"`
+	HuskNormal   int `json:"husk_n"`
+	HuskBackpack int `json:"husk_b"`
+	HuskRages    int `json:"husk_r"`
+
+	Scrake int `json:"scrake"`
+	FP     int `json:"fp"`
+	QP     int `json:"qp"`
+	Boss   int `json:"boss"`
+}
+
 type CreateStatsRequest struct {
 	SessionId int `json:"session_id"`
 	PlayerId  int `json:"player_id"`
@@ -8,19 +32,16 @@ type CreateStatsRequest struct {
 
 	Perk Perk `json:"perk"`
 
-	Accuracy   float32 `json:"accuracy"`
-	HSAccuracy float32 `json:"hs_accuracy"`
+	ShotsFired int `json:"shots_fired"`
+	ShotsHit   int `json:"shots_hit"`
+	ShotsHS    int `json:"shots_hs"`
 
-	TrashKills  int `json:"trash_kills"`
-	MediumKills int `json:"medium_kills"`
-	ScrakeKills int `json:"scrake_kills"`
-	FPKills     int `json:"fp_kills"`
-	MiniFPKills int `json:"minifp_kills"`
-	BossKills   int `json:"boss_kills"`
+	Kills CreateStatsRequestKills `json:"kills"`
 
-	HuskNormalKills   int `json:"husk_n"`
-	HuskBackpackKills int `json:"husk_b"`
-	HuskRages         int `json:"husk_r"`
+	DoshEarned int `json:"dosh_earned"`
+
+	HealsGiven    int `json:"heals_given"`
+	HealsReceived int `json:"heals_recv"`
 
 	DamageDealt int `json:"damage_dealt"`
 	DamageTaken int `json:"damage_taken"`

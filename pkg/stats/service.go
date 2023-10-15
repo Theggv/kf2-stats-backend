@@ -10,7 +10,8 @@ type StatsService struct {
 
 func (s *StatsService) initTables() {
 	s.db.Exec(`
-	CREATE TABLE IF NOT EXISTS stats (
+	CREATE TABLE IF NOT EXISTS wave_stats (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		session_id INTEGER NOT NULL REFERENCES session(id) ON UPDATE CASCADE,
 		player_id INTEGER NOT NULL REFERENCES user(id) ON UPDATE CASCADE,
 		wave INTEGER NOT NULL,
@@ -18,19 +19,14 @@ func (s *StatsService) initTables() {
 
 		perk INTEGER NOT NULL,
 
-		acc REAL NOT NULL,
-		hs_acc REAL NOT NULL,
+		shots_fired INTEGER NOT NULL,
+		shots_hit INTEGER NOT NULL,
+		shots_hs INTEGER NOT NULL,
 
-		trash_kills INTEGER NOT NULL,
-		medium_kills INTEGER NOT NULL,
-		scrake_kills INTEGER NOT NULL,
-		fp_kills INTEGER NOT NULL,
-		minifp_kills INTEGER NOT NULL,
-		boss_kills INTEGER NOT NULL,
+		dosh_earned INTEGER NOT NULL,
 
-		husk_n INTEGER NOT NULL,
-		husk_b INTEGER NOT NULL,
-		husk_r INTEGER NOT NULL,
+		heals_given INTEGER NOT NULL,
+		heals_recv INTEGER NOT NULL,
 
 		damage_dealt INTEGER NOT NULL,
 		damage_taken INTEGER NOT NULL,
@@ -38,6 +34,36 @@ func (s *StatsService) initTables() {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
 		PRIMARY KEY (session_id, player_id, wave, attempt)
+	);
+
+	CREATE TABLE IF NOT EXISTS wave_stats_kills (
+		stats_id INTEGER PRIMARY KEY REFERENCES wave_stats(id) ON UPDATE CASCADE,
+
+		cyst INTEGER NOT NULL,
+		alpha_clot INTEGER NOT NULL,
+		slasher INTEGER NOT NULL,
+		stalker INTEGER NOT NULL,
+		crawler INTEGER NOT NULL,
+		gorefast INTEGER NOT NULL,
+		rioter INTEGER NOT NULL,
+		elite_crawler INTEGER NOT NULL,
+		gorefiend INTEGER NOT NULL,
+
+		siren INTEGER NOT NULL,
+		bloat INTEGER NOT NULL,
+		edar INTEGER NOT NULL,
+		husk_n INTEGER NOT NULL,
+		husk_b INTEGER NOT NULL,
+		husk_r INTEGER NOT NULL,
+
+		scrake INTEGER NOT NULL,
+		fp INTEGER NOT NULL,
+		qp INTEGER NOT NULL,
+		boss INTEGER NOT NULL
+	);
+	
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_wave_stats ON wave_stats (
+		session_id, player_id, wave, attempt
 	);`)
 }
 
@@ -51,22 +77,45 @@ func NewStatsService(db *sql.DB) *StatsService {
 	return &service
 }
 
-func (s *StatsService) CreateStats(req CreateStatsRequest) error {
-	_, err := s.db.Exec(`
-		INSERT INTO stats (
+func (s *StatsService) Create(req CreateStatsRequest) error {
+	res, err := s.db.Exec(`
+		INSERT INTO wave_stats (
 			session_id, player_id, wave, attempt, 
-			perk, acc, hs_acc, 
-			trash_kills, medium_kills, scrake_kills, 
-			fp_kills, minifp_kills, boss_kills, 
-			husk_n, husk_b, husk_r, 
+			perk, shots_fired, shots_hit, shots_hs, 
+			dosh_earned, heals_given, heals_recv,
 			damage_dealt, damage_taken) 
-		VALUES ($1, $2, $3, $4, $5)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
 		req.SessionId, req.PlayerId, req.Wave, req.Attempt,
-		req.Perk, req.Accuracy, req.HSAccuracy,
-		req.TrashKills, req.MediumKills, req.ScrakeKills,
-		req.FPKills, req.MiniFPKills, req.BossKills,
-		req.HuskNormalKills, req.HuskBackpackKills, req.HuskRages,
+		req.Perk, req.ShotsFired, req.ShotsHit, req.ShotsHS,
+		req.DoshEarned, req.HealsGiven, req.HealsReceived,
 		req.DamageDealt, req.DamageTaken,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+
+	kills := req.Kills
+
+	_, err = s.db.Exec(`
+		INSERT INTO wave_stats (id, 
+			cyst, alpha_clot, slasher, stalker, crawler, gorefast, 
+			rioter, elite_crawler, gorefiend, 
+			siren, bloat, edar, 
+			husk_n, husk_b, husk_r, 
+			scrake, fp, qp, boss) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+		int(id),
+		kills.Cyst, kills.AlphaClot, kills.Slasher, kills.Stalker, kills.Crawler, kills.Gorefast,
+		kills.Rioter, kills.EliteCrawler, kills.Gorefiend,
+		kills.Siren, kills.Bloat, kills.Edar,
+		kills.HuskNormal, kills.HuskBackpack, kills.HuskRages,
+		kills.Scrake, kills.FP, kills.QP, kills.Boss,
 	)
 
 	return err
