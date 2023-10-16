@@ -57,6 +57,9 @@ func (s *UserService) FindCreateFind(req CreateUserRequest) (int, error) {
 	}
 
 	data, err = s.getByAuth(req.AuthId, req.Type)
+	if err != nil {
+		return 0, err
+	}
 
 	return data.Id, err
 }

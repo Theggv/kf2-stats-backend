@@ -30,13 +30,8 @@ func NewMapsService(db *sql.DB) *MapsService {
 	return &service
 }
 
-func (s *MapsService) FindCreateFind(req AddMapRequest) (int, error) {
-	data, err := s.getByName(req.Name)
-	if err == nil {
-		return data.Id, nil
-	}
-
-	_, err = s.db.Exec(`
+func (s *MapsService) Create(req AddMapRequest) (int, error) {
+	_, err := s.db.Exec(`
 		INSERT INTO maps (name, preview) VALUES ($1, $2)
 			ON CONFLICT(name) DO UPDATE SET preview = $2`,
 		req.Name, req.Preview)
@@ -45,7 +40,10 @@ func (s *MapsService) FindCreateFind(req AddMapRequest) (int, error) {
 		return 0, err
 	}
 
-	data, err = s.getByName(req.Name)
+	data, err := s.getByName(req.Name)
+	if err != nil {
+		return 0, err
+	}
 
 	return data.Id, err
 }

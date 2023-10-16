@@ -30,13 +30,8 @@ func NewServerService(db *sql.DB) *ServerService {
 	return &service
 }
 
-func (s *ServerService) FindCreateFind(req AddServerRequest) (int, error) {
-	data, err := s.getByAddress(req.Address)
-	if err == nil {
-		return data.Id, nil
-	}
-
-	_, err = s.db.Exec(`
+func (s *ServerService) Create(req AddServerRequest) (int, error) {
+	_, err := s.db.Exec(`
 		INSERT INTO server (name, address) VALUES ($1, $2)
 			ON CONFLICT(address) DO UPDATE SET name = $1`,
 		req.Name, req.Address)
@@ -45,7 +40,10 @@ func (s *ServerService) FindCreateFind(req AddServerRequest) (int, error) {
 		return 0, err
 	}
 
-	data, err = s.getByAddress(req.Name)
+	data, err := s.getByAddress(req.Address)
+	if err != nil {
+		return 0, err
+	}
 
 	return data.Id, err
 }

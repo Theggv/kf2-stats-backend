@@ -1,6 +1,7 @@
 package session
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -21,12 +22,14 @@ func (c *sessionController) create(ctx *gin.Context) {
 	var req CreateSessionRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	id, err := c.service.Create(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -45,12 +48,14 @@ func (c *sessionController) getById(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	item, err := c.service.GetById(id)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -67,12 +72,14 @@ func (c *sessionController) filter(ctx *gin.Context) {
 	var req FilterSessionsRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	res, err := c.service.Filter(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -89,12 +96,14 @@ func (c *sessionController) updateStatus(ctx *gin.Context) {
 	var req UpdateStatusRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	err := c.service.UpdateStatus(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
