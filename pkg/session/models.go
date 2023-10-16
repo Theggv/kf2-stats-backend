@@ -32,11 +32,12 @@ const (
 type Status = int
 
 const (
-	Unknown Status = iota
+	Lobby Status = iota
 	InProgress
 	Win
 	Lose
 	Solomode
+	Aborted Status = -1
 )
 
 type SessionMap struct {
