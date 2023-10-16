@@ -8,6 +8,7 @@ const (
 	Any Mode = iota
 	Survival
 	Endless
+	ControlledDifficulty
 )
 
 type Length = int
@@ -35,6 +36,7 @@ const (
 	InProgress
 	Win
 	Lose
+	Solomode
 )
 
 type SessionMap struct {
