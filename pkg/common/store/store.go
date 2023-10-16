@@ -19,11 +19,15 @@ type Store struct {
 }
 
 func New(db *sql.DB) *Store {
-	return &Store{
+	store := Store{
 		Servers:  server.NewServerService(db),
 		Maps:     maps.NewMapsService(db),
 		Sessions: session.NewSessionService(db),
 		Stats:    stats.NewStatsService(db),
 		Users:    users.NewUserService(db),
 	}
+
+	store.Stats.Inject(store.Users)
+
+	return &store
 }

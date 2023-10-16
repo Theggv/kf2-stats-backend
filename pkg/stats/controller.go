@@ -13,17 +13,17 @@ type statsController struct {
 // @Summary Creates stats
 // @Tags 	Stats
 // @Produce json
-// @Param   stats body    	CreateStatsRequest true "Stats JSON"
+// @Param   stats body    	CreateWaveStatsRequest true "Stats JSON"
 // @Success 201
 // @Router /stats [post]
-func (c *statsController) create(ctx *gin.Context) {
-	var req CreateStatsRequest
+func (c *statsController) createWaveStats(ctx *gin.Context) {
+	var req CreateWaveStatsRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err := c.service.Create(req)
+	err := c.service.CreateWaveStats(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		return

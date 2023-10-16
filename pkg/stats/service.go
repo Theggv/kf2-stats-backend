@@ -2,10 +2,17 @@ package stats
 
 import (
 	"database/sql"
+
+	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
 type StatsService struct {
-	db *sql.DB
+	db          *sql.DB
+	userService *users.UserService
+}
+
+func (s *StatsService) Inject(userService *users.UserService) {
+	s.userService = userService
 }
 
 func (s *StatsService) initTables() {
@@ -31,9 +38,7 @@ func (s *StatsService) initTables() {
 		damage_dealt INTEGER NOT NULL,
 		damage_taken INTEGER NOT NULL,
 
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-		PRIMARY KEY (session_id, player_id, wave, attempt)
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
 	CREATE TABLE IF NOT EXISTS wave_stats_kills (
@@ -77,7 +82,26 @@ func NewStatsService(db *sql.DB) *StatsService {
 	return &service
 }
 
-func (s *StatsService) Create(req CreateStatsRequest) error {
+func (s *StatsService) CreateWaveStats(req CreateWaveStatsRequest) error {
+	playerId, err := s.userService.FindCreateFind(users.CreateUserRequest{
+		AuthId: req.UserAuthId,
+		Type:   req.UserAuthType,
+		Name:   req.UserName,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	row := s.db.QueryRow(
+		`SELECT COUNT(*) FROM wave_stats
+		WHERE session_id = $1 AND player_id = $2 AND wave = $3`,
+		req.SessionId, playerId, req.Wave,
+	)
+
+	var attempt int
+	err = row.Scan(&attempt)
+
 	res, err := s.db.Exec(`
 		INSERT INTO wave_stats (
 			session_id, player_id, wave, attempt, 
@@ -85,7 +109,7 @@ func (s *StatsService) Create(req CreateStatsRequest) error {
 			dosh_earned, heals_given, heals_recv,
 			damage_dealt, damage_taken) 
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-		req.SessionId, req.PlayerId, req.Wave, req.Attempt,
+		req.SessionId, playerId, req.Wave, attempt+1,
 		req.Perk, req.ShotsFired, req.ShotsHit, req.ShotsHS,
 		req.DoshEarned, req.HealsGiven, req.HealsReceived,
 		req.DamageDealt, req.DamageTaken,
@@ -103,18 +127,18 @@ func (s *StatsService) Create(req CreateStatsRequest) error {
 	kills := req.Kills
 
 	_, err = s.db.Exec(`
-		INSERT INTO wave_stats (id, 
+		INSERT INTO wave_stats_kills (stats_id, 
 			cyst, alpha_clot, slasher, stalker, crawler, gorefast, 
 			rioter, elite_crawler, gorefiend, 
 			siren, bloat, edar, 
 			husk_n, husk_b, husk_r, 
 			scrake, fp, qp, boss) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
 		int(id),
 		kills.Cyst, kills.AlphaClot, kills.Slasher, kills.Stalker, kills.Crawler, kills.Gorefast,
 		kills.Rioter, kills.EliteCrawler, kills.Gorefiend,
 		kills.Siren, kills.Bloat, kills.Edar,
-		kills.HuskNormal, kills.HuskBackpack, kills.HuskRages,
+		kills.Husk, req.HuskBackpackKills, req.HuskRages,
 		kills.Scrake, kills.FP, kills.QP, kills.Boss,
 	)
 
