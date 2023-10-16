@@ -84,7 +84,7 @@ func (c *sessionController) filter(ctx *gin.Context) {
 // @Produce json
 // @Param   body body 		UpdateStatusRequest true "Body"
 // @Success 200
-// @Router /sessions/name [put]
+// @Router /sessions/status [put]
 func (c *sessionController) updateStatus(ctx *gin.Context) {
 	var req UpdateStatusRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
