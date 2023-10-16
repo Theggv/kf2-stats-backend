@@ -66,6 +66,30 @@ func (s *StatsService) initTables() {
 		qp INTEGER NOT NULL,
 		boss INTEGER NOT NULL
 	);
+
+	CREATE TABLE IF NOT EXISTS wave_stats_injured_by (
+		stats_id INTEGER PRIMARY KEY REFERENCES wave_stats(id) ON UPDATE CASCADE,
+
+		cyst INTEGER NOT NULL,
+		alpha_clot INTEGER NOT NULL,
+		slasher INTEGER NOT NULL,
+		stalker INTEGER NOT NULL,
+		crawler INTEGER NOT NULL,
+		gorefast INTEGER NOT NULL,
+		rioter INTEGER NOT NULL,
+		elite_crawler INTEGER NOT NULL,
+		gorefiend INTEGER NOT NULL,
+
+		siren INTEGER NOT NULL,
+		bloat INTEGER NOT NULL,
+		edar INTEGER NOT NULL,
+		husk INTEGER NOT NULL,
+
+		scrake INTEGER NOT NULL,
+		fp INTEGER NOT NULL,
+		qp INTEGER NOT NULL,
+		boss INTEGER NOT NULL
+	);
 	
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_wave_stats ON wave_stats (
 		session_id, player_id, wave, attempt
@@ -140,6 +164,22 @@ func (s *StatsService) CreateWaveStats(req CreateWaveStatsRequest) error {
 		kills.Siren, kills.Bloat, kills.Edar,
 		kills.Husk, req.HuskBackpackKills, req.HuskRages,
 		kills.Scrake, kills.FP, kills.QP, kills.Boss,
+	)
+
+	injuredby := req.Injuredby
+
+	_, err = s.db.Exec(`
+		INSERT INTO wave_stats_injured_by (stats_id, 
+			cyst, alpha_clot, slasher, stalker, crawler, gorefast, 
+			rioter, elite_crawler, gorefiend, 
+			siren, bloat, edar, husk, 
+			scrake, fp, qp, boss) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+		int(id),
+		injuredby.Cyst, injuredby.AlphaClot, injuredby.Slasher, injuredby.Stalker, injuredby.Crawler, injuredby.Gorefast,
+		injuredby.Rioter, injuredby.EliteCrawler, injuredby.Gorefiend,
+		injuredby.Siren, injuredby.Bloat, injuredby.Edar, injuredby.Husk,
+		injuredby.Scrake, injuredby.FP, injuredby.QP, injuredby.Boss,
 	)
 
 	return err

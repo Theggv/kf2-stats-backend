@@ -21,6 +21,8 @@ type CreateWaveStatsRequest struct {
 	HuskBackpackKills int `json:"husk_b"`
 	HuskRages         int `json:"husk_r"`
 
+	Injuredby ZedCounter `json:"injured_by"`
+
 	DoshEarned int `json:"dosh_earned"`
 
 	HealsGiven    int `json:"heals_given"`
