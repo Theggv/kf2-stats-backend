@@ -40,8 +40,13 @@ func NewUserService(db *sql.DB) *UserService {
 	return &service
 }
 
-func (s *UserService) CreateUser(req CreateUserRequest) (int, error) {
-	res, err := s.db.Exec(`
+func (s *UserService) FindCreateFind(req CreateUserRequest) (int, error) {
+	data, err := s.getByAuth(req.AuthId, req.Type)
+	if err == nil {
+		return data.Id, nil
+	}
+
+	_, err = s.db.Exec(`
 		INSERT INTO users (auth_id, auth_type, name) 
 		VALUES ($1, $2, $3)`,
 		req.AuthId, req.Type, req.Name,
@@ -51,17 +56,23 @@ func (s *UserService) CreateUser(req CreateUserRequest) (int, error) {
 		return 0, err
 	}
 
-	id, err := res.LastInsertId()
+	data, err = s.getByAuth(req.AuthId, req.Type)
 
-	if err != nil {
-		return 0, err
-	}
+	return data.Id, err
+}
 
-	_, err = s.db.Exec(`
-		INSERT INTO users_name_history (user_id, name) 
-		VALUES ($1, $2)`,
-		id, req.Name,
+func (s *UserService) getByAuth(authId string, authType AuthType) (*User, error) {
+	row := s.db.QueryRow(`
+		SELECT * FROM users WHERE auth_id = $1 AND auth_type = $2`,
+		authId, authType,
 	)
 
-	return int(id), err
+	item := User{}
+
+	err := row.Scan(&item.Id, &item.AuthId, &item.Type, &item.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &item, nil
 }
