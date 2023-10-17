@@ -109,3 +109,27 @@ func (c *sessionController) updateStatus(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{})
 }
+
+// @Summary Update session game data
+// @Tags 	Session
+// @Produce json
+// @Param   body body 		UpdateGameDataRequest true "Body"
+// @Success 200
+// @Router /sessions/game-data [put]
+func (c *sessionController) updateGameData(ctx *gin.Context) {
+	var req UpdateGameDataRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	err := c.service.UpdateGameData(req)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{})
+}

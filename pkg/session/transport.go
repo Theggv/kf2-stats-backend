@@ -38,3 +38,12 @@ type UpdateStatusRequest struct {
 	Id     int `json:"id" binding:"required"`
 	Status int `json:"status" binding:"required"`
 }
+
+type UpdateGameDataRequest struct {
+	SessionId int `json:"session_id"`
+
+	Wave         int  `json:"wave"`
+	IsTraderTime bool `json:"is_trader_time"`
+	ZedsLeft     int  `json:"zeds_left"`
+	PlayersAlive int  `json:"players_alive"`
+}

@@ -29,7 +29,21 @@ func (s *SessionService) initTables() {
 
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);`)
+	);
+	
+	CREATE TABLE IF NOT EXISTS session_game_data (
+		session_id INTEGER PRIMARY KEY REFERENCES session(id)
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
+		
+		wave INTEGER NOT NULL DEFAULT 0,
+		is_trader_time BOOLEAN NOT NULL DEFAULT 0,
+		zeds_left INTEGER NOT NULL DEFAULT 0,
+		players_alive INTEGER NOT NULL DEFAULT 0,
+
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+	`)
 }
 
 func NewSessionService(db *sql.DB) *SessionService {
@@ -225,6 +239,18 @@ func (s *SessionService) UpdateStatus(data UpdateStatusRequest) error {
 		SET status = $1, updated_at = CURRENT_TIMESTAMP 
 		WHERE id = $2`,
 		data.Status, data.Id)
+
+	return err
+}
+
+func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
+	_, err := s.db.Exec(`
+		UPDATE session_game_data
+		SET wave = $2, is_trader_time = $3, 
+			zeds_left = $4, players_alive = $5
+		WHERE session_id = $1`,
+		data.SessionId, data.Wave, data.IsTraderTime, data.ZedsLeft, data.PlayersAlive,
+	)
 
 	return err
 }

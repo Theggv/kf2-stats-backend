@@ -15,4 +15,5 @@ func RegisterRoutes(r *gin.RouterGroup, service *SessionService) {
 	routes.GET("/:id", controller.getById)
 	routes.POST("/filter", controller.filter)
 	routes.PUT("/status", controller.updateStatus)
+	routes.PUT("/game-data", controller.updateGameData)
 }
