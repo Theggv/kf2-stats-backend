@@ -6,9 +6,9 @@ type CreateSessionRequest struct {
 	ServerId int `json:"server_id" binding:"required"`
 	MapId    int `json:"map_id" binding:"required"`
 
-	Mode       Mode       `json:"mode" binding:"required"`
-	Length     Length     `json:"length" binding:"required"`
-	Difficulty Difficulty `json:"diff" binding:"required"`
+	Mode       models.GameMode       `json:"mode" binding:"required"`
+	Length     int                   `json:"length" binding:"required"`
+	Difficulty models.GameDifficulty `json:"diff" binding:"required"`
 }
 
 type CreateSessionResponse struct {
@@ -19,9 +19,9 @@ type FilterSessionsRequest struct {
 	ServerId []int `json:"server_id"`
 	MapId    []int `json:"map_id"`
 
-	Mode       Mode       `json:"mode"`
-	Length     Length     `json:"length"`
-	Difficulty Difficulty `json:"diff"`
+	Mode       models.GameMode       `json:"mode"`
+	Length     models.GameLength     `json:"length"`
+	Difficulty models.GameDifficulty `json:"diff"`
 
 	IncludeServer bool `json:"include_server"`
 	IncludeMap    bool `json:"include_map"`

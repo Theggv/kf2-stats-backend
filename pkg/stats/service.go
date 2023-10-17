@@ -19,12 +19,18 @@ func (s *StatsService) initTables() {
 	s.db.Exec(`
 	CREATE TABLE IF NOT EXISTS wave_stats (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		session_id INTEGER NOT NULL REFERENCES session(id) ON UPDATE CASCADE,
-		player_id INTEGER NOT NULL REFERENCES user(id) ON UPDATE CASCADE,
+		session_id INTEGER NOT NULL REFERENCES session(id)
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
+		player_id INTEGER NOT NULL REFERENCES user(id)
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
 		wave INTEGER NOT NULL,
 		attempt INTEGER NOT NULL,
 
 		perk INTEGER NOT NULL,
+		level INTEGER NOT NULL,
+		prestige INTEGER NOT NULL,
 
 		shots_fired INTEGER NOT NULL,
 		shots_hit INTEGER NOT NULL,
@@ -42,7 +48,9 @@ func (s *StatsService) initTables() {
 	);
 
 	CREATE TABLE IF NOT EXISTS wave_stats_kills (
-		stats_id INTEGER PRIMARY KEY REFERENCES wave_stats(id) ON UPDATE CASCADE,
+		stats_id INTEGER PRIMARY KEY REFERENCES wave_stats(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
 
 		cyst INTEGER NOT NULL,
 		alpha_clot INTEGER NOT NULL,
@@ -68,7 +76,9 @@ func (s *StatsService) initTables() {
 	);
 
 	CREATE TABLE IF NOT EXISTS wave_stats_injured_by (
-		stats_id INTEGER PRIMARY KEY REFERENCES wave_stats(id) ON UPDATE CASCADE,
+		stats_id INTEGER PRIMARY KEY REFERENCES wave_stats(id)  
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
 
 		cyst INTEGER NOT NULL,
 		alpha_clot INTEGER NOT NULL,
@@ -129,12 +139,14 @@ func (s *StatsService) CreateWaveStats(req CreateWaveStatsRequest) error {
 	res, err := s.db.Exec(`
 		INSERT INTO wave_stats (
 			session_id, player_id, wave, attempt, 
-			perk, shots_fired, shots_hit, shots_hs, 
+			perk, level, prestige,
+			shots_fired, shots_hit, shots_hs, 
 			dosh_earned, heals_given, heals_recv,
 			damage_dealt, damage_taken) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
 		req.SessionId, playerId, req.Wave, attempt+1,
-		req.Perk, req.ShotsFired, req.ShotsHit, req.ShotsHS,
+		req.Perk, req.Level, req.Prestige,
+		req.ShotsFired, req.ShotsHit, req.ShotsHS,
 		req.DoshEarned, req.HealsGiven, req.HealsReceived,
 		req.DamageDealt, req.DamageTaken,
 	)

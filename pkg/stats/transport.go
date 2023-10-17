@@ -1,6 +1,9 @@
 package stats
 
-import "github.com/theggv/kf2-stats-backend/pkg/users"
+import (
+	"github.com/theggv/kf2-stats-backend/pkg/common/models"
+	"github.com/theggv/kf2-stats-backend/pkg/users"
+)
 
 type CreateWaveStatsRequest struct {
 	SessionId int `json:"session_id"`
@@ -10,7 +13,9 @@ type CreateWaveStatsRequest struct {
 	UserAuthId   string         `json:"user_auth_id"`
 	UserAuthType users.AuthType `json:"user_auth_type"`
 
-	Perk Perk `json:"perk"`
+	Perk     models.Perk `json:"perk"`
+	Level    int         `json:"level"`
+	Prestige int         `json:"prestige"`
 
 	ShotsFired int `json:"shots_fired"`
 	ShotsHit   int `json:"shots_hit"`

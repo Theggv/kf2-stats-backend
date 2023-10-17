@@ -20,7 +20,9 @@ func (s *UserService) initTables() {
 
 	CREATE TABLE IF NOT EXISTS users_name_history (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		user_id INTEGER REFERENCES users(id) ON UPDATE CASCADE,
+		user_id INTEGER REFERENCES users(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
 		name STRING NOT NULL,
 
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP

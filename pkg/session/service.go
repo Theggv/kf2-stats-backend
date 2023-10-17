@@ -16,7 +16,9 @@ func (s *SessionService) initTables() {
 	s.db.Exec(`
 	CREATE TABLE IF NOT EXISTS session (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		server_id INTEGER NOT NULL REFERENCES server(id) ON UPDATE CASCADE,
+		server_id INTEGER NOT NULL REFERENCES server(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
 		map_id INTEGER NOT NULL,
 
 		mode INTEGER NOT NULL,
@@ -44,13 +46,19 @@ func (s *SessionService) Create(req CreateSessionRequest) (int, error) {
 	res, err := s.db.Exec(`
 		INSERT INTO session (server_id, map_id, mode, length, diff) 
 		VALUES ($1, $2, $3, $4, $5)`,
-		req.ServerId, req.MapId, req.Mode, req.Length, req.Difficulty)
+		req.ServerId, req.MapId, req.Mode, req.Length, req.Difficulty,
+	)
 
 	if err != nil {
 		return 0, err
 	}
 
 	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	_, err = s.db.Exec(`INSERT INTO session_game_data (session_id) VALUES ($1)`, id)
 
 	return int(id), err
 }
@@ -99,7 +107,12 @@ func (s *SessionService) Filter(req FilterSessionsRequest) (*FilterSessionsRespo
 	}
 
 	if req.Length != 0 {
-		conditions = append(conditions, fmt.Sprintf("length = %v", req.Length))
+		if req.Length == models.Custom {
+			conditions = append(conditions, fmt.Sprintf("length NOT IN (%v, %v, %v)",
+				models.Short, models.Medium, models.Long))
+		} else {
+			conditions = append(conditions, fmt.Sprintf("length = %v", req.Length))
+		}
 	}
 
 	if req.Mode != 0 {
