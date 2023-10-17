@@ -46,4 +46,6 @@ type UpdateGameDataRequest struct {
 	IsTraderTime bool `json:"is_trader_time"`
 	ZedsLeft     int  `json:"zeds_left"`
 	PlayersAlive int  `json:"players_alive"`
+
+	CDData *models.CDGameData `json:"cd_data"`
 }

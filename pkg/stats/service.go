@@ -17,7 +17,7 @@ func (s *StatsService) Inject(userService *users.UserService) {
 
 func (s *StatsService) initTables() {
 	s.db.Exec(`
-	CREATE TABLE IF NOT EXISTS wave_stats (
+	CREATE TABLE IF NOT EXISTS wave_player_stats (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		session_id INTEGER NOT NULL REFERENCES session(id)
 			ON UPDATE CASCADE 
@@ -47,8 +47,12 @@ func (s *StatsService) initTables() {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
-	CREATE TABLE IF NOT EXISTS wave_stats_kills (
-		stats_id INTEGER PRIMARY KEY REFERENCES wave_stats(id) 
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_wave_player_stats ON wave_player_stats (
+		session_id, player_id, wave, attempt
+	);
+
+	CREATE TABLE IF NOT EXISTS wave_player_stats_kills (
+		stats_id INTEGER PRIMARY KEY REFERENCES wave_player_stats(id) 
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE,
 
@@ -75,8 +79,8 @@ func (s *StatsService) initTables() {
 		boss INTEGER NOT NULL
 	);
 
-	CREATE TABLE IF NOT EXISTS wave_stats_injured_by (
-		stats_id INTEGER PRIMARY KEY REFERENCES wave_stats(id)  
+	CREATE TABLE IF NOT EXISTS wave_player_stats_injured_by (
+		stats_id INTEGER PRIMARY KEY REFERENCES wave_player_stats(id)  
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE,
 
@@ -100,10 +104,27 @@ func (s *StatsService) initTables() {
 		qp INTEGER NOT NULL,
 		boss INTEGER NOT NULL
 	);
+
+	CREATE TABLE IF NOT EXISTS wave_stats_cd (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		session_id INTEGER NOT NULL REFERENCES session(id)
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
+		wave INTEGER NOT NULL,
+		attempt INTEGER NOT NULL,
+
+		spawn_cycle TEXT NOT NULL,
+		max_monsters INTEGER NOT NULL,
+		wave_size_fakes INTEGER NOT NULL,
+		zeds_type TEXT NOT NULL,
+
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
 	
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_wave_stats ON wave_stats (
-		session_id, player_id, wave, attempt
-	);`)
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_wave_stats_cd ON wave_stats_cd (
+		session_id, wave, attempt
+	);
+	`)
 }
 
 func NewStatsService(db *sql.DB) *StatsService {
@@ -116,7 +137,7 @@ func NewStatsService(db *sql.DB) *StatsService {
 	return &service
 }
 
-func (s *StatsService) CreateWaveStats(req CreateWaveStatsRequest) error {
+func (s *StatsService) CreateWavePlayerStats(req CreateWavePlayerStatsRequest) error {
 	playerId, err := s.userService.FindCreateFind(users.CreateUserRequest{
 		AuthId: req.UserAuthId,
 		Type:   req.UserAuthType,
@@ -128,7 +149,7 @@ func (s *StatsService) CreateWaveStats(req CreateWaveStatsRequest) error {
 	}
 
 	row := s.db.QueryRow(
-		`SELECT COUNT(*) FROM wave_stats
+		`SELECT COUNT(*) FROM wave_player_stats
 		WHERE session_id = $1 AND player_id = $2 AND wave = $3`,
 		req.SessionId, playerId, req.Wave,
 	)
@@ -137,7 +158,7 @@ func (s *StatsService) CreateWaveStats(req CreateWaveStatsRequest) error {
 	err = row.Scan(&attempt)
 
 	res, err := s.db.Exec(`
-		INSERT INTO wave_stats (
+		INSERT INTO wave_player_stats (
 			session_id, player_id, wave, attempt, 
 			perk, level, prestige,
 			shots_fired, shots_hit, shots_hs, 
@@ -163,7 +184,7 @@ func (s *StatsService) CreateWaveStats(req CreateWaveStatsRequest) error {
 	kills := req.Kills
 
 	_, err = s.db.Exec(`
-		INSERT INTO wave_stats_kills (stats_id, 
+		INSERT INTO wave_player_stats_kills (stats_id, 
 			cyst, alpha_clot, slasher, stalker, crawler, gorefast, 
 			rioter, elite_crawler, gorefiend, 
 			siren, bloat, edar, 
@@ -181,7 +202,7 @@ func (s *StatsService) CreateWaveStats(req CreateWaveStatsRequest) error {
 	injuredby := req.Injuredby
 
 	_, err = s.db.Exec(`
-		INSERT INTO wave_stats_injured_by (stats_id, 
+		INSERT INTO wave_player_stats_injured_by (stats_id, 
 			cyst, alpha_clot, slasher, stalker, crawler, gorefast, 
 			rioter, elite_crawler, gorefiend, 
 			siren, bloat, edar, husk, 
@@ -192,6 +213,29 @@ func (s *StatsService) CreateWaveStats(req CreateWaveStatsRequest) error {
 		injuredby.Rioter, injuredby.EliteCrawler, injuredby.Gorefiend,
 		injuredby.Siren, injuredby.Bloat, injuredby.Edar, injuredby.Husk,
 		injuredby.Scrake, injuredby.FP, injuredby.QP, injuredby.Boss,
+	)
+
+	return err
+}
+
+func (s *StatsService) CreateWaveStatsCD(req CreateWaveStatsCDRequest) error {
+	row := s.db.QueryRow(
+		`SELECT COUNT(*) FROM wave_stats_cd
+		WHERE session_id = $1 AND wave = $2`,
+		req.SessionId, req.Wave,
+	)
+
+	var attempt int
+	err := row.Scan(&attempt)
+
+	_, err = s.db.Exec(`
+		INSERT INTO wave_stats_cd (
+			session_id, wave, attempt, 
+			spawn_cycle, max_monsters, wave_size_fakes, zeds_type) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		req.SessionId, req.Wave, attempt+1,
+		req.CDData.SpawnCycle, req.CDData.MaxMonsters,
+		req.CDData.WaveSizeFakes, req.CDData.ZedsType,
 	)
 
 	return err

@@ -5,7 +5,14 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
-type CreateWaveStatsRequest struct {
+type CreateWaveStatsCDRequest struct {
+	SessionId int `json:"session_id"`
+	Wave      int `json:"wave"`
+
+	CDData models.CDGameData `json:"cd_data"`
+}
+
+type CreateWavePlayerStatsRequest struct {
 	SessionId int `json:"session_id"`
 	Wave      int `json:"wave"`
 

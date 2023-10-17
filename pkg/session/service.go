@@ -43,6 +43,19 @@ func (s *SessionService) initTables() {
 
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
+
+	CREATE TABLE IF NOT EXISTS session_game_data_cd (
+		session_id INTEGER PRIMARY KEY REFERENCES session(id)
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
+		
+		spawn_cycle TEXT NOT NULL,
+		max_monsters INTEGER NOT NULL,
+		wave_size_fakes INTEGER NOT NULL,
+		zeds_type TEXT NOT NULL,
+
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
 	`)
 }
 
@@ -251,6 +264,21 @@ func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
 			updated_at = CURRENT_TIMESTAMP
 		WHERE session_id = $5`,
 		data.Wave, data.IsTraderTime, data.ZedsLeft, data.PlayersAlive, data.SessionId,
+	)
+
+	if data.CDData == nil {
+		return err
+	}
+
+	cdData := data.CDData
+
+	_, err = s.db.Exec(`
+		INSERT INTO session_game_data_cd 
+			(session_id, spawn_cycle, max_monsters, wave_size_fakes, zeds_type)
+		VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT(session_id) DO UPDATE SET
+			spawn_cycle = $2, max_monsters = $3, wave_size_fakes = $4, zeds_type = $5`,
+		data.SessionId, cdData.SpawnCycle, cdData.MaxMonsters, cdData.WaveSizeFakes, cdData.ZedsType,
 	)
 
 	return err

@@ -11,5 +11,6 @@ func RegisterRoutes(r *gin.RouterGroup, service *StatsService) {
 
 	routes := r.Group("/stats")
 
-	routes.POST("/wave", controller.createWaveStats)
+	routes.POST("/wave/player", controller.createWavePlayerStats)
+	routes.POST("/wave/cd", controller.createWaveStatsCD)
 }
