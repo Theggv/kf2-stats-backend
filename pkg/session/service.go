@@ -246,10 +246,11 @@ func (s *SessionService) UpdateStatus(data UpdateStatusRequest) error {
 func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
 	_, err := s.db.Exec(`
 		UPDATE session_game_data
-		SET wave = $2, is_trader_time = $3, 
-			zeds_left = $4, players_alive = $5
-		WHERE session_id = $1`,
-		data.SessionId, data.Wave, data.IsTraderTime, data.ZedsLeft, data.PlayersAlive,
+		SET wave = $1, is_trader_time = $2, 
+			zeds_left = $3, players_alive = $4,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE session_id = $5`,
+		data.Wave, data.IsTraderTime, data.ZedsLeft, data.PlayersAlive, data.SessionId,
 	)
 
 	return err
