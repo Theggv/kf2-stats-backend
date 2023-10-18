@@ -2,6 +2,7 @@ package session
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/theggv/kf2-stats-backend/pkg/common/middleware"
 )
 
 func RegisterRoutes(r *gin.RouterGroup, service *SessionService) {
@@ -11,9 +12,9 @@ func RegisterRoutes(r *gin.RouterGroup, service *SessionService) {
 
 	routes := r.Group("/sessions")
 
-	routes.POST("/", controller.create)
+	routes.POST("/", middleware.AuthMiddleware, controller.create)
 	routes.GET("/:id", controller.getById)
 	routes.POST("/filter", controller.filter)
-	routes.PUT("/status", controller.updateStatus)
-	routes.PUT("/game-data", controller.updateGameData)
+	routes.PUT("/status", middleware.AuthMiddleware, controller.updateStatus)
+	routes.PUT("/game-data", middleware.AuthMiddleware, controller.updateGameData)
 }

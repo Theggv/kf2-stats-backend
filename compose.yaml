@@ -1,0 +1,20 @@
+services:
+  app:
+    container_name: kf2-stats-backend
+    init: true
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      - SECRET_TOKEN=7GHNr4hLSqePlp9p3ltLVDbj
+      - DB_PATH=/mnt/store/store.sqlite
+      - SERVER_ADDR=0.0.0.0:3000
+      - GOPATH=/code/.go
+    ports:
+      - '3000:3000/tcp'
+    volumes:
+      - sqlite-db:/mnt/store
+    network_mode: bridge
+    working_dir: /code
+volumes:
+  sqlite-db:

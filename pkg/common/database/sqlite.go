@@ -8,12 +8,12 @@ import (
 )
 
 var (
-	driver     = "sqlite3"
-	fileName   = "store.db"
-	connString = fmt.Sprintf("file:%s?parseTime=true", fileName)
+	driver = "sqlite3"
 )
 
-func NewSQLiteDB() *sql.DB {
+func NewSQLiteDB(path string) *sql.DB {
+	connString := fmt.Sprintf("file:%s?parseTime=true", path)
+
 	db, err := sql.Open(driver, connString)
 	if err != nil {
 		panic(err)

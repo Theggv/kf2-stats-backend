@@ -21,10 +21,10 @@
 go.work
 
 # Generated Swagger docs
-docs/
+/docs/
 
 # Air temp files
 tmp/
 
 # SQLite database
-store.db
+store.sqlite

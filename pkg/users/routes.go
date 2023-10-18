@@ -2,6 +2,7 @@ package users
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/theggv/kf2-stats-backend/pkg/common/middleware"
 )
 
 func RegisterRoutes(r *gin.RouterGroup, service *UserService) {
@@ -11,5 +12,5 @@ func RegisterRoutes(r *gin.RouterGroup, service *UserService) {
 
 	routes := r.Group("/users")
 
-	routes.POST("/", controller.create)
+	routes.POST("/", middleware.AuthMiddleware, controller.create)
 }

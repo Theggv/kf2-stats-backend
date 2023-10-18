@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/theggv/kf2-stats-backend/pkg/common/config"
 	"github.com/theggv/kf2-stats-backend/pkg/common/database"
 	"github.com/theggv/kf2-stats-backend/pkg/common/store"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
@@ -21,7 +22,7 @@ import (
 
 // @BasePath /api
 func main() {
-	rootStore := store.New(database.NewSQLiteDB())
+	rootStore := store.New(database.NewSQLiteDB(config.Instance.DatabasePath))
 
 	r := gin.Default()
 
@@ -41,5 +42,5 @@ func main() {
 	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Run app
-	r.Run("localhost:3000")
+	r.Run(config.Instance.ServerAddr)
 }
