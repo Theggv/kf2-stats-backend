@@ -13,3 +13,9 @@ swag init
 ```
 Generated docs: http://localhost:3000/docs/index.html
 - You have to init docs every time when you change api
+
+
+### Docker
+```
+docker compose up -d --build
+```
