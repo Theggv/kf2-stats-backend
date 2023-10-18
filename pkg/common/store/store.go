@@ -28,6 +28,7 @@ func New(db *sql.DB) *Store {
 	}
 
 	store.Stats.Inject(store.Users)
+	store.Sessions.Inject(store.Maps, store.Servers)
 
 	return &store
 }

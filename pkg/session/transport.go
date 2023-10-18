@@ -1,6 +1,10 @@
 package session
 
-import "github.com/theggv/kf2-stats-backend/pkg/common/models"
+import (
+	"github.com/theggv/kf2-stats-backend/pkg/common/models"
+	"github.com/theggv/kf2-stats-backend/pkg/maps"
+	"github.com/theggv/kf2-stats-backend/pkg/server"
+)
 
 type CreateSessionRequest struct {
 	ServerId int `json:"server_id" binding:"required"`
@@ -48,4 +52,29 @@ type UpdateGameDataRequest struct {
 	PlayersAlive int  `json:"players_alive"`
 
 	CDData *models.CDGameData `json:"cd_data"`
+}
+
+type GameData struct {
+	Wave         int  `json:"wave"`
+	IsTraderTime bool `json:"is_trader_time"`
+	ZedsLeft     int  `json:"zeds_left"`
+	PlayersAlive int  `json:"players_alive"`
+}
+
+type LiveMatch struct {
+	SessionId int `json:"session_id"`
+
+	Mode       models.GameMode       `json:"mode"`
+	Length     models.GameLength     `json:"length"`
+	Difficulty models.GameDifficulty `json:"diff"`
+
+	Map    maps.Map      `json:"map"`
+	Server server.Server `json:"server"`
+
+	GameData GameData           `json:"game_data"`
+	CDData   *models.CDGameData `json:"cd_data"`
+}
+
+type GetLiveMatchesResponse struct {
+	Items []LiveMatch `json:"items"`
 }

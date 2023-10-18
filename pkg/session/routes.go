@@ -14,6 +14,7 @@ func RegisterRoutes(r *gin.RouterGroup, service *SessionService) {
 
 	routes.POST("/", middleware.AuthMiddleware, controller.create)
 	routes.GET("/:id", controller.getById)
+	routes.GET("/live", controller.getLiveMatches)
 	routes.POST("/filter", controller.filter)
 	routes.PUT("/status", middleware.AuthMiddleware, controller.updateStatus)
 	routes.PUT("/game-data", middleware.AuthMiddleware, controller.updateGameData)

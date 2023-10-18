@@ -62,6 +62,22 @@ func (c *sessionController) getById(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, item)
 }
 
+// @Summary Get live matches
+// @Tags 	Session
+// @Produce json
+// @Success 200 {object} 	GetLiveMatchesResponse
+// @Router /sessions/live [get]
+func (c *sessionController) getLiveMatches(ctx *gin.Context) {
+	item, err := c.service.GetLiveMatches()
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, item)
+}
+
 // @Summary Get sessions by filter
 // @Tags 	Session
 // @Produce json

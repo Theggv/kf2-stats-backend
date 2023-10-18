@@ -6,10 +6,22 @@ import (
 	"strings"
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
+	"github.com/theggv/kf2-stats-backend/pkg/maps"
+	"github.com/theggv/kf2-stats-backend/pkg/server"
 )
 
 type SessionService struct {
-	db *sql.DB
+	db            *sql.DB
+	mapsService   *maps.MapsService
+	serverService *server.ServerService
+}
+
+func (s *SessionService) Inject(
+	mapsService *maps.MapsService,
+	serverService *server.ServerService,
+) {
+	s.mapsService = mapsService
+	s.serverService = serverService
 }
 
 func (s *SessionService) initTables() {
@@ -244,6 +256,64 @@ func (s *SessionService) GetById(id int) (*Session, error) {
 	}
 
 	return &item, nil
+}
+
+func (s *SessionService) GetLiveMatches() (*GetLiveMatchesResponse, error) {
+	rows, err := s.db.Query(`
+		SELECT 
+			session.id, session.map_id, session.server_id,
+			session.mode, session.length, session.diff,
+			gd.wave, gd.is_trader_time, gd.zeds_left, gd.players_alive, 
+			cd.spawn_cycle, cd.max_monsters, cd.wave_size_fakes, cd.zeds_type
+		FROM session
+		INNER JOIN session_game_data gd ON gd.session_id = session.id
+		LEFT JOIN session_game_data_cd cd ON cd.session_id = session.id
+		WHERE status = $1`, models.InProgress,
+	)
+
+	items := []LiveMatch{}
+
+	for rows.Next() {
+		item := LiveMatch{}
+		cdData := models.CDGameData{}
+
+		err := rows.Scan(
+			&item.SessionId, &item.Map.Id, &item.Server.Id,
+			&item.Mode, &item.Length, &item.Difficulty,
+			&item.GameData.Wave, &item.GameData.IsTraderTime,
+			&item.GameData.ZedsLeft, &item.GameData.PlayersAlive,
+			&cdData.SpawnCycle, &cdData.MaxMonsters,
+			&cdData.WaveSizeFakes, &cdData.ZedsType,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		mapData, err := s.mapsService.GetById(item.Map.Id)
+		serverData, err := s.serverService.GetById(item.Server.Id)
+
+		if mapData == nil || serverData == nil {
+			continue
+		}
+
+		item.Map = *mapData
+		item.Server = *serverData
+
+		if item.Mode == models.ControlledDifficulty {
+			item.CDData = &cdData
+		}
+
+		items = append(items, item)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &GetLiveMatchesResponse{
+		Items: items,
+	}, nil
 }
 
 func (s *SessionService) UpdateStatus(data UpdateStatusRequest) error {
