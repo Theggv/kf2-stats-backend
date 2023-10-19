@@ -15,6 +15,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+
+RUN go install github.com/swaggo/swag/cmd/swag@latest
+RUN swag init
 RUN go build -o /app/main -a -ldflags '-linkmode external -extldflags "-static"' .
 
 FROM scratch
