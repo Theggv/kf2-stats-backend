@@ -35,4 +35,7 @@ type Session struct {
 
 	Map    *SessionMap    `json:"map"`
 	Server *SessionServer `json:"server"`
+
+	StartedAt   *time.Time `json:"started_at"`
+	CompletedAt *time.Time `json:"completed_at"`
 }

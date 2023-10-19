@@ -2,7 +2,9 @@ package stats
 
 import (
 	"database/sql"
+	"fmt"
 
+	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
@@ -17,20 +19,36 @@ func (s *StatsService) Inject(userService *users.UserService) {
 
 func (s *StatsService) initTables() {
 	s.db.Exec(`
-	CREATE TABLE IF NOT EXISTS wave_player_stats (
+	CREATE TABLE IF NOT EXISTS wave_stats (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		session_id INTEGER NOT NULL REFERENCES session(id)
-			ON UPDATE CASCADE 
-			ON DELETE CASCADE,
-		player_id INTEGER NOT NULL REFERENCES user(id)
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE,
 		wave INTEGER NOT NULL,
 		attempt INTEGER NOT NULL,
 
+		started_at DATETIME NOT NULL,
+		completed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE UNIQUE INDEX IF NOT EXISTS uniq_wave_stats ON wave_stats (
+		session_id, wave, attempt
+	);
+
+	CREATE TABLE IF NOT EXISTS wave_stats_player (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		stats_id INTEGER NOT NULL REFERENCES wave_stats(id)
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
+		player_id INTEGER NOT NULL REFERENCES user(id)
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
+
 		perk INTEGER NOT NULL,
 		level INTEGER NOT NULL,
 		prestige INTEGER NOT NULL,
+
+		is_dead BOOLEAN NOT NULL,
 
 		shots_fired INTEGER NOT NULL,
 		shots_hit INTEGER NOT NULL,
@@ -44,15 +62,18 @@ func (s *StatsService) initTables() {
 		damage_dealt INTEGER NOT NULL,
 		damage_taken INTEGER NOT NULL,
 
+		zedtime_count INTEGER NOT NULL,
+		zedtime_length REAL NOT NULL,
+
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_wave_player_stats ON wave_player_stats (
-		session_id, player_id, wave, attempt
+	CREATE UNIQUE INDEX IF NOT EXISTS uniq_wave_stats_player ON wave_stats_player (
+		stats_id, player_id
 	);
 
-	CREATE TABLE IF NOT EXISTS wave_player_stats_kills (
-		stats_id INTEGER PRIMARY KEY REFERENCES wave_player_stats(id) 
+	CREATE TABLE IF NOT EXISTS wave_stats_player_kills (
+		player_stats_id INTEGER PRIMARY KEY REFERENCES wave_stats_player(id) 
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE,
 
@@ -79,8 +100,8 @@ func (s *StatsService) initTables() {
 		boss INTEGER NOT NULL
 	);
 
-	CREATE TABLE IF NOT EXISTS wave_player_stats_injured_by (
-		stats_id INTEGER PRIMARY KEY REFERENCES wave_player_stats(id)  
+	CREATE TABLE IF NOT EXISTS wave_stats_player_injured_by (
+		player_stats_id INTEGER PRIMARY KEY REFERENCES wave_stats_player(id) 
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE,
 
@@ -106,12 +127,9 @@ func (s *StatsService) initTables() {
 	);
 
 	CREATE TABLE IF NOT EXISTS wave_stats_cd (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		session_id INTEGER NOT NULL REFERENCES session(id)
+		stats_id INTEGER PRIMARY KEY REFERENCES wave_stats(id)
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE,
-		wave INTEGER NOT NULL,
-		attempt INTEGER NOT NULL,
 
 		spawn_cycle TEXT NOT NULL,
 		max_monsters INTEGER NOT NULL,
@@ -119,10 +137,6 @@ func (s *StatsService) initTables() {
 		zeds_type TEXT NOT NULL,
 
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-	);
-	
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_wave_stats_cd ON wave_stats_cd (
-		session_id, wave, attempt
 	);
 	`)
 }
@@ -137,7 +151,41 @@ func NewStatsService(db *sql.DB) *StatsService {
 	return &service
 }
 
-func (s *StatsService) CreateWavePlayerStats(req CreateWavePlayerStatsRequest) error {
+func (s *StatsService) getWaveAttempts(sessionId, wave int) (int, error) {
+	row := s.db.QueryRow(`
+		SELECT COUNT(*) FROM wave_stats
+		WHERE session_id = $1 AND wave = $2`,
+		sessionId, wave,
+	)
+
+	var attempt int
+	err := row.Scan(&attempt)
+
+	return attempt, err
+}
+
+func (s *StatsService) createWaveStats(req *CreateWaveStatsRequest) (int64, error) {
+	attempt, err := s.getWaveAttempts(req.SessionId, req.Wave)
+	if err != nil {
+		return 0, err
+	}
+
+	sql := fmt.Sprintf(` 
+		INSERT INTO wave_stats (session_id, wave, attempt, started_at) 
+		VALUES (%v, %v, %v, datetime(CURRENT_TIMESTAMP, '-%v seconds'))`,
+		req.SessionId, req.Wave, attempt+1, req.Length,
+	)
+
+	res, err := s.db.Exec(sql)
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+	return id, err
+}
+
+func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRequestPlayer) error {
 	playerId, err := s.userService.FindCreateFind(users.CreateUserRequest{
 		AuthId: req.UserAuthId,
 		Type:   req.UserAuthType,
@@ -148,28 +196,21 @@ func (s *StatsService) CreateWavePlayerStats(req CreateWavePlayerStatsRequest) e
 		return err
 	}
 
-	row := s.db.QueryRow(
-		`SELECT COUNT(*) FROM wave_player_stats
-		WHERE session_id = $1 AND player_id = $2 AND wave = $3`,
-		req.SessionId, playerId, req.Wave,
-	)
-
-	var attempt int
-	err = row.Scan(&attempt)
-
 	res, err := s.db.Exec(`
-		INSERT INTO wave_player_stats (
-			session_id, player_id, wave, attempt, 
-			perk, level, prestige,
+		INSERT INTO wave_stats_player (
+			stats_id, player_id, 
+			perk, level, prestige, is_dead,
 			shots_fired, shots_hit, shots_hs, 
 			dosh_earned, heals_given, heals_recv,
-			damage_dealt, damage_taken) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-		req.SessionId, playerId, req.Wave, attempt+1,
-		req.Perk, req.Level, req.Prestige,
+			damage_dealt, damage_taken,
+			zedtime_count, zedtime_length) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+		statsId, playerId,
+		req.Perk, req.Level, req.Prestige, req.IsDead,
 		req.ShotsFired, req.ShotsHit, req.ShotsHS,
 		req.DoshEarned, req.HealsGiven, req.HealsReceived,
 		req.DamageDealt, req.DamageTaken,
+		req.ZedTimeCount, req.ZedTimeLength,
 	)
 
 	if err != nil {
@@ -184,7 +225,7 @@ func (s *StatsService) CreateWavePlayerStats(req CreateWavePlayerStatsRequest) e
 	kills := req.Kills
 
 	_, err = s.db.Exec(`
-		INSERT INTO wave_player_stats_kills (stats_id, 
+		INSERT INTO wave_stats_player_kills (player_stats_id, 
 			cyst, alpha_clot, slasher, stalker, crawler, gorefast, 
 			rioter, elite_crawler, gorefiend, 
 			siren, bloat, edar, 
@@ -202,7 +243,7 @@ func (s *StatsService) CreateWavePlayerStats(req CreateWavePlayerStatsRequest) e
 	injuredby := req.Injuredby
 
 	_, err = s.db.Exec(`
-		INSERT INTO wave_player_stats_injured_by (stats_id, 
+		INSERT INTO wave_stats_player_injured_by (player_stats_id, 
 			cyst, alpha_clot, slasher, stalker, crawler, gorefast, 
 			rioter, elite_crawler, gorefiend, 
 			siren, bloat, edar, husk, 
@@ -218,25 +259,36 @@ func (s *StatsService) CreateWavePlayerStats(req CreateWavePlayerStatsRequest) e
 	return err
 }
 
-func (s *StatsService) CreateWaveStatsCD(req CreateWaveStatsCDRequest) error {
-	row := s.db.QueryRow(
-		`SELECT COUNT(*) FROM wave_stats_cd
-		WHERE session_id = $1 AND wave = $2`,
-		req.SessionId, req.Wave,
-	)
-
-	var attempt int
-	err := row.Scan(&attempt)
-
-	_, err = s.db.Exec(`
+func (s *StatsService) createWaveStatsCD(statsId int, req *models.CDGameData) error {
+	_, err := s.db.Exec(`
 		INSERT INTO wave_stats_cd (
-			session_id, wave, attempt, 
+			stats_id, 
 			spawn_cycle, max_monsters, wave_size_fakes, zeds_type) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		req.SessionId, req.Wave, attempt+1,
-		req.CDData.SpawnCycle, req.CDData.MaxMonsters,
-		req.CDData.WaveSizeFakes, req.CDData.ZedsType,
+		VALUES ($1, $2, $3, $4, $5)`,
+		statsId,
+		req.SpawnCycle, req.MaxMonsters,
+		req.WaveSizeFakes, req.ZedsType,
 	)
+
+	return err
+}
+
+func (s *StatsService) CreateWaveStats(req CreateWaveStatsRequest) error {
+	statsId, err := s.createWaveStats(&req)
+	if err != nil {
+		return err
+	}
+
+	for _, player := range req.Players {
+		err = s.createWaveStatsPlayer(int(statsId), &player)
+		if err != nil {
+			return err
+		}
+	}
+
+	if req.CDData != nil && req.CDData.SpawnCycle != nil {
+		err = s.createWaveStatsCD(int(statsId), req.CDData)
+	}
 
 	return err
 }

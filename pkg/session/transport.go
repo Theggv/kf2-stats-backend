@@ -1,6 +1,8 @@
 package session
 
 import (
+	"time"
+
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
@@ -43,22 +45,14 @@ type UpdateStatusRequest struct {
 	Status int `json:"status" binding:"required"`
 }
 
-type UpdateGameDataRequest struct {
-	SessionId int `json:"session_id"`
-
-	Wave         int  `json:"wave"`
-	IsTraderTime bool `json:"is_trader_time"`
-	ZedsLeft     int  `json:"zeds_left"`
-	PlayersAlive int  `json:"players_alive"`
-
-	CDData *models.CDGameData `json:"cd_data"`
-}
-
 type GameData struct {
+	MaxPlayers    int `json:"max_players"`
+	PlayersOnline int `json:"players_online"`
+	PlayersAlive  int `json:"players_alive"`
+
 	Wave         int  `json:"wave"`
 	IsTraderTime bool `json:"is_trader_time"`
 	ZedsLeft     int  `json:"zeds_left"`
-	PlayersAlive int  `json:"players_alive"`
 }
 
 type LiveMatch struct {
@@ -73,8 +67,17 @@ type LiveMatch struct {
 
 	GameData GameData           `json:"game_data"`
 	CDData   *models.CDGameData `json:"cd_data"`
+
+	StartedAt time.Time `json:"started_at"`
 }
 
 type GetLiveMatchesResponse struct {
 	Items []LiveMatch `json:"items"`
+}
+
+type UpdateGameDataRequest struct {
+	SessionId int `json:"session_id"`
+
+	GameData GameData           `json:"game_data"`
+	CDData   *models.CDGameData `json:"cd_data"`
 }

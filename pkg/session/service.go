@@ -40,18 +40,23 @@ func (s *SessionService) initTables() {
 		status INTEGER NOT NULL DEFAULT 0,
 
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		started_at DATETIME DEFAULT NULL,
+		completed_at DATETIME DEFAULT NULL
 	);
 	
 	CREATE TABLE IF NOT EXISTS session_game_data (
 		session_id INTEGER PRIMARY KEY REFERENCES session(id)
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE,
+
+		max_players INTEGER NOT NULL DEFAULT 6,
+		players_online INTEGER NOT NULL DEFAULT 0,
+		players_alive INTEGER NOT NULL DEFAULT 0,
 		
 		wave INTEGER NOT NULL DEFAULT 0,
 		is_trader_time BOOLEAN NOT NULL DEFAULT 0,
 		zeds_left INTEGER NOT NULL DEFAULT 0,
-		players_alive INTEGER NOT NULL DEFAULT 0,
 
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
@@ -260,10 +265,18 @@ func (s *SessionService) GetById(id int) (*Session, error) {
 
 func (s *SessionService) GetLiveMatches() (*GetLiveMatchesResponse, error) {
 	rows, err := s.db.Query(`
+		 INTEGER NOT NULL DEFAULT 6,
+		 INTEGER NOT NULL DEFAULT 0,
+		 INTEGER NOT NULL DEFAULT 0,
+		 INTEGER NOT NULL DEFAULT 0,
+		 BOOLEAN NOT NULL DEFAULT 0,
+		 INTEGER NOT NULL DEFAULT 0,
+
 		SELECT 
 			session.id, session.map_id, session.server_id,
-			session.mode, session.length, session.diff,
-			gd.wave, gd.is_trader_time, gd.zeds_left, gd.players_alive, 
+			session.mode, session.length, session.diff, session.started_at,
+			gd.max_players, gd.players_online, gd.players_alive, 
+			gd.wave, gd.is_trader_time, gd.zeds_left,
 			cd.spawn_cycle, cd.max_monsters, cd.wave_size_fakes, cd.zeds_type
 		FROM session
 		INNER JOIN session_game_data gd ON gd.session_id = session.id
@@ -279,9 +292,9 @@ func (s *SessionService) GetLiveMatches() (*GetLiveMatchesResponse, error) {
 
 		err := rows.Scan(
 			&item.SessionId, &item.Map.Id, &item.Server.Id,
-			&item.Mode, &item.Length, &item.Difficulty,
-			&item.GameData.Wave, &item.GameData.IsTraderTime,
-			&item.GameData.ZedsLeft, &item.GameData.PlayersAlive,
+			&item.Mode, &item.Length, &item.Difficulty, &item.StartedAt,
+			&item.GameData.MaxPlayers, &item.GameData.PlayersOnline, &item.GameData.PlayersAlive,
+			&item.GameData.Wave, &item.GameData.IsTraderTime, &item.GameData.ZedsLeft,
 			&cdData.SpawnCycle, &cdData.MaxMonsters,
 			&cdData.WaveSizeFakes, &cdData.ZedsType,
 		)
@@ -300,7 +313,7 @@ func (s *SessionService) GetLiveMatches() (*GetLiveMatchesResponse, error) {
 		item.Map = *mapData
 		item.Server = *serverData
 
-		if item.Mode == models.ControlledDifficulty {
+		if item.Mode == models.ControlledDifficulty && cdData.SpawnCycle != nil {
 			item.CDData = &cdData
 		}
 
@@ -323,17 +336,41 @@ func (s *SessionService) UpdateStatus(data UpdateStatusRequest) error {
 		WHERE id = $2`,
 		data.Status, data.Id)
 
+	if err != nil {
+		return err
+	}
+
+	if data.Status == models.InProgress {
+		_, err = s.db.Exec(`
+			UPDATE session 
+			SET started_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+			WHERE id = $1`, data.Id)
+	}
+
+	if data.Status == models.Win ||
+		data.Status == models.Lose ||
+		data.Status == models.Aborted {
+		_, err = s.db.Exec(`
+			UPDATE session 
+			SET completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+			WHERE id = $1`, data.Id)
+	}
+
 	return err
 }
 
 func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
+	gd := data.GameData
+
 	_, err := s.db.Exec(`
 		UPDATE session_game_data
-		SET wave = $1, is_trader_time = $2, 
-			zeds_left = $3, players_alive = $4,
+		SET max_players = $1, players_online = $2, players_alive = $3,
+			wave = $4, is_trader_time = $5, zeds_left = $6,
 			updated_at = CURRENT_TIMESTAMP
-		WHERE session_id = $5`,
-		data.Wave, data.IsTraderTime, data.ZedsLeft, data.PlayersAlive, data.SessionId,
+		WHERE session_id = $7`,
+		gd.MaxPlayers, gd.PlayersOnline, gd.PlayersAlive,
+		gd.Wave, gd.IsTraderTime, gd.ZedsLeft,
+		data.SessionId,
 	)
 
 	if data.CDData == nil {

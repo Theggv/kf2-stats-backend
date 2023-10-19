@@ -12,6 +12,5 @@ func RegisterRoutes(r *gin.RouterGroup, service *StatsService) {
 
 	routes := r.Group("/stats")
 
-	routes.POST("/wave/player", middleware.AuthMiddleware, controller.createWavePlayerStats)
-	routes.POST("/wave/cd", middleware.AuthMiddleware, controller.createWaveStatsCD)
+	routes.POST("/wave", middleware.AuthMiddleware, controller.createWaveStats)
 }
