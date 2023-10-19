@@ -265,13 +265,6 @@ func (s *SessionService) GetById(id int) (*Session, error) {
 
 func (s *SessionService) GetLiveMatches() (*GetLiveMatchesResponse, error) {
 	rows, err := s.db.Query(`
-		 INTEGER NOT NULL DEFAULT 6,
-		 INTEGER NOT NULL DEFAULT 0,
-		 INTEGER NOT NULL DEFAULT 0,
-		 INTEGER NOT NULL DEFAULT 0,
-		 BOOLEAN NOT NULL DEFAULT 0,
-		 INTEGER NOT NULL DEFAULT 0,
-
 		SELECT 
 			session.id, session.map_id, session.server_id,
 			session.mode, session.length, session.diff, session.started_at,
@@ -284,17 +277,22 @@ func (s *SessionService) GetLiveMatches() (*GetLiveMatchesResponse, error) {
 		WHERE status = $1`, models.InProgress,
 	)
 
+	if err != nil {
+		return nil, err
+	}
+
 	items := []LiveMatch{}
 
 	for rows.Next() {
 		item := LiveMatch{}
 		cdData := models.CDGameData{}
+		gameData := GameData{}
 
 		err := rows.Scan(
 			&item.SessionId, &item.Map.Id, &item.Server.Id,
 			&item.Mode, &item.Length, &item.Difficulty, &item.StartedAt,
-			&item.GameData.MaxPlayers, &item.GameData.PlayersOnline, &item.GameData.PlayersAlive,
-			&item.GameData.Wave, &item.GameData.IsTraderTime, &item.GameData.ZedsLeft,
+			&gameData.MaxPlayers, &gameData.PlayersOnline, &gameData.PlayersAlive,
+			&gameData.Wave, &gameData.IsTraderTime, &gameData.ZedsLeft,
 			&cdData.SpawnCycle, &cdData.MaxMonsters,
 			&cdData.WaveSizeFakes, &cdData.ZedsType,
 		)
@@ -312,16 +310,13 @@ func (s *SessionService) GetLiveMatches() (*GetLiveMatchesResponse, error) {
 
 		item.Map = *mapData
 		item.Server = *serverData
+		item.GameData = gameData
 
 		if item.Mode == models.ControlledDifficulty && cdData.SpawnCycle != nil {
 			item.CDData = &cdData
 		}
 
 		items = append(items, item)
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	return &GetLiveMatchesResponse{
