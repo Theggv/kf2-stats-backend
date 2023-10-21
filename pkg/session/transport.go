@@ -62,13 +62,15 @@ type LiveMatch struct {
 	Length     models.GameLength     `json:"length"`
 	Difficulty models.GameDifficulty `json:"diff"`
 
-	Map    maps.Map      `json:"map"`
-	Server server.Server `json:"server"`
+	Status *models.GameStatus `json:"status"`
+
+	Map    *maps.Map      `json:"map"`
+	Server *server.Server `json:"server"`
 
 	GameData GameData           `json:"game_data"`
 	CDData   *models.CDGameData `json:"cd_data"`
 
-	StartedAt time.Time `json:"started_at"`
+	StartedAt *time.Time `json:"started_at"`
 }
 
 type GetLiveMatchesResponse struct {

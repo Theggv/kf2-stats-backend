@@ -281,7 +281,11 @@ func (s *SessionService) GetLiveMatches() (*GetLiveMatchesResponse, error) {
 		return nil, err
 	}
 
-	items := []LiveMatch{}
+	var (
+		mapId    int
+		serverId int
+		items    []LiveMatch
+	)
 
 	for rows.Next() {
 		item := LiveMatch{}
@@ -289,7 +293,7 @@ func (s *SessionService) GetLiveMatches() (*GetLiveMatchesResponse, error) {
 		gameData := GameData{}
 
 		err := rows.Scan(
-			&item.SessionId, &item.Map.Id, &item.Server.Id,
+			&item.SessionId, &mapId, &serverId,
 			&item.Mode, &item.Length, &item.Difficulty, &item.StartedAt,
 			&gameData.MaxPlayers, &gameData.PlayersOnline, &gameData.PlayersAlive,
 			&gameData.Wave, &gameData.IsTraderTime, &gameData.ZedsLeft,
@@ -301,15 +305,15 @@ func (s *SessionService) GetLiveMatches() (*GetLiveMatchesResponse, error) {
 			return nil, err
 		}
 
-		mapData, err := s.mapsService.GetById(item.Map.Id)
-		serverData, err := s.serverService.GetById(item.Server.Id)
+		mapData, err := s.mapsService.GetById(mapId)
+		serverData, err := s.serverService.GetById(serverId)
 
 		if mapData == nil || serverData == nil {
 			continue
 		}
 
-		item.Map = *mapData
-		item.Server = *serverData
+		item.Map = mapData
+		item.Server = serverData
 		item.GameData = gameData
 
 		if item.Mode == models.ControlledDifficulty && cdData.SpawnCycle != nil {
@@ -322,6 +326,59 @@ func (s *SessionService) GetLiveMatches() (*GetLiveMatchesResponse, error) {
 	return &GetLiveMatchesResponse{
 		Items: items,
 	}, nil
+}
+
+func (s *SessionService) GetCurrentServerSession(serverId int) (*LiveMatch, error) {
+	row := s.db.QueryRow(`
+		SELECT 
+			session.id, session.map_id, session.status,
+			session.mode, session.length, session.diff, session.started_at,
+			gd.max_players, gd.players_online, gd.players_alive, 
+			gd.wave, gd.is_trader_time, gd.zeds_left,
+			cd.spawn_cycle, cd.max_monsters, cd.wave_size_fakes, cd.zeds_type
+		FROM session
+		INNER JOIN session_game_data gd ON gd.session_id = session.id
+		LEFT JOIN session_game_data_cd cd ON cd.session_id = session.id
+		WHERE session.server_id = $1
+		ORDER BY session.created_at DESC
+		LIMIT 1`,
+		serverId,
+	)
+
+	var (
+		mapId    int
+		item     LiveMatch
+		cdData   models.CDGameData
+		gameData GameData
+	)
+
+	err := row.Scan(
+		&item.SessionId, &mapId, &item.Status,
+		&item.Mode, &item.Length, &item.Difficulty, &item.StartedAt,
+		&gameData.MaxPlayers, &gameData.PlayersOnline, &gameData.PlayersAlive,
+		&gameData.Wave, &gameData.IsTraderTime, &gameData.ZedsLeft,
+		&cdData.SpawnCycle, &cdData.MaxMonsters,
+		&cdData.WaveSizeFakes, &cdData.ZedsType,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	mapData, err := s.mapsService.GetById(mapId)
+
+	if mapData == nil {
+		return nil, err
+	}
+
+	item.Map = mapData
+	item.GameData = gameData
+
+	if item.Mode == models.ControlledDifficulty && cdData.SpawnCycle != nil {
+		item.CDData = &cdData
+	}
+
+	return &item, nil
 }
 
 func (s *SessionService) UpdateStatus(data UpdateStatusRequest) error {

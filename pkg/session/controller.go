@@ -78,6 +78,29 @@ func (c *sessionController) getLiveMatches(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, item)
 }
 
+// @Summary Get current server session
+// @Tags 	Session
+// @Produce json
+// @Success 200 {object} 	LiveMatch
+// @Router /sessions/server/{id} [get]
+func (c *sessionController) getCurrentServerSession(ctx *gin.Context) {
+	id, err := strconv.Atoi(ctx.Params.ByName("id"))
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	item, err := c.service.GetCurrentServerSession(id)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, item)
+}
+
 // @Summary Get sessions by filter
 // @Tags 	Session
 // @Produce json
