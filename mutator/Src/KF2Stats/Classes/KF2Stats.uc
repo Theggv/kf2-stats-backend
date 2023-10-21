@@ -44,12 +44,12 @@ private function PreInit() {
 		SaveConfig();
 	}
 
+	BackendConfigClass.static.InitConfig(Version, LatestVersion);
+
 	if (LatestVersion != Version) {
 		Version = LatestVersion;
 		SaveConfig();
 	}
-
-	BackendConfigClass.static.InitConfig(Version, LatestVersion);
 
 	OS = class'GameEngine'.static.GetOnlineSubsystem();
 }
@@ -183,8 +183,8 @@ private function int GetGameMode() {
 	if (KFGI.IsA('CD_Survival')) return 3;
 
 	// Default modes
-	if (KFGameInfo_Survival(KFGI) != None) return 1;
 	if (KFGameInfo_Endless(KFGI) != None) return 2;
+	if (KFGameInfo_Survival(KFGI) != None) return 1;
 
 	return 0;
 }

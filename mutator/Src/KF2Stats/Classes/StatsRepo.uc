@@ -122,6 +122,8 @@ private function OnWaveStarted() {
 	SessionData.ZedTimeDuration = 0.0;
 	SessionData.ZedTimeCount = 0;
 
+	if (SessionData.SessionId == 0) return;
+
 	if (SessionData.Wave == 1) {
 		class'SessionService'.static.GetInstance().UpdateStatus(
 			SessionData.SessionId,
@@ -146,6 +148,8 @@ private function OnWaveEnded() {
 		UpdateNonKillStats(C);
 	}
 
+	if (SessionData.SessionId == 0) return;
+	
 	UploadWaveStats();
 
 	Alive = GetAliveCount();
