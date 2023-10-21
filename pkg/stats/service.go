@@ -280,6 +280,11 @@ func (s *StatsService) CreateWaveStats(req CreateWaveStatsRequest) error {
 	}
 
 	for _, player := range req.Players {
+		// Skip players without stats
+		if player.Perk == 0 && player.Level == 0 && player.DamageDealt == 0 && player.DamageTaken == 0 {
+			continue
+		}
+
 		err = s.createWaveStatsPlayer(int(statsId), &player)
 		if err != nil {
 			return err

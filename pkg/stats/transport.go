@@ -40,7 +40,7 @@ type CreateWaveStatsRequestPlayer struct {
 }
 
 type CreateWaveStatsRequest struct {
-	SessionId int `json:"session_id"`
+	SessionId int `json:"session_id" binding:"required"`
 	Wave      int `json:"wave"`
 	Length    int `json:"wave_length"`
 
