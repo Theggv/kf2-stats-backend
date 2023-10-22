@@ -7,6 +7,7 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/common/database"
 	"github.com/theggv/kf2-stats-backend/pkg/common/store"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
+	"github.com/theggv/kf2-stats-backend/pkg/matches"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/stats"
@@ -22,7 +23,9 @@ import (
 
 // @BasePath /api
 func main() {
-	rootStore := store.New(database.NewSQLiteDB(config.Instance.DatabasePath))
+	config := config.Instance
+
+	rootStore := store.New(database.NewSQLiteDB(config.DatabasePath), config)
 
 	r := gin.Default()
 
@@ -37,10 +40,11 @@ func main() {
 	session.RegisterRoutes(api, rootStore.Sessions)
 	stats.RegisterRoutes(api, rootStore.Stats)
 	users.RegisterRoutes(api, rootStore.Users)
+	matches.RegisterRoutes(api, rootStore.Matches)
 
 	// Setup swagger
 	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Run app
-	r.Run(config.Instance.ServerAddr)
+	r.Run(config.ServerAddr)
 }

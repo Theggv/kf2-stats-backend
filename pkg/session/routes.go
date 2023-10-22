@@ -13,10 +13,6 @@ func RegisterRoutes(r *gin.RouterGroup, service *SessionService) {
 	routes := r.Group("/sessions")
 
 	routes.POST("/", middleware.AuthMiddleware, controller.create)
-	routes.GET("/:id", controller.getById)
-	routes.GET("/live", controller.getLiveMatches)
-	routes.GET("/server/:id", controller.getCurrentServerSession)
-	routes.POST("/filter", controller.filter)
 	routes.PUT("/status", middleware.AuthMiddleware, controller.updateStatus)
 	routes.PUT("/game-data", middleware.AuthMiddleware, controller.updateGameData)
 }

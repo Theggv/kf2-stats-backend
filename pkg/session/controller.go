@@ -3,7 +3,6 @@ package session
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,93 +35,6 @@ func (c *sessionController) create(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, CreateSessionResponse{
 		Id: id,
 	})
-}
-
-// @Summary Get session by id
-// @Tags 	Session
-// @Produce json
-// @Param   id path   	 	int true "Session id"
-// @Success 200 {object} 	Session
-// @Router /sessions/{id} [get]
-func (c *sessionController) getById(ctx *gin.Context) {
-	id, err := strconv.Atoi(ctx.Params.ByName("id"))
-	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	item, err := c.service.GetById(id)
-	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	ctx.JSON(http.StatusOK, item)
-}
-
-// @Summary Get live matches
-// @Tags 	Session
-// @Produce json
-// @Success 200 {object} 	GetLiveMatchesResponse
-// @Router /sessions/live [get]
-func (c *sessionController) getLiveMatches(ctx *gin.Context) {
-	item, err := c.service.GetLiveMatches()
-	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	ctx.JSON(http.StatusOK, item)
-}
-
-// @Summary Get current server session
-// @Tags 	Session
-// @Produce json
-// @Success 200 {object} 	LiveMatch
-// @Router /sessions/server/{id} [get]
-func (c *sessionController) getCurrentServerSession(ctx *gin.Context) {
-	id, err := strconv.Atoi(ctx.Params.ByName("id"))
-	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	item, err := c.service.GetCurrentServerSession(id)
-	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	ctx.JSON(http.StatusOK, item)
-}
-
-// @Summary Get sessions by filter
-// @Tags 	Session
-// @Produce json
-// @Param   filter body 	FilterSessionsRequest true "Get sessions by filter"
-// @Success 200 {array} 	FilterSessionsResponse
-// @Router /sessions/filter [post]
-func (c *sessionController) filter(ctx *gin.Context) {
-	var req FilterSessionsRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	res, err := c.service.Filter(req)
-	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	ctx.JSON(http.StatusOK, res)
 }
 
 // @Summary Update session status

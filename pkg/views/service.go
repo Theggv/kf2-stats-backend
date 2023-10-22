@@ -8,7 +8,7 @@ type ViewsService struct {
 
 func (s *ViewsService) initTables() {
 	s.db.Exec(`
-	CREATE VIEW view_indexes as
+	CREATE VIEW IF NOT EXISTS view_indexes as
 	SELECT
 		session.id as session_id,
 		wave_stats.id as wave_stats_id,

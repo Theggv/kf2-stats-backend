@@ -6,17 +6,14 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 )
 
-type SessionMap struct {
-	Name    *string `json:"name"`
-	Preview *string `json:"preview"`
-}
+type GameData struct {
+	MaxPlayers    int `json:"max_players"`
+	PlayersOnline int `json:"players_online"`
+	PlayersAlive  int `json:"players_alive"`
 
-type SessionServer struct {
-	Name    *string `json:"name"`
-	Address *string `json:"address"`
-}
-
-type SessionGameDetails struct {
+	Wave         int  `json:"wave"`
+	IsTraderTime bool `json:"is_trader_time"`
+	ZedsLeft     int  `json:"zeds_left"`
 }
 
 type Session struct {
@@ -32,9 +29,6 @@ type Session struct {
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-
-	Map    *SessionMap    `json:"map"`
-	Server *SessionServer `json:"server"`
 
 	StartedAt   *time.Time `json:"started_at"`
 	CompletedAt *time.Time `json:"completed_at"`
