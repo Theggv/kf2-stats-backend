@@ -72,6 +72,10 @@ func (s *StatsService) initTables() {
 		stats_id, player_id
 	);
 
+	CREATE INDEX IF NOT EXISTS idx_wave_stats_player_player_id ON wave_stats_player (
+		player_id
+	);
+
 	CREATE TABLE IF NOT EXISTS wave_stats_player_kills (
 		player_stats_id INTEGER PRIMARY KEY REFERENCES wave_stats_player(id) 
 			ON UPDATE CASCADE 
