@@ -191,7 +191,7 @@ private function UploadWaveStats() {
 		PlayerData = GetPlayerWaveStats(C);
 
 		PRI = C.PlayerReplicationInfo;
-		PlayerData.AuthId = OS.UniqueNetIdToString(PRI.UniqueId);
+		PlayerData.Uid = OS.UniqueNetIdToString(PRI.UniqueId);
 
 		if (!C.bIsEosPlayer) {
 			PlayerData.AuthId = OS.UniqueNetIdToInt64(PRI.UniqueId);
