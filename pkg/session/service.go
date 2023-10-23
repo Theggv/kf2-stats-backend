@@ -181,6 +181,17 @@ func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
 	gd := data.GameData
 
 	_, err := s.db.Exec(`
+		UPDATE session
+		SET updated_at = CURRENT_TIMESTAMP
+		WHERE id = $1`,
+		data.SessionId,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = s.db.Exec(`
 		UPDATE session_game_data
 		SET max_players = $1, players_online = $2, players_alive = $3,
 			wave = $4, is_trader_time = $5, zeds_left = $6,
