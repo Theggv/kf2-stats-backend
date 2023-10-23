@@ -274,7 +274,7 @@ func (s *MatchesService) filter(req FilterMatchesRequest) (*FilterMatchesRespons
 			item.Server = &serverData
 		}
 
-		if req.IncludeCDData {
+		if req.IncludeCDData && cdData.SpawnCycle != nil {
 			item.CDData = &cdData
 		}
 
