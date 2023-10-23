@@ -40,6 +40,8 @@ func NewMatchesService(db *sql.DB) *MatchesService {
 		db: db,
 	}
 
+	service.setupTasks()
+
 	return &service
 }
 
