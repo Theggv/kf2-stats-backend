@@ -8,6 +8,7 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/common/store"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/matches"
+	"github.com/theggv/kf2-stats-backend/pkg/migrations"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/stats"
@@ -24,8 +25,12 @@ import (
 // @BasePath /api
 func main() {
 	config := config.Instance
+	db := database.NewSQLiteDB(config.DatabasePath)
 
-	rootStore := store.New(database.NewSQLiteDB(config.DatabasePath), config)
+	rootStore := store.New(db, config)
+
+	// Run migrations
+	migrations.ExecuteAll(db)
 
 	r := gin.Default()
 

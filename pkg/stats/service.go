@@ -142,6 +142,36 @@ func (s *StatsService) initTables() {
 
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
+
+	CREATE TABLE IF NOT EXISTS aggregated_kills (
+		player_stats_id INTEGER PRIMARY KEY REFERENCES wave_stats_player(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
+
+		trash INTEGER NOT NULL,
+		medium INTEGER NOT NULL,
+		large INTEGER NOT NULL,
+		total INTEGER NOT NULL
+	);
+
+	CREATE TRIGGER insert_aggregated_kills
+	AFTER INSERT ON wave_stats_player_kills
+	BEGIN
+		INSERT INTO aggregated_kills (player_stats_id, trash, medium, large, total)
+		VALUES (
+			new.player_stats_id,
+			new.cyst + new.alpha_clot + new.slasher + 
+			new.stalker + new.crawler + new.gorefast + 
+			new.rioter + new.elite_crawler + new.gorefiend,
+			new.siren + new.bloat + new.edar + new.husk_n + new.husk_b, 
+			new.scrake + new.fp + new.qp, 
+			new.cyst + new.alpha_clot + new.slasher + 
+			new.stalker + new.crawler + new.gorefast + 
+			new.rioter + new.elite_crawler + new.gorefiend + 
+			new.siren + new.bloat + new.edar + new.husk_n + new.husk_b + 
+			new.scrake + new.fp + new.qp + new.boss
+		);
+	END;
 	`)
 }
 
