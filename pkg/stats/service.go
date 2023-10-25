@@ -230,6 +230,11 @@ func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRe
 		return err
 	}
 
+	if req.ShotsFired < 0 ||
+		req.DamageDealt == 0 && req.DamageTaken == 0 && req.HealsGiven == 0 && req.HealsReceived == 0 {
+		return nil
+	}
+
 	res, err := s.db.Exec(`
 		INSERT INTO wave_stats_player (
 			stats_id, player_id, 
