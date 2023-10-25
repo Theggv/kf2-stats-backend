@@ -158,3 +158,28 @@ func (c *matchesController) getMatchPlayerStats(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, item)
 }
+
+// @Summary Get wave players stats
+// @Tags 	Match
+// @Produce json
+// @Param   id path   	 	int true "Session id"
+// @Success 200 {object} 	GetMatchAggregatedStatsResponse
+// @Router /matches/{id}/summary [get]
+func (c *matchesController) getMatchAggregatedStats(ctx *gin.Context) {
+	sessionId, err := strconv.Atoi(ctx.Params.ByName("id"))
+
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	item, err := c.service.getMatchAggregatedStats(sessionId)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, item)
+}

@@ -65,3 +65,33 @@ type GetMatchWaveStatsResponse struct {
 type GetMatchPlayerStatsResponse struct {
 	Waves []PlayerWaveStats `json:"waves"`
 }
+
+type AggregatedPlayerStats struct {
+	UserId int `json:"user_id"`
+
+	// in seconds
+	PlayTime int `json:"play_time"`
+
+	ShotsFired int `json:"shots_fired"`
+	ShotsHit   int `json:"shots_hit"`
+	ShotsHS    int `json:"shots_hs"`
+
+	DoshEarned int `json:"dosh_earned"`
+
+	HealsGiven    int `json:"heals_given"`
+	HealsReceived int `json:"heals_recv"`
+
+	DamageDealt int `json:"damage_dealt"`
+	DamageTaken int `json:"damage_taken"`
+
+	ZedTimeCount  int     `json:"zedtime_count"`
+	ZedTimeLength float32 `json:"zedtime_length"`
+
+	Kills      int `json:"kills"`
+	LargeKills int `json:"large_kills"`
+	HuskRages  int `json:"husk_r"`
+}
+
+type GetMatchAggregatedStatsResponse struct {
+	Players []AggregatedPlayerStats `json:"players"`
+}

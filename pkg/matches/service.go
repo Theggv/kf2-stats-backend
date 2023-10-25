@@ -612,3 +612,46 @@ func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPl
 		Waves: waves,
 	}, nil
 }
+
+func (s *MatchesService) getMatchAggregatedStats(sessionId int) (*GetMatchAggregatedStatsResponse, error) {
+	rows, err := s.db.Query(`
+		select
+			wsp.player_id,
+			cast(sum((julianday(ws.completed_at) - julianday(ws.started_at)) * 24 * 60 * 60) as integer) as playtime,
+			sum(shots_fired), sum(shots_hit), sum(shots_hs),
+			sum(dosh_earned), sum(heals_given), sum(heals_recv),
+			sum(damage_dealt), sum(damage_taken),
+			sum(zedtime_count), sum(zedtime_length),
+			sum(aggr_kills.total), sum(aggr_kills.large), sum(husk_r)
+		from view_indexes
+		inner join wave_stats ws on ws.id = view_indexes.wave_stats_id
+		inner join wave_stats_player wsp on wsp.id = view_indexes.wave_stats_player_id
+		inner join wave_stats_player_kills kills on kills.player_stats_id = wsp.id
+		inner join aggregated_kills aggr_kills on aggr_kills.player_stats_id = wsp.id
+		where view_indexes.session_id = $1
+		group by wsp.player_id`, sessionId,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	players := []AggregatedPlayerStats{}
+	for rows.Next() {
+		stats := AggregatedPlayerStats{}
+
+		err = rows.Scan(&stats.UserId, &stats.PlayTime,
+			&stats.ShotsFired, &stats.ShotsHit, &stats.ShotsHS,
+			&stats.DoshEarned, &stats.HealsGiven, &stats.HealsReceived,
+			&stats.DamageDealt, &stats.DamageTaken,
+			&stats.ZedTimeCount, &stats.ZedTimeLength,
+			&stats.Kills, &stats.LargeKills, &stats.HuskRages,
+		)
+
+		players = append(players, stats)
+	}
+
+	return &GetMatchAggregatedStatsResponse{
+		Players: players,
+	}, nil
+}
