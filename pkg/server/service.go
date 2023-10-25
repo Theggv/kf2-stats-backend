@@ -51,7 +51,8 @@ func (s *ServerService) Create(req AddServerRequest) (int, error) {
 func (s *ServerService) GetByPattern(pattern string) ([]Server, error) {
 	rows, err := s.db.Query(`
 		SELECT * FROM server 
-		WHERE (address LIKE $1) OR (name LIKE $1)`,
+		WHERE (address LIKE $1) OR (name LIKE $1)
+		ORDER BY name`,
 		"%"+pattern+"%")
 	if err != nil {
 		return nil, err
