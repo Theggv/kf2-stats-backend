@@ -88,7 +88,7 @@ func (s *MatchesService) getById(id int) (*Match, error) {
 	}
 
 	cdData, err := s.sessionService.GetCDData(session.Id)
-	if err == nil {
+	if err == nil && cdData.SpawnCycle != nil {
 		match.CDData = cdData
 	}
 

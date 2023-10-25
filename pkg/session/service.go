@@ -132,8 +132,7 @@ func (s *SessionService) GetGameData(id int) (*GameData, error) {
 
 func (s *SessionService) GetCDData(id int) (*models.CDGameData, error) {
 	row := s.db.QueryRow(`
-		SELECT
-			cd.spawn_cycle, cd.max_monsters, cd.wave_size_fakes, cd.zeds_type
+		SELECT spawn_cycle, max_monsters, wave_size_fakes, zeds_type
 		FROM session_game_data_cd WHERE session_id = $1`, id,
 	)
 
