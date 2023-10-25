@@ -332,7 +332,7 @@ func intArrayToString(a []int, delimiter string) string {
 	return strings.Trim(strings.Replace(fmt.Sprint(a), " ", delimiter, -1), "[]")
 }
 
-func (s *MatchesService) getMatchStats(sessionId int) (*GetMatchStatsResponse, error) {
+func (s *MatchesService) getMatchWaves(sessionId int) (*GetMatchWavesResponse, error) {
 	rows, err := s.db.Query(`
 		SELECT 
 			view_indexes.wave_stats_id,
@@ -377,7 +377,7 @@ func (s *MatchesService) getMatchStats(sessionId int) (*GetMatchStatsResponse, e
 		waves[i].Players = (*playersWithExtraData)[i]
 	}
 
-	return &GetMatchStatsResponse{
+	return &GetMatchWavesResponse{
 		Waves: waves,
 	}, nil
 }

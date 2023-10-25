@@ -28,7 +28,7 @@ type FilterMatchesResponse struct {
 	Metadata models.PaginationResponse `json:"metadata"`
 }
 
-type GetMatchStatsResponse struct {
+type GetMatchWavesResponse struct {
 	Waves []MatchWave `json:"waves"`
 }
 

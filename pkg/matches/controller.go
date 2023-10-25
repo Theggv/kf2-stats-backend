@@ -84,13 +84,13 @@ func (c *matchesController) filter(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, res)
 }
 
-// @Summary Get match stats
+// @Summary Get match waves
 // @Tags 	Match
 // @Produce json
 // @Param   id path   	 	int true "Session id"
-// @Success 200 {object} 	GetMatchStatsResponse
-// @Router /matches/{id}/stats [get]
-func (c *matchesController) getMatchStats(ctx *gin.Context) {
+// @Success 200 {object} 	GetMatchWavesResponse
+// @Router /matches/{id}/waves [get]
+func (c *matchesController) getMatchWaves(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
@@ -98,7 +98,7 @@ func (c *matchesController) getMatchStats(ctx *gin.Context) {
 		return
 	}
 
-	item, err := c.service.getMatchStats(id)
+	item, err := c.service.getMatchWaves(id)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())
