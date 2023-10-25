@@ -48,4 +48,6 @@ func ExecuteAll(db *sql.DB) {
 	initTables(db)
 
 	migration_24_10_2023_aggr_kills(db)
+	migration_25_10_2023_aggr_kills(db)
+	migration_25_10_2023_delete_negative_shots(db)
 }

@@ -40,7 +40,7 @@ func (s *StatsService) initTables() {
 		stats_id INTEGER NOT NULL REFERENCES wave_stats(id)
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE,
-		player_id INTEGER NOT NULL REFERENCES user(id)
+		player_id INTEGER NOT NULL REFERENCES users(id)
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE,
 
