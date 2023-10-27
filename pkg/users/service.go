@@ -18,16 +18,22 @@ func (s *UserService) initTables() {
 		name STRING NOT NULL
 	);
 
-	CREATE TABLE IF NOT EXISTS users_name_history (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		user_id INTEGER REFERENCES users(id) 
-			ON UPDATE CASCADE 
+	CREATE TABLE IF NOT EXISTS users_activity (
+		user_id INTEGER PRIMARY KEY REFERENCES users(id)
+			ON UPDATE CASCADE
 			ON DELETE CASCADE,
-		name STRING NOT NULL,
+		
+		current_session_id INTEGER NULL REFERENCES session(id)
+			ON UPDATE SET NULL
+			ON DELETE SET NULL,
 
+		last_session_id INTEGER NULL REFERENCES session(id)
+			ON UPDATE SET NULL
+			ON DELETE SET NULL,
+		
 		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
-	
+
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_users_auth ON users (auth_id, auth_type);
 	`)
 }
@@ -62,6 +68,11 @@ func (s *UserService) FindCreateFind(req CreateUserRequest) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+
+	_, err = s.db.Exec(`
+		INSERT INTO users_activity (user_id, current_session_id, last_session_id) 
+		VALUES ($1, NULL, NULL)`, data.Id,
+	)
 
 	return data.Id, err
 }

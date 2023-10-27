@@ -2,8 +2,8 @@ package migrations
 
 import "database/sql"
 
-func migration_25_10_2023_aggr_kills(db *sql.DB) {
-	name := "migration_25_10_2023_aggr_kills"
+func migration_25_10_2023_alter_fkey(db *sql.DB) {
+	name := "migration_25_10_2023_alter_fkey"
 
 	if isMigrationExists(db, name) {
 		return
