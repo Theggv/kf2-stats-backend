@@ -50,4 +50,5 @@ func ExecuteAll(db *sql.DB) {
 	migration_24_10_2023_aggr_kills(db)
 	migration_25_10_2023_aggr_kills(db)
 	migration_25_10_2023_delete_negative_shots(db)
+	migration_27_10_2023_drop_users_name_history(db)
 }
