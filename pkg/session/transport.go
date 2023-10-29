@@ -25,6 +25,6 @@ type UpdateStatusRequest struct {
 type UpdateGameDataRequest struct {
 	SessionId int `json:"session_id"`
 
-	GameData GameData           `json:"game_data"`
+	GameData models.GameData    `json:"game_data"`
 	CDData   *models.CDGameData `json:"cd_data"`
 }

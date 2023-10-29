@@ -221,9 +221,9 @@ func (s *StatsService) createWaveStats(req *CreateWaveStatsRequest) (int64, erro
 
 func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRequestPlayer) error {
 	playerId, err := s.userService.FindCreateFind(users.CreateUserRequest{
-		AuthId: req.UserAuthId,
-		Type:   req.UserAuthType,
-		Name:   req.UserName,
+		AuthId:   req.UserAuthId,
+		AuthType: req.UserAuthType,
+		Name:     req.UserName,
 	})
 
 	if err != nil {

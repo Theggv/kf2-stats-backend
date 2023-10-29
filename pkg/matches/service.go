@@ -7,6 +7,7 @@ import (
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/steamapi"
+	"github.com/theggv/kf2-stats-backend/pkg/common/util"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
@@ -114,7 +115,7 @@ func (s *MatchesService) getLastServerMatch(id int) (*Match, error) {
 }
 
 func (s *MatchesService) filter(req FilterMatchesRequest) (*FilterMatchesResponse, error) {
-	page, limit := parsePagination(req.Pager)
+	page, limit := util.ParsePagination(req.Pager)
 
 	attributes := []string{}
 	conditions := []string{}
@@ -160,13 +161,13 @@ func (s *MatchesService) filter(req FilterMatchesRequest) (*FilterMatchesRespons
 
 	if len(req.ServerId) > 0 {
 		conditions = append(conditions,
-			fmt.Sprintf("session.server_id in (%s)", intArrayToString(req.ServerId, ",")),
+			fmt.Sprintf("session.server_id in (%s)", util.IntArrayToString(req.ServerId, ",")),
 		)
 	}
 
 	if len(req.MapId) > 0 {
 		conditions = append(conditions,
-			fmt.Sprintf("session.map_id in (%s)", intArrayToString(req.MapId, ",")),
+			fmt.Sprintf("session.map_id in (%s)", util.IntArrayToString(req.MapId, ",")),
 		)
 	}
 
@@ -222,7 +223,7 @@ func (s *MatchesService) filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		sessionData := MatchSession{}
 		mapData := MatchMap{}
 		serverData := MatchServer{}
-		gameData := session.GameData{}
+		gameData := models.GameData{}
 		cdData := models.CDGameData{}
 
 		fields := []any{
@@ -307,29 +308,6 @@ func (s *MatchesService) filter(req FilterMatchesRequest) (*FilterMatchesRespons
 			TotalResults:   total,
 		},
 	}, nil
-}
-
-func parsePagination(pager models.PaginationRequest) (int, int) {
-	page := pager.Page
-	resultsPerPage := pager.ResultsPerPage
-
-	if page < 0 {
-		page = 0
-	}
-
-	if resultsPerPage < 10 {
-		resultsPerPage = 10
-	}
-
-	if resultsPerPage > 100 {
-		resultsPerPage = 100
-	}
-
-	return page, resultsPerPage
-}
-
-func intArrayToString(a []int, delimiter string) string {
-	return strings.Trim(strings.Replace(fmt.Sprint(a), " ", delimiter, -1), "[]")
 }
 
 func (s *MatchesService) getMatchWaves(sessionId int) (*GetMatchWavesResponse, error) {

@@ -112,7 +112,7 @@ func (s *SessionService) GetById(id int) (*Session, error) {
 	return &item, nil
 }
 
-func (s *SessionService) GetGameData(id int) (*GameData, error) {
+func (s *SessionService) GetGameData(id int) (*models.GameData, error) {
 	row := s.db.QueryRow(`
 		SELECT
 			max_players, players_online, players_alive, 
@@ -120,7 +120,7 @@ func (s *SessionService) GetGameData(id int) (*GameData, error) {
 		FROM session_game_data WHERE session_id = $1`, id,
 	)
 
-	item := GameData{}
+	item := models.GameData{}
 
 	err := row.Scan(
 		&item.MaxPlayers, &item.PlayersOnline, &item.PlayersAlive,
@@ -177,9 +177,14 @@ func (s *SessionService) UpdateStatus(data UpdateStatusRequest) error {
 }
 
 func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
+	status, err := s.getStatus(data.SessionId)
+	if err != nil || (*status != models.InProgress && *status != models.Lobby) {
+		return err
+	}
+
 	gd := data.GameData
 
-	_, err := s.db.Exec(`
+	_, err = s.db.Exec(`
 		UPDATE session
 		SET updated_at = CURRENT_TIMESTAMP
 		WHERE id = $1`,
@@ -217,4 +222,17 @@ func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
 	)
 
 	return err
+}
+
+func (s *SessionService) getStatus(id int) (*models.GameStatus, error) {
+	row := s.db.QueryRow(`SELECT status FROM session WHERE id = $1`, id)
+
+	var status models.GameStatus
+	err := row.Scan(&status)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &status, nil
 }

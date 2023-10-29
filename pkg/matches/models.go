@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
-	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
@@ -82,6 +81,6 @@ type Match struct {
 	Session  MatchSession       `json:"session"`
 	Map      *MatchMap          `json:"map"`
 	Server   *MatchServer       `json:"server"`
-	GameData *session.GameData  `json:"game_data"`
+	GameData *models.GameData   `json:"game_data"`
 	CDData   *models.CDGameData `json:"cd_data"`
 }

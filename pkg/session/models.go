@@ -6,16 +6,6 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 )
 
-type GameData struct {
-	MaxPlayers    int `json:"max_players"`
-	PlayersOnline int `json:"players_online"`
-	PlayersAlive  int `json:"players_alive"`
-
-	Wave         int  `json:"wave"`
-	IsTraderTime bool `json:"is_trader_time"`
-	ZedsLeft     int  `json:"zeds_left"`
-}
-
 type Session struct {
 	Id       int `json:"id"`
 	ServerId int `json:"server_id"`
