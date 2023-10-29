@@ -133,7 +133,12 @@ func (s *SessionService) GetGameData(id int) (*models.GameData, error) {
 func (s *SessionService) GetCDData(id int) (*models.CDGameData, error) {
 	row := s.db.QueryRow(`
 		SELECT spawn_cycle, max_monsters, wave_size_fakes, zeds_type
-		FROM session_game_data_cd WHERE session_id = $1`, id,
+		FROM session
+		INNER JOIN wave_stats ws on ws.session_id = session.id
+		INNER JOIN wave_stats_cd cd on cd.stats_id = ws.id
+		WHERE session.id = $1 and ws.wave <= session.length
+		ORDER BY ws.id DESC
+		LIMIT 1`, id,
 	)
 
 	item := models.CDGameData{}
@@ -210,18 +215,38 @@ func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
 		return err
 	}
 
-	cdData := data.CDData
+	length, err := s.getLength(data.SessionId)
+	if err != nil {
+		return err
+	}
 
-	_, err = s.db.Exec(`
-		INSERT INTO session_game_data_cd 
-			(session_id, spawn_cycle, max_monsters, wave_size_fakes, zeds_type)
-		VALUES ($1, $2, $3, $4, $5)
-			ON CONFLICT(session_id) DO UPDATE SET
-			spawn_cycle = $2, max_monsters = $3, wave_size_fakes = $4, zeds_type = $5`,
-		data.SessionId, cdData.SpawnCycle, cdData.MaxMonsters, cdData.WaveSizeFakes, cdData.ZedsType,
-	)
+	if data.GameData.Wave <= *length {
+		cdData := data.CDData
+
+		_, err = s.db.Exec(`
+			INSERT INTO session_game_data_cd 
+				(session_id, spawn_cycle, max_monsters, wave_size_fakes, zeds_type)
+			VALUES ($1, $2, $3, $4, $5)
+				ON CONFLICT(session_id) DO UPDATE SET
+				spawn_cycle = $2, max_monsters = $3, wave_size_fakes = $4, zeds_type = $5`,
+			data.SessionId, cdData.SpawnCycle, cdData.MaxMonsters, cdData.WaveSizeFakes, cdData.ZedsType,
+		)
+	}
 
 	return err
+}
+
+func (s *SessionService) getLength(id int) (*models.GameLength, error) {
+	row := s.db.QueryRow(`SELECT length FROM session WHERE id = $1`, id)
+
+	var length models.GameLength
+	err := row.Scan(&length)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &length, nil
 }
 
 func (s *SessionService) getStatus(id int) (*models.GameStatus, error) {
