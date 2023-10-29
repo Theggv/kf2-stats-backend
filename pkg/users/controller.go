@@ -11,7 +11,6 @@ type userController struct {
 	service *UserService
 }
 
-// CreateUser godoc
 // @Summary Creates a new user
 // @Tags 	Users
 // @Produce json
@@ -36,4 +35,28 @@ func (c *userController) create(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, CreateUserResponse{
 		Id: id,
 	})
+}
+
+// @Summary Filter users
+// @Tags 	Users
+// @Produce json
+// @Param   user body    FilterUsersRequest true "Filter JSON"
+// @Success 201 {object} FilterUsersResponse
+// @Router /users/filter [post]
+func (c *userController) filter(ctx *gin.Context) {
+	var req FilterUsersRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	res, err := c.service.filter(req)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
 }

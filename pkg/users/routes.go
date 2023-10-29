@@ -13,4 +13,5 @@ func RegisterRoutes(r *gin.RouterGroup, service *UserService) {
 	routes := r.Group("/users")
 
 	routes.POST("/", middleware.AuthMiddleware, controller.create)
+	routes.POST("/filter", controller.filter)
 }

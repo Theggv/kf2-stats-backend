@@ -1,7 +1,5 @@
 package users
 
-import "time"
-
 type AuthType int
 
 const (
@@ -15,11 +13,4 @@ type User struct {
 	Type   AuthType `json:"auth_type"`
 
 	Name string `json:"name"`
-}
-
-type UserNameHistory struct {
-	UserId int    `json:"user_id"`
-	Name   string `json:"name"`
-
-	UpdatedAt time.Time `json:"updated_at"`
 }
