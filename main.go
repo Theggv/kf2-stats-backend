@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	analyticsMaps "github.com/theggv/kf2-stats-backend/pkg/analytics/maps"
+	analyticsServer "github.com/theggv/kf2-stats-backend/pkg/analytics/server"
 	"github.com/theggv/kf2-stats-backend/pkg/common/config"
 	"github.com/theggv/kf2-stats-backend/pkg/common/database"
 	"github.com/theggv/kf2-stats-backend/pkg/common/store"
@@ -46,6 +48,9 @@ func main() {
 	stats.RegisterRoutes(api, rootStore.Stats)
 	users.RegisterRoutes(api, rootStore.Users)
 	matches.RegisterRoutes(api, rootStore.Matches)
+
+	analyticsMaps.RegisterRoutes(api, rootStore.AnalyticsMaps)
+	analyticsServer.RegisterRoutes(api, rootStore.AnalyticsServer)
 
 	// Setup swagger
 	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

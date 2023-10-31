@@ -3,6 +3,8 @@ package store
 import (
 	"database/sql"
 
+	analyticsMaps "github.com/theggv/kf2-stats-backend/pkg/analytics/maps"
+	analyticsServer "github.com/theggv/kf2-stats-backend/pkg/analytics/server"
 	"github.com/theggv/kf2-stats-backend/pkg/common/config"
 	"github.com/theggv/kf2-stats-backend/pkg/common/steamapi"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
@@ -23,6 +25,9 @@ type Store struct {
 	Matches  *matches.MatchesService
 	Views    *views.ViewsService
 	SteamApi *steamapi.SteamApiUserService
+
+	AnalyticsMaps   *analyticsMaps.MapAnalyticsService
+	AnalyticsServer *analyticsServer.ServerAnalyticsService
 }
 
 func New(db *sql.DB, config *config.AppConfig) *Store {
@@ -35,6 +40,9 @@ func New(db *sql.DB, config *config.AppConfig) *Store {
 		Matches:  matches.NewMatchesService(db),
 		Views:    views.NewViewsService(db),
 		SteamApi: steamapi.NewSteamApiUserService(config.SteamApiKey),
+
+		AnalyticsMaps:   analyticsMaps.NewMapAnalyticsService(db),
+		AnalyticsServer: analyticsServer.NewServerAnalyticsService(db),
 	}
 
 	store.Stats.Inject(store.Users)
