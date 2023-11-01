@@ -39,7 +39,8 @@ func (s *SteamApiUserService) GetUserSummary(steamIds []string) ([]GetUserSummar
 
 		data, err := s.getUsersSummaryInternal(steamIds[i:end])
 		if err != nil {
-			return nil, err
+			fmt.Printf("warn: %v", err)
+			return summaries, nil
 		}
 
 		summaries = append(summaries, data...)
