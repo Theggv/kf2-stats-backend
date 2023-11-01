@@ -35,28 +35,30 @@ func (s *ServerAnalyticsService) GetSessionCount(
 	var period string
 	switch req.Period {
 	case Hour:
-		period = "strftime('%H', session.completed_at)"
+		period = "substr(session.completed_at, 12, 2)"
 	case Day, Week:
-		period = "strftime('%d', session.completed_at)"
+		period = "substr(session.completed_at, 9, 2)"
 	case Month:
-		period = "strftime('%m', session.completed_at)"
+		period = "substr(session.completed_at, 6, 2)"
 	case Year:
-		period = "strftime('%Y', session.completed_at)"
+		period = "substr(session.completed_at, 1, 4)"
 	default:
 		return nil, newIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "strftime('%Y-%m-%d', session.completed_at) BETWEEN ? AND ?")
+	conds = append(conds, "substr(session.completed_at, 1, 10) BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	sql := fmt.Sprintf(`
-		SELECT count(*) AS times_played, %v
+		SELECT 
+			count(*) AS times_played, 
+			%v as period
 		FROM session
 		INNER JOIN server ON server.id = session.server_id
 		WHERE %v
-		GROUP BY %v
-		ORDER BY %v`,
-		period, strings.Join(conds, " AND "), period, period,
+		GROUP BY period
+		ORDER BY period`,
+		period, strings.Join(conds, " AND "),
 	)
 
 	stmt, err := s.db.Prepare(sql)
@@ -97,26 +99,28 @@ func (s *ServerAnalyticsService) GetUsageInMinutes(
 	var period string
 	switch req.Period {
 	case Day, Week:
-		period = "strftime('%d', session.completed_at)"
+		period = "substr(session.completed_at, 9, 2)"
 	case Month:
-		period = "strftime('%m', session.completed_at)"
+		period = "substr(session.completed_at, 6, 2)"
 	case Year:
-		period = "strftime('%Y', session.completed_at)"
+		period = "substr(session.completed_at, 1, 4)"
 	default:
 		return nil, newIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "strftime('%Y-%m-%d', session.completed_at) BETWEEN ? AND ?")
+	conds = append(conds, "substr(session.completed_at, 1, 10) BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	sql := fmt.Sprintf(`
-		SELECT round(sum(julianday(completed_at) - julianday(started_at)) * 60 * 24), %v
+		SELECT 
+			round(sum(julianday(completed_at) - julianday(started_at)) * 60 * 24), 
+			%v as period
 		FROM session
 		INNER JOIN server ON server.id = session.server_id
 		WHERE %v
-		GROUP BY %v
-		ORDER BY %v`,
-		period, strings.Join(conds, " AND "), period, period,
+		GROUP BY period
+		ORDER BY period`,
+		period, strings.Join(conds, " AND "),
 	)
 
 	stmt, err := s.db.Prepare(sql)
@@ -160,30 +164,32 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 	var period string
 	switch req.Period {
 	case Hour:
-		period = "strftime('%H', session.completed_at)"
+		period = "substr(session.completed_at, 12, 2)"
 	case Day, Week:
-		period = "strftime('%d', session.completed_at)"
+		period = "substr(session.completed_at, 9, 2)"
 	case Month:
-		period = "strftime('%m', session.completed_at)"
+		period = "substr(session.completed_at, 6, 2)"
 	case Year:
-		period = "strftime('%Y', session.completed_at)"
+		period = "substr(session.completed_at, 1, 4)"
 	default:
 		return nil, newIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "strftime('%Y-%m-%d', session.completed_at) BETWEEN ? AND ?")
+	conds = append(conds, "substr(session.completed_at, 1, 10) BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	sql := fmt.Sprintf(`
-		SELECT count(DISTINCT wsp.player_id), %v
+		SELECT
+			count(DISTINCT wsp.player_id), 
+			%v as period
 		FROM session
 		INNER JOIN server ON server.id = session.server_id
 		INNER JOIN wave_stats ws on ws.session_id = session.id
 		INNER JOIN wave_stats_player wsp on wsp.stats_id = ws.id
 		WHERE %v
-		GROUP BY %v
-		ORDER BY %v`,
-		period, strings.Join(conds, " AND "), period, period,
+		GROUP BY period
+		ORDER BY period`,
+		period, strings.Join(conds, " AND "),
 	)
 
 	stmt, err := s.db.Prepare(sql)

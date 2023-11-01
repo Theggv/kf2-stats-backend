@@ -30,6 +30,8 @@ func (s *SessionService) initTables() {
 		started_at DATETIME DEFAULT NULL,
 		completed_at DATETIME DEFAULT NULL
 	);
+
+	CREATE INDEX idx_session_status_completed_at on session (status, substr(completed_at, 1, 10));
 	
 	CREATE TABLE IF NOT EXISTS session_game_data (
 		session_id INTEGER PRIMARY KEY REFERENCES session(id)
