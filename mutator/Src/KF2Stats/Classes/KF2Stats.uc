@@ -184,6 +184,10 @@ private function int GetGameMode() {
 
 	// Default modes
 	if (KFGameInfo_Endless(KFGI) != None) return 2;
+	if (KFGameInfo_WeeklySurvival(KFGI) != None) return 4;
+	if (KFGameInfo_Objective(KFGI) != None) return 5;
+	if (KFGameInfo_VersusSurvival(KFGI) != None) return 6;
+
 	if (KFGameInfo_Survival(KFGI) != None) return 1;
 
 	return 0;

@@ -48,13 +48,24 @@ struct SessionStruct {
 	}
 };
 
-var array<PlayerStats> Players;
+var array<StatsServiceBase.PlayerData> Players;
 var SessionStruct SessionData;
 
 var private WorldInfo WI;
 var private KFGameInfo KFGI;
 var private KFGameReplicationInfo KFGRI;
 var private OnlineSubsystem OS;
+var private MsgSpectator msgSpec;
+
+static function StatsRepo GetInstance() {
+	local StatsRepo Instance;
+
+	foreach Class'WorldInfo'.static.GetWorldInfo().DynamicActors(Class'StatsRepo', Instance) {      
+		return Instance;        
+	}
+
+	return Instance;
+}
 
 function PostBeginPlay() {
 	super.PostBeginPlay();
@@ -89,13 +100,17 @@ private function PostInit() {
 		return;
 	}
 
-	SetTimer(0.1, true, 'UpdateWave');
+	msgSpec = Spawn(Class'MsgSpectator');
+
+	SetTimer(0.1, true, 'UpdateLoop');
 	SetTimer(15.0, true, 'UpdateGameData');
 }
 
-private function UpdateWave() {
+private function UpdateLoop() {
 	local int currentWave;
 	local bool isWaveActive;
+
+	DetectPlayerDeath();
 
 	currentWave = KFGRI.WaveNum;
 	isWaveActive = KFGI.IsWaveActive();
@@ -112,6 +127,20 @@ private function UpdateWave() {
 		}
 
 		SessionData.IsActive = isWaveActive;
+	}
+}
+
+private function DetectPlayerDeath() {
+    local KFPlayerController C;
+	local int i;
+
+	foreach WI.AllControllers(Class'KFPlayerController', C) {
+		if (!IsValidPlayer(C)) continue;
+		if (!GetPlayerStatsIndex(C, i)) continue;
+
+		if (!Players[i].IsDead && C.Pawn != None && !C.Pawn.IsAliveAndWell()) {
+			Players[i].IsDead = true;
+		}
 	}
 }
 
@@ -134,7 +163,7 @@ private function OnWaveStarted() {
 	foreach WI.AllControllers(Class'KFPlayerController', C) {
 		if (!IsValidPlayer(C)) continue;
 		
-		ResetPlayerStats(C);
+		ResetPlayerData(C);
 	}
 }
 
@@ -168,10 +197,9 @@ private function OnWaveEnded() {
 }
 
 private function UploadWaveStats() {
-	local PlayerStats PlayerData;
+	local int i;
 	local KFPlayerController C;
 	local CreateWaveStatsBody Body;
-	local PlayerReplicationInfo PRI;
 
 	Body.SessionId = SessionData.SessionId;
 	Body.Wave = SessionData.Wave;
@@ -187,435 +215,338 @@ private function UploadWaveStats() {
 	
 	foreach WI.AllControllers(Class'KFPlayerController', C) {
 		if (!IsValidPlayer(C)) continue;
+		if (!GetPlayerStatsIndex(C, i)) continue;
 
-		PlayerData = GetPlayerWaveStats(C);
-
-		PRI = C.PlayerReplicationInfo;
-		PlayerData.Uid = OS.UniqueNetIdToString(PRI.UniqueId);
-
-		if (!C.bIsEosPlayer) {
-			PlayerData.AuthId = OS.UniqueNetIdToInt64(PRI.UniqueId);
-			PlayerData.AuthType = AT_STEAM;
+		if (Players[i].Perk == 2) {
+			Players[i].Stats.ZedTimeLength = SessionData.ZedTimeDuration;
+			Players[i].Stats.ZedTimeCount = SessionData.ZedTimeCount;
 		} else {
-			PlayerData.AuthId = PlayerData.Uid;
-			PlayerData.AuthType = AT_EGS;
+			Players[i].Stats.ZedTimeLength = 0.0;
+			Players[i].Stats.ZedTimeCount = 0;
 		}
 
-		if (PlayerData.Perk == 2) {
-			PlayerData.ZedTimeLength = SessionData.ZedTimeDuration;
-			PlayerData.ZedTimeCount = SessionData.ZedTimeCount;
-		} else {
-			PlayerData.ZedTimeLength = 0.0;
-			PlayerData.ZedTimeCount = 0;
-		}
-
-		PlayerData.IsDead = (C.Pawn == None || !C.Pawn.IsAliveAndWell());
-
-		Body.Players.AddItem(PlayerData);
+		Body.Players.AddItem(Players[i]);
 	}
 
 	class'StatsService'.static.GetInstance().CreateWaveStats(Body);
-}
 
+	foreach WI.AllControllers(Class'KFPlayerController', C) {
+		if (!IsValidPlayer(C)) continue;
+		if (!GetPlayerStatsIndex(C, i)) continue;
 
-static function StatsRepo GetInstance() {
-	local StatsRepo Instance;
-
-	foreach Class'WorldInfo'.static.GetWorldInfo().DynamicActors(Class'StatsRepo', Instance) {      
-		return Instance;        
+		Players[i].Stats.RadioComms.RequestHealing = 0;
+		Players[i].Stats.RadioComms.RequestDosh = 0;
+		Players[i].Stats.RadioComms.RequestHelp = 0;
+		Players[i].Stats.RadioComms.TauntZeds = 0;
+		Players[i].Stats.RadioComms.FollowMe = 0;
+		Players[i].Stats.RadioComms.GetToTheTrader = 0;
+		Players[i].Stats.RadioComms.Affirmative = 0;
+		Players[i].Stats.RadioComms.Negative = 0;
+		Players[i].Stats.RadioComms.ThankYou = 0;
 	}
-
-	return Instance;
-}
-
-function PlayerStats GetPlayerWaveStats(Controller C) {
-	local string PlayerName;
-	local PlayerStats stats;
-
-	PlayerName = KFPlayerReplicationInfo(C.PlayerReplicationInfo).PlayerName;
-
-	foreach Players(stats) {
-		if (stats.PlayerName == PlayerName) {            
-			return stats;
-		}        
-	}    
-
-	return stats;
 }
 
 function AddZedKill(KFPlayerController C, name ZedKey) {
 	local int i;
-	local string playerName;
-	local PlayerStats data;
 
-	i = 0;
-	playerName = KFPlayerReplicationInfo(C.PlayerReplicationInfo).PlayerName;
+	if (!GetPlayerStatsIndex(C, i)) return;
 
-	while (i < Players.Length) {
-		if (Players[i].PlayerName != playerName) {
-			i++;
-			continue;
-		}
-
-		switch (ZedKey) {
-			case 'KFPawn_ZedClot_Cyst': 
-				Players[i].Kills.Cyst++;
-				return;
-			case 'KFPawn_ZedClot_Alpha': 
-				Players[i].Kills.AlphaClot++;
-				return;
-			case 'KFPawn_ZedClot_Slasher': 
-				Players[i].Kills.Slasher++;
-				return;
-			case 'KFPawn_ZedCrawler': 
-				Players[i].Kills.Crawler++;
-				return;
-			case 'KFPawn_ZedGorefast': 
-				Players[i].Kills.Gorefast++;
-				return;
-			case 'KFPawn_ZedStalker': 
-				Players[i].Kills.Stalker++;
-				return;
-			case 'KFPawn_ZedScrake': 
-				Players[i].Kills.Scrake++;
-				return;
-			case 'KFPawn_ZedFleshpound': 
-				Players[i].Kills.FP++;
-				return;
-			case 'KFPawn_ZedFleshpoundMini': 
-				Players[i].Kills.QP++;
-				return;
-			case 'KFPawn_ZedBloat': 
-				Players[i].Kills.Bloat++;
-				return;
-			case 'KFPawn_ZedSiren': 
-				Players[i].Kills.Siren++;
-				return;
-			case 'KFPawn_ZedHusk': 
-				Players[i].Kills.Husk++;
-				return;
-			case 'KFPawn_ZedClot_AlphaKing': 
-				Players[i].Kills.Rioter++;
-				return;
-			case 'KFPawn_ZedCrawlerKing': 
-				Players[i].Kills.EliteCrawler++;
-				return;
-			case 'KFPawn_ZedGorefastDualBlade': 
-				Players[i].Kills.Gorefiend++;
-				return;
-			case 'KFPawn_ZedDAR_Emp': 
-				Players[i].Kills.Edar++;
-				return;
-			case 'KFPawn_ZedDAR_Laser': 
-				Players[i].Kills.Edar++;
-				return;
-			case 'KFPawn_ZedDAR_Rocket': 
-				Players[i].Kills.Edar++;
-				return;
-			case 'KFPawn_ZedHans': 
-				Players[i].Kills.Boss++;
-				return;
-			case 'KFPawn_ZedPatriarch': 
-				Players[i].Kills.Boss++;
-				return;
-			case 'KFPawn_ZedFleshpoundKing': 
-				Players[i].Kills.Boss++;
-				return;
-			case 'KFPawn_ZedBloatKing': 
-				Players[i].Kills.Boss++;
-				return;
-			case 'KFPawn_ZedMatriarch': 
-				Players[i].Kills.Boss++;
-				return;
-			default:
-				return;
-		}
-	}
-
-	if (playerName != "") {
-		data.PlayerName = playerName;
-		Players.AddItem(data);
-		AddZedKill(C, ZedKey);
+	switch (ZedKey) {
+		case 'KFPawn_ZedClot_Cyst': 
+			Players[i].Stats.Kills.Cyst++;
+			return;
+		case 'KFPawn_ZedClot_Alpha': 
+			Players[i].Stats.Kills.AlphaClot++;
+			return;
+		case 'KFPawn_ZedClot_Slasher': 
+			Players[i].Stats.Kills.Slasher++;
+			return;
+		case 'KFPawn_ZedCrawler': 
+			Players[i].Stats.Kills.Crawler++;
+			return;
+		case 'KFPawn_ZedGorefast': 
+			Players[i].Stats.Kills.Gorefast++;
+			return;
+		case 'KFPawn_ZedStalker': 
+			Players[i].Stats.Kills.Stalker++;
+			return;
+		case 'KFPawn_ZedScrake': 
+			Players[i].Stats.Kills.Scrake++;
+			return;
+		case 'KFPawn_ZedFleshpound': 
+			Players[i].Stats.Kills.FP++;
+			return;
+		case 'KFPawn_ZedFleshpoundMini': 
+			Players[i].Stats.Kills.QP++;
+			return;
+		case 'KFPawn_ZedBloat': 
+			Players[i].Stats.Kills.Bloat++;
+			return;
+		case 'KFPawn_ZedSiren': 
+			Players[i].Stats.Kills.Siren++;
+			return;
+		case 'KFPawn_ZedHusk': 
+			Players[i].Stats.Kills.Husk++;
+			return;
+		case 'KFPawn_ZedClot_AlphaKing': 
+			Players[i].Stats.Kills.Rioter++;
+			return;
+		case 'KFPawn_ZedCrawlerKing': 
+			Players[i].Stats.Kills.EliteCrawler++;
+			return;
+		case 'KFPawn_ZedGorefastDualBlade': 
+			Players[i].Stats.Kills.Gorefiend++;
+			return;
+		case 'KFPawn_ZedDAR_Emp': 
+			Players[i].Stats.Kills.Edar++;
+			return;
+		case 'KFPawn_ZedDAR_Laser': 
+			Players[i].Stats.Kills.Edar++;
+			return;
+		case 'KFPawn_ZedDAR_Rocket': 
+			Players[i].Stats.Kills.Edar++;
+			return;
+		case 'KFPawn_ZedHans': 
+			Players[i].Stats.Kills.Boss++;
+			return;
+		case 'KFPawn_ZedPatriarch': 
+			Players[i].Stats.Kills.Boss++;
+			return;
+		case 'KFPawn_ZedFleshpoundKing': 
+			Players[i].Stats.Kills.Boss++;
+			return;
+		case 'KFPawn_ZedBloatKing': 
+			Players[i].Stats.Kills.Boss++;
+			return;
+		case 'KFPawn_ZedMatriarch': 
+			Players[i].Stats.Kills.Boss++;
+			return;
+		default:
+			Players[i].Stats.Kills.Custom++;
+			return;
 	}
 }
 
 function AddInjuredByZed(KFPlayerController C, name ZedKey, int Damage) {
 	local int i;
-	local string playerName;
-	local PlayerStats data;
 
 	if (Damage <= 0) return;
+	if (!GetPlayerStatsIndex(C, i)) return;
 
-	i = 0;
-	playerName = KFPlayerReplicationInfo(C.PlayerReplicationInfo).PlayerName;
-
-	while (i < Players.Length) {
-		if (Players[i].PlayerName != playerName) {
-			i++;
-			continue;
-		}
-
-		switch (ZedKey) {
-			case 'KFPawn_ZedClot_Cyst': 
-				Players[i].InjuredBy.Cyst += Damage;
-				return;
-			case 'KFPawn_ZedClot_Alpha': 
-				Players[i].InjuredBy.AlphaClot += Damage;
-				return;
-			case 'KFPawn_ZedClot_Slasher': 
-				Players[i].InjuredBy.Slasher += Damage;
-				return;
-			case 'KFPawn_ZedCrawler': 
-				Players[i].InjuredBy.Crawler += Damage;
-				return;
-			case 'KFPawn_ZedGorefast': 
-				Players[i].InjuredBy.Gorefast += Damage;
-				return;
-			case 'KFPawn_ZedStalker': 
-				Players[i].InjuredBy.Stalker += Damage;
-				return;
-			case 'KFPawn_ZedScrake': 
-				Players[i].InjuredBy.Scrake += Damage;
-				return;
-			case 'KFPawn_ZedFleshpound': 
-				Players[i].InjuredBy.FP += Damage;
-				return;
-			case 'KFPawn_ZedFleshpoundMini': 
-				Players[i].InjuredBy.QP += Damage;
-				return;
-			case 'KFPawn_ZedBloat': 
-				Players[i].InjuredBy.Bloat += Damage;
-				return;
-			case 'KFPawn_ZedSiren': 
-				Players[i].InjuredBy.Siren += Damage;
-				return;
-			case 'KFPawn_ZedHusk': 
-				Players[i].InjuredBy.Husk += Damage;
-				return;
-			case 'KFPawn_ZedClot_AlphaKing': 
-				Players[i].InjuredBy.Rioter += Damage;
-				return;
-			case 'KFPawn_ZedCrawlerKing': 
-				Players[i].InjuredBy.EliteCrawler += Damage;
-				return;
-			case 'KFPawn_ZedGorefastDualBlade': 
-				Players[i].InjuredBy.Gorefiend += Damage;
-				return;
-			case 'KFPawn_ZedDAR_Emp': 
-				Players[i].InjuredBy.Edar += Damage;
-				return;
-			case 'KFPawn_ZedDAR_Laser': 
-				Players[i].InjuredBy.Edar += Damage;
-				return;
-			case 'KFPawn_ZedDAR_Rocket': 
-				Players[i].InjuredBy.Edar += Damage;
-				return;
-			case 'KFPawn_ZedHans': 
-				Players[i].InjuredBy.Boss += Damage;
-				return;
-			case 'KFPawn_ZedPatriarch': 
-				Players[i].InjuredBy.Boss += Damage;
-				return;
-			case 'KFPawn_ZedFleshpoundKing': 
-				Players[i].InjuredBy.Boss += Damage;
-				return;
-			case 'KFPawn_ZedBloatKing': 
-				Players[i].InjuredBy.Boss += Damage;
-				return;
-			case 'KFPawn_ZedMatriarch': 
-				Players[i].InjuredBy.Boss += Damage;
-				return;
-			default:
-				return;
-		}
-	}
-
-	if (playerName != "") {
-		data.PlayerName = playerName;
-		Players.AddItem(data);
-		AddZedKill(C, ZedKey);
+	switch (ZedKey) {
+		case 'KFPawn_ZedClot_Cyst': 
+			Players[i].Stats.InjuredBy.Cyst += Damage;
+			return;
+		case 'KFPawn_ZedClot_Alpha': 
+			Players[i].Stats.InjuredBy.AlphaClot += Damage;
+			return;
+		case 'KFPawn_ZedClot_Slasher': 
+			Players[i].Stats.InjuredBy.Slasher += Damage;
+			return;
+		case 'KFPawn_ZedCrawler': 
+			Players[i].Stats.InjuredBy.Crawler += Damage;
+			return;
+		case 'KFPawn_ZedGorefast': 
+			Players[i].Stats.InjuredBy.Gorefast += Damage;
+			return;
+		case 'KFPawn_ZedStalker': 
+			Players[i].Stats.InjuredBy.Stalker += Damage;
+			return;
+		case 'KFPawn_ZedScrake': 
+			Players[i].Stats.InjuredBy.Scrake += Damage;
+			return;
+		case 'KFPawn_ZedFleshpound': 
+			Players[i].Stats.InjuredBy.FP += Damage;
+			return;
+		case 'KFPawn_ZedFleshpoundMini': 
+			Players[i].Stats.InjuredBy.QP += Damage;
+			return;
+		case 'KFPawn_ZedBloat': 
+			Players[i].Stats.InjuredBy.Bloat += Damage;
+			return;
+		case 'KFPawn_ZedSiren': 
+			Players[i].Stats.InjuredBy.Siren += Damage;
+			return;
+		case 'KFPawn_ZedHusk': 
+			Players[i].Stats.InjuredBy.Husk += Damage;
+			return;
+		case 'KFPawn_ZedClot_AlphaKing': 
+			Players[i].Stats.InjuredBy.Rioter += Damage;
+			return;
+		case 'KFPawn_ZedCrawlerKing': 
+			Players[i].Stats.InjuredBy.EliteCrawler += Damage;
+			return;
+		case 'KFPawn_ZedGorefastDualBlade': 
+			Players[i].Stats.InjuredBy.Gorefiend += Damage;
+			return;
+		case 'KFPawn_ZedDAR_Emp': 
+			Players[i].Stats.InjuredBy.Edar += Damage;
+			return;
+		case 'KFPawn_ZedDAR_Laser': 
+			Players[i].Stats.InjuredBy.Edar += Damage;
+			return;
+		case 'KFPawn_ZedDAR_Rocket': 
+			Players[i].Stats.InjuredBy.Edar += Damage;
+			return;
+		case 'KFPawn_ZedHans': 
+			Players[i].Stats.InjuredBy.Boss += Damage;
+			return;
+		case 'KFPawn_ZedPatriarch': 
+			Players[i].Stats.InjuredBy.Boss += Damage;
+			return;
+		case 'KFPawn_ZedFleshpoundKing': 
+			Players[i].Stats.InjuredBy.Boss += Damage;
+			return;
+		case 'KFPawn_ZedBloatKing': 
+			Players[i].Stats.InjuredBy.Boss += Damage;
+			return;
+		case 'KFPawn_ZedMatriarch': 
+			Players[i].Stats.InjuredBy.Boss += Damage;
+			return;
+		default:
+			return;
 	}
 }
 
 function AddEvent(KFPlayerController C, EventType type) {
 	local int i;
-	local string playerName;
-	local PlayerStats data;
 
-	i = 0;
-	playerName = KFPlayerReplicationInfo(C.PlayerReplicationInfo).PlayerName;
+	if (!GetPlayerStatsIndex(C, i)) return;
 
-	while (i < Players.Length) {
-		if (Players[i].PlayerName != playerName) {
-			i++;
-			continue;
-		}
-
-		switch (type) {
-			case ET_HUSK_BACKPACK:
-				Players[i].HuskBackpackKills++;
-				return;
-			case ET_RAGED_BY_BP:
-				Players[i].HuskRages++;
-				return;
-			default:
-				return;
-		}
+	switch (type) {
+		case ET_HUSK_BACKPACK:
+			Players[i].Stats.HuskBackpackKills++;
+			return;
+		case ET_RAGED_BY_BP:
+			Players[i].Stats.HuskRages++;
+			return;
+		default:
+			return;
 	}
+}
 
-	if (playerName != "") {
-		data.PlayerName = playerName;
-		Players.AddItem(data);
-		AddEvent(C, type);
+function AddRadioComms(PlayerReplicationInfo PRI, int Type) {
+	local int i;
+
+	if (!GetPlayerStatsByPRI(KFPlayerReplicationInfo(PRI), i)) return;
+
+	switch (Type) {
+		case 0:
+			Players[i].Stats.RadioComms.RequestHealing++;
+			return;
+		case 1:
+			Players[i].Stats.RadioComms.RequestDosh++;
+			return;
+		case 2:
+			Players[i].Stats.RadioComms.RequestHelp++;
+			return;
+		case 3:
+			Players[i].Stats.RadioComms.TauntZeds++;
+			return;
+		case 4:
+			Players[i].Stats.RadioComms.FollowMe++;
+			return;
+		case 5:
+			Players[i].Stats.RadioComms.GetToTheTrader++;
+			return;
+		case 6:
+			Players[i].Stats.RadioComms.Affirmative++;
+			return;
+		case 7:
+			Players[i].Stats.RadioComms.Negative++;
+			return;
+		case 9:
+			Players[i].Stats.RadioComms.ThankYou++;
+			return;
 	}
 }
 
 function UpdateNonKillStats(KFPlayerController C) {
 	local int i;
-	local string playerName;
-	local PlayerStats data;
 
-	i = 0;
-	playerName = KFPlayerReplicationInfo(C.PlayerReplicationInfo).PlayerName;
+	if (!GetPlayerStatsIndex(C, i)) return;
 
-	while (i < Players.Length) {
-		if (Players[i].PlayerName != playerName) {
-			i++;
-			continue;
-		}
-
-		Players[i].ShotsFired += C.ShotsFired;
-		Players[i].ShotsHit += C.ShotsHit;
-		Players[i].ShotsHS = C.MatchStats.GetHeadShotsInWave();
-		Players[i].DoshEarned = C.MatchStats.GetDoshEarnedInWave();
-		Players[i].HealsGiven = C.MatchStats.GetHealGivenInWave();
-		Players[i].HealsReceived = C.MatchStats.GetHealReceivedInWave();
-		Players[i].DamageDealt = C.MatchStats.GetDamageDealtInWave();
-		Players[i].DamageTaken = C.MatchStats.GetDamageTakenInWave();
-
-		// `log("[UpdateNonKillStats]" @
-		// 	"\nName="$C.GetHumanReadableName() @
-		// 	"\nShotsFire="$PlayersStats[i].ShotsFired @
-		// 	"ShotsHit="$PlayersStats[i].ShotsHit @
-		// 	"ShotsHS="$PlayersStats[i].ShotsHS @
-		// 	"\nDoshEarned="$PlayersStats[i].DoshEarned @
-		// 	"\nHealsGiven="$PlayersStats[i].HealsGiven @
-		// 	"HealsReceived="$PlayersStats[i].HealsReceived @
-		// 	"\nDamageDealt="$PlayersStats[i].DamageDealt @
-		// 	"DamageTaken="$PlayersStats[i].DamageTaken @
-		// 	"\nCystKills="$PlayersStats[i].Kills.Cyst @
-		// 	"AlphaClotKills="$PlayersStats[i].Kills.AlphaClot @
-		// 	"SlasherKills="$PlayersStats[i].Kills.Slasher @
-		// 	"StalkerKills="$PlayersStats[i].Kills.Stalker @
-		// 	"CrawlerKills="$PlayersStats[i].Kills.Crawler @
-		// 	"GorefastKills="$PlayersStats[i].Kills.Gorefast @
-		// 	"\nRioterKills="$PlayersStats[i].Kills.Rioter @
-		// 	"EliteCrawlerKills="$PlayersStats[i].Kills.EliteCrawler @
-		// 	"GorefiendKills="$PlayersStats[i].Kills.Gorefiend @
-		// 	"\nSirenKills="$PlayersStats[i].Kills.Siren @
-		// 	"BloatKills="$PlayersStats[i].Kills.Bloat @
-		// 	"EdarKills="$PlayersStats[i].Kills.Edar @
-		// 	"\nHuskKills="$PlayersStats[i].Kills.Husk @
-		// 	"HuskBackpackKills="$PlayersStats[i].HuskBackpackKills @
-		// 	"HuskRages="$PlayersStats[i].HuskRages @
-		// 	"\nScrakeKills="$PlayersStats[i].Kills.Scrake @
-		// 	"FPKills="$PlayersStats[i].Kills.FP @
-		// 	"QPKills="$PlayersStats[i].Kills.QP @
-		// 	"BossKills="$PlayersStats[i].Kills.Boss
-		// );
-
-		return;
-	}
-
-	if (playerName != "") {
-		data.PlayerName = playerName;
-		Players.AddItem(data);
-		UpdateNonKillStats(C);
-	}
+	Players[i].Stats.ShotsFired += C.ShotsFired;
+	Players[i].Stats.ShotsHit += C.ShotsHit;
+	Players[i].Stats.ShotsHS = C.MatchStats.GetHeadShotsInWave();
+	Players[i].Stats.DoshEarned = C.MatchStats.GetDoshEarnedInWave();
+	Players[i].Stats.HealsGiven = C.MatchStats.GetHealGivenInWave();
+	Players[i].Stats.HealsReceived = C.MatchStats.GetHealReceivedInWave();
+	Players[i].Stats.DamageDealt = C.MatchStats.GetDamageDealtInWave();
+	Players[i].Stats.DamageTaken = C.MatchStats.GetDamageTakenInWave();
 }
 
-function ResetPlayerStats(KFPlayerController C) {
+function ResetPlayerData(KFPlayerController C) {
 	local int i;
-	local string playerName;
-	local PlayerStats data;
+	local PlayerReplicationInfo PRI;
 
-	i = 0;
-	playerName = KFPlayerReplicationInfo(C.PlayerReplicationInfo).PlayerName;
+	if (!GetPlayerStatsIndex(C, i)) return;
 
-	while (i < Players.Length) {
-		if (Players[i].PlayerName != playerName) {
-			i++;
-			continue;
-		}
+	PRI = C.PlayerReplicationInfo;
+	Players[i].UniqueId = OS.UniqueNetIdToString(PRI.UniqueId);
 
-		Players[i].Perk = ConvertPerk(C.GetPerk().GetPerkClass());
-		Players[i].Level = C.GetPerk().GetLevel();
-		Players[i].Prestige = C.GetPerk().GetCurrentPrestigeLevel();
+	Players[i].Perk = ConvertPerk(C.GetPerk().GetPerkClass());
+	Players[i].Level = C.GetPerk().GetLevel();
+	Players[i].Prestige = C.GetPerk().GetCurrentPrestigeLevel();
+	Players[i].IsDead = false;
 
-		Players[i].ShotsFired = -C.ShotsFired;
-		Players[i].ShotsHit = -C.ShotsHit;
-		Players[i].ShotsHS = 0;
+	Players[i].Stats.ShotsFired = -C.ShotsFired;
+	Players[i].Stats.ShotsHit = -C.ShotsHit;
+	Players[i].Stats.ShotsHS = 0;
 
-		Players[i].DoshEarned = 0;
-	
-		Players[i].HealsGiven = 0;
-		Players[i].HealsReceived = 0;
+	Players[i].Stats.DoshEarned = 0;
 
-		Players[i].DamageDealt = 0;
-		Players[i].DamageTaken = 0;
+	Players[i].Stats.HealsGiven = 0;
+	Players[i].Stats.HealsReceived = 0;
 
-		Players[i].Kills.Cyst = 0;
-		Players[i].Kills.AlphaClot = 0;
-		Players[i].Kills.Slasher = 0;
-		Players[i].Kills.Stalker = 0;
-		Players[i].Kills.Crawler = 0;
-		Players[i].Kills.Gorefast = 0;
-		Players[i].Kills.Rioter = 0;
-		Players[i].Kills.EliteCrawler = 0;
-		Players[i].Kills.Gorefiend = 0;
-		Players[i].Kills.Siren = 0;
-		Players[i].Kills.Bloat = 0;
-		Players[i].Kills.Edar = 0;
-		Players[i].Kills.Husk = 0;
-		Players[i].Kills.Scrake = 0;
-		Players[i].Kills.FP = 0;
-		Players[i].Kills.QP = 0;
-		Players[i].Kills.Boss = 0;
-		Players[i].Kills.Scrake = 0;
-		Players[i].HuskBackpackKills = 0;
-		Players[i].HuskRages = 0;
+	Players[i].Stats.DamageDealt = 0;
+	Players[i].Stats.DamageTaken = 0;
 
-		Players[i].InjuredBy.Cyst = 0;
-		Players[i].InjuredBy.AlphaClot = 0;
-		Players[i].InjuredBy.Slasher = 0;
-		Players[i].InjuredBy.Stalker = 0;
-		Players[i].InjuredBy.Crawler = 0;
-		Players[i].InjuredBy.Gorefast = 0;
-		Players[i].InjuredBy.Rioter = 0;
-		Players[i].InjuredBy.EliteCrawler = 0;
-		Players[i].InjuredBy.Gorefiend = 0;
-		Players[i].InjuredBy.Siren = 0;
-		Players[i].InjuredBy.Bloat = 0;
-		Players[i].InjuredBy.Edar = 0;
-		Players[i].InjuredBy.Husk = 0;
-		Players[i].InjuredBy.Scrake = 0;
-		Players[i].InjuredBy.FP = 0;
-		Players[i].InjuredBy.QP = 0;
-		Players[i].InjuredBy.Boss = 0;
-		Players[i].InjuredBy.Scrake = 0;
+	Players[i].Stats.Kills.Cyst = 0;
+	Players[i].Stats.Kills.AlphaClot = 0;
+	Players[i].Stats.Kills.Slasher = 0;
+	Players[i].Stats.Kills.Stalker = 0;
+	Players[i].Stats.Kills.Crawler = 0;
+	Players[i].Stats.Kills.Gorefast = 0;
+	Players[i].Stats.Kills.Rioter = 0;
+	Players[i].Stats.Kills.EliteCrawler = 0;
+	Players[i].Stats.Kills.Gorefiend = 0;
+	Players[i].Stats.Kills.Siren = 0;
+	Players[i].Stats.Kills.Bloat = 0;
+	Players[i].Stats.Kills.Edar = 0;
+	Players[i].Stats.Kills.Husk = 0;
+	Players[i].Stats.Kills.Scrake = 0;
+	Players[i].Stats.Kills.FP = 0;
+	Players[i].Stats.Kills.QP = 0;
+	Players[i].Stats.Kills.Boss = 0;
+	Players[i].Stats.Kills.Custom = 0;
+	Players[i].Stats.HuskBackpackKills = 0;
+	Players[i].Stats.HuskRages = 0;
 
-		return;
-	}
-
-	if (playerName != "") {
-		data.PlayerName = playerName;
-		Players.AddItem(data);
-		ResetPlayerStats(C);
-	}
+	Players[i].Stats.InjuredBy.Cyst = 0;
+	Players[i].Stats.InjuredBy.AlphaClot = 0;
+	Players[i].Stats.InjuredBy.Slasher = 0;
+	Players[i].Stats.InjuredBy.Stalker = 0;
+	Players[i].Stats.InjuredBy.Crawler = 0;
+	Players[i].Stats.InjuredBy.Gorefast = 0;
+	Players[i].Stats.InjuredBy.Rioter = 0;
+	Players[i].Stats.InjuredBy.EliteCrawler = 0;
+	Players[i].Stats.InjuredBy.Gorefiend = 0;
+	Players[i].Stats.InjuredBy.Siren = 0;
+	Players[i].Stats.InjuredBy.Bloat = 0;
+	Players[i].Stats.InjuredBy.Edar = 0;
+	Players[i].Stats.InjuredBy.Husk = 0;
+	Players[i].Stats.InjuredBy.Scrake = 0;
+	Players[i].Stats.InjuredBy.FP = 0;
+	Players[i].Stats.InjuredBy.QP = 0;
+	Players[i].Stats.InjuredBy.Boss = 0;
+	Players[i].Stats.InjuredBy.Scrake = 0;
 }
 
 private function UpdateGameData() {
-	local UpdateGameDataRequest Body;
+	local KFPlayerController C;
+	local SessionServiceBase.UpdateGameDataRequest Body;
+	local SessionServiceBase.PlayerLiveData PLiveData;
 
 	if (SessionData.SessionId <= 0) return;
 
@@ -636,7 +567,57 @@ private function UpdateGameData() {
 		Body.CDData.ZedsType = class'CD_Utils'.static.GetZedsType(WI);
 	}
 
+	foreach WI.AllControllers(Class'KFPlayerController', C) {
+		if (!GetPlayerLiveData(C, PLiveData)) continue;
+
+		Body.Players.AddItem(PLiveData);
+	}
+
 	class'SessionService'.static.GetInstance().UpdateGameData(Body);
+}
+
+private function bool GetPlayerLiveData(
+	KFPlayerController C,
+	out SessionServiceBase.PlayerLiveData OutData
+) {
+	local string UniqueId, PlayerName;
+	local KFPlayerReplicationInfo PRI;
+	local PlayerLiveData Data;
+
+	if (C == None) return false;
+
+	PRI = KFPlayerReplicationInfo(C.PlayerReplicationInfo);
+	if (PRI == None) return false;
+
+	UniqueId = OS.UniqueNetIdToString(PRI.UniqueId);
+	PlayerName = KFPlayerReplicationInfo(C.PlayerReplicationInfo).PlayerName;
+
+	Data.PlayerName = PlayerName;
+
+	if (!C.bIsEosPlayer) {
+		Data.AuthId = OS.UniqueNetIdToInt64(PRI.UniqueId);
+		Data.AuthType = AT_STEAM;
+	} else {
+		Data.AuthId = UniqueId;
+		Data.AuthType = AT_EGS;
+	}
+	
+	if (PRI.bOnlySpectator || PRI.bDemoOwner) {
+		Data.IsSpectator = true;
+	}
+
+	if (C.Pawn != None && KFPawn_Human(C.Pawn) != None) {
+		Data.Perk = ConvertPerk(C.GetPerk().GetPerkClass());
+		Data.Level = C.GetPerk().GetLevel();
+		Data.Prestige = C.GetPerk().GetCurrentPrestigeLevel();
+
+		Data.Health = KFPawn_Human(C.Pawn).Health;
+		Data.Armor = KFPawn_Human(C.Pawn).Armor;
+	}
+
+	OutData = Data;
+
+	return true;
 }
 
 private function int ConvertPerk(Class<KFPerk> PerkClass) {
@@ -661,6 +642,53 @@ private function bool IsValidPlayer(KFPlayerController C) {
 		!C.PlayerReplicationInfo.bOnlySpectator &&
 		!C.PlayerReplicationInfo.bDemoOwner
 	);
+}
+
+private function bool GetPlayerStatsByPRI(
+	KFPlayerReplicationInfo PRI,
+	optional out int Index
+) {
+	local string UniqueId, PlayerName;
+	local StatsServiceBase.PlayerData Iter;
+
+	if (PRI == None) return false;
+
+	UniqueId = OS.UniqueNetIdToString(PRI.UniqueId);
+	PlayerName = PRI.PlayerName;
+	Index = 0;
+
+	foreach Players(Iter) {
+		if (UniqueId == Iter.UniqueId) {
+			return true;
+		}
+
+		Index++;
+	}
+
+	Iter.UniqueId = UniqueId;
+	Iter.PlayerName = PlayerName;
+
+	if (!PRI.KFPlayerOwner.bIsEosPlayer) {
+		Iter.AuthId = OS.UniqueNetIdToInt64(PRI.UniqueId);
+		Iter.AuthType = AT_STEAM;
+	} else {
+		Iter.AuthId = Iter.UniqueId;
+		Iter.AuthType = AT_EGS;
+	}
+
+	Players.AddItem(Iter);
+	Index = Players.Length - 1;
+
+	return true;
+}
+
+private function bool GetPlayerStatsIndex(
+	KFPlayerController C, 
+	optional out int Index
+) {
+	if (C == None) return false;
+
+	return GetPlayerStatsByPRI(KFPlayerReplicationInfo(C.PlayerReplicationInfo), Index);
 }
 
 private function int GetAliveCount() {
@@ -692,3 +720,4 @@ private function int GetConnectedCount() {
 
 	return Count;
 }
+

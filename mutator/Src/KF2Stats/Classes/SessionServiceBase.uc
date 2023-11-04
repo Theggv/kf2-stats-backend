@@ -1,12 +1,6 @@
 class SessionServiceBase extends Info
+	dependson (StatsServiceBase)
 	abstract;
-
-struct CDStruct {
-	var string SpawnCycle;
-	var int MaxMonsters;
-	var int WaveSizeFakes;
-	var string ZedsType;
-};
 
 struct GameDataStruct {
 	var int MaxPlayers;
@@ -17,13 +11,45 @@ struct GameDataStruct {
 	var int ZedsLeft;
 };
 
+struct PlayerLiveData {
+	var string PlayerName;
+	var string AuthId;
+	var AuthType AuthType;
+
+	var int Perk;
+	var int Level;
+	var int Prestige;
+
+	var int Health;
+	var int Armor;
+
+	var bool IsSpectator;
+
+	structdefaultproperties {
+		PlayerName = ""
+		AuthId = ""
+		AuthType = 0
+
+		Perk = 0
+		Level = 0
+		Prestige = 0
+
+		Health = 0
+		Armor = 0
+
+		IsSpectator = false
+	}
+};
+
 struct UpdateGameDataRequest {
 	var int SessionId;
 
 	var GameDataStruct GameData;
 
 	var bool HasCDData;
-	var CDStruct CDData;
+	var StatsServiceBase.CDStruct CDData;
+
+	var array<PlayerLiveData> Players;
 };
 
 static function string PrepareCreateSessionBody( 
@@ -70,31 +96,55 @@ static function string PrepareUpdateStatusBody(
 function UpdateStatus(int SessionId, int StatusId);
 
 static function string PrepareUpdateGameDataBody(UpdateGameDataRequest body) {
-	local JsonObject Json, JsonGameData, JsonCDData;
+	local PlayerLiveData D;
+	local JsonObject Root, GameData, CDData, Players, PlayerData;
 
-	Json = new Class'JsonObject';
+	Root = new Class'JsonObject';
 
-	Json.SetIntValue("session_id", body.SessionId);
+	Root.SetIntValue("session_id", body.SessionId);
 
-	JsonGameData = new Class'JsonObject';
-	JsonGameData.SetIntValue("max_players", body.GameData.MaxPlayers);
-	JsonGameData.SetIntValue("players_online", body.GameData.PlayersOnline);
-	JsonGameData.SetIntValue("players_alive", body.GameData.PlayersAlive);
-	JsonGameData.SetIntValue("wave", body.GameData.Wave);
-	JsonGameData.SetBoolValue("is_trader_time", body.GameData.IsTraderTime);
-	JsonGameData.SetIntValue("zeds_left", body.GameData.ZedsLeft);
-	Json.SetObject("game_data", JsonGameData);
+	GameData = new Class'JsonObject';
+	GameData.SetIntValue("max_players", body.GameData.MaxPlayers);
+	GameData.SetIntValue("players_online", body.GameData.PlayersOnline);
+	GameData.SetIntValue("players_alive", body.GameData.PlayersAlive);
+	GameData.SetIntValue("wave", body.GameData.Wave);
+	GameData.SetBoolValue("is_trader_time", body.GameData.IsTraderTime);
+	GameData.SetIntValue("zeds_left", body.GameData.ZedsLeft);
+	Root.SetObject("game_data", GameData);
 
 	if (body.HasCDData) {
-		JsonCDData = new Class'JsonObject';
-		JsonCDData.SetStringValue("spawn_cycle", body.CDData.SpawnCycle);
-		JsonCDData.SetIntValue("max_monsters", body.CDData.MaxMonsters);
-		JsonCDData.SetIntValue("wave_size_fakes", body.CDData.WaveSizeFakes);
-		JsonCDData.SetStringValue("zeds_type", body.CDData.ZedsType);
-		Json.SetObject("cd_data", JsonCDData);
+		CDData = new Class'JsonObject';
+		CDData.SetStringValue("spawn_cycle", body.CDData.SpawnCycle);
+		CDData.SetIntValue("max_monsters", body.CDData.MaxMonsters);
+		CDData.SetIntValue("wave_size_fakes", body.CDData.WaveSizeFakes);
+		CDData.SetStringValue("zeds_type", body.CDData.ZedsType);
+		Root.SetObject("cd_data", CDData);
 	}
 
-	return Class'JsonObject'.static.EncodeJson(Json);
+	Players = new Class'JsonObject';
+	foreach Body.Players(D) {
+		PlayerData = new Class'JsonObject';
+		PlayerData.SetStringValue("name", D.PlayerName);
+		PlayerData.SetStringValue("auth_id", D.AuthId);
+		PlayerData.SetIntValue("auth_type", D.AuthType);
+
+		PlayerData.SetIntValue("perk", D.Perk);
+		PlayerData.SetIntValue("level", D.Level);
+		PlayerData.SetIntValue("prestige", D.Prestige);
+
+		PlayerData.SetIntValue("health", D.Health);
+		PlayerData.SetIntValue("armor", D.Armor);
+
+		PlayerData.SetBoolValue("is_spectator", D.IsSpectator);
+
+		Players.ObjectArray.AddItem(PlayerData);
+	}
+
+	if (Body.Players.Length > 0) {
+		Root.SetObject("players", Players);
+	}
+
+	return Class'JsonObject'.static.EncodeJson(Root);
 }
 
 function UpdateGameData(UpdateGameDataRequest body);

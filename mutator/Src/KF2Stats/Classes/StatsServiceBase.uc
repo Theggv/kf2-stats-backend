@@ -1,6 +1,30 @@
 class StatsServiceBase extends Info
 	abstract;
 
+struct RadioCounter {
+	var int RequestHealing;
+	var int RequestDosh;
+	var int RequestHelp;
+	var int TauntZeds;
+	var int FollowMe;
+	var int GetToTheTrader;
+	var int Affirmative;
+	var int Negative;
+	var int ThankYou;
+
+	structdefaultproperties {
+		RequestHealing = 0
+		RequestDosh = 0
+		RequestHelp = 0
+		TauntZeds = 0
+		FollowMe = 0
+		GetToTheTrader = 0
+		Affirmative = 0
+		Negative = 0
+		ThankYou = 0
+	}
+};
+
 struct ZedCounter {
 	var int Cyst;
 	var int AlphaClot;
@@ -22,6 +46,8 @@ struct ZedCounter {
 	var int QP;
 	var int Boss;
 
+	var int Custom;
+
 	structdefaultproperties {
 		Cyst = 0
 		AlphaClot = 0
@@ -40,6 +66,7 @@ struct ZedCounter {
 		FP = 0
 		QP = 0
 		Boss = 0
+		Custom = 0
 	}
 };
 
@@ -49,18 +76,8 @@ enum AuthType {
 	AT_EGS
 };
 
-struct PlayerStats {
-	var string PlayerName;
-	var string Uid;
-	var string AuthId;
-	var AuthType AuthType;
 
-	var int Perk;
-	var int Level;
-	var int Prestige;
-
-	var bool IsDead;
-
+struct PlayerDataStats {
 	var int ShotsFired;
 	var int ShotsHit;
 	var int ShotsHS;
@@ -83,15 +100,9 @@ struct PlayerStats {
 	var int ZedTimeCount;
 	var float ZedTimeLength;
 
+	var RadioCounter RadioComms;
+
 	structdefaultproperties {
-		PlayerName = ""
-		Uid = ""
-		AuthId = ""
-		AuthType = 0
-		Perk = 0
-		Level = 0
-		Prestige = 0
-		IsDead = false
 		ShotsFired = 0
 		ShotsHit = 0
 		ShotsHS = 0
@@ -107,13 +118,50 @@ struct PlayerStats {
 	}
 };
 
+struct PlayerData {
+	var string UniqueId;
+	
+	var string PlayerName;
+	var string AuthId;
+	var AuthType AuthType;
+
+	var int Perk;
+	var int Level;
+	var int Prestige;
+
+	var int Health;
+	var int Armor;
+
+	var bool IsDead;
+	var bool IsSpectator;
+
+	var PlayerDataStats Stats;
+
+	structdefaultproperties {
+		UniqueId = ""
+		PlayerName = ""
+		AuthId = ""
+		AuthType = 0
+
+		Perk = 0
+		Level = 0
+		Prestige = 0
+
+		Health = 0
+		Armor = 0
+
+		IsDead = false
+		IsSpectator = false
+	}
+};
+
+
 struct CDStruct {
 	var string SpawnCycle;
 	var int MaxMonsters;
 	var int WaveSizeFakes;
 	var string ZedsType;
 };
-
 
 struct CreateWaveStatsBody {
 	var int SessionId; 
@@ -123,7 +171,7 @@ struct CreateWaveStatsBody {
 	var bool HasCDData;
 	var CDStruct CDData;
 
-	var array<PlayerStats> Players;
+	var array<PlayerData> Players;
 
 	structdefaultproperties {
 		SessionId = 0
@@ -155,41 +203,52 @@ static private function JsonObject ConvertZedStatsToJson(ZedCounter Zeds, int Hu
 	Json.SetIntValue("fp", Zeds.FP);
 	Json.SetIntValue("qp", Zeds.QP);
 	Json.SetIntValue("boss", Zeds.Boss);
+	Json.SetIntValue("custom", Zeds.Custom);
 
 	return Json;
 }
 
 static function string PrepareWaveStatsBody(CreateWaveStatsBody Body) {
-	local PlayerStats PlayerData;
+	local PlayerData D;
 	local JsonObject Json, JsonPlayers, JsonPlayerData, JsonCDData;
 
 	JsonPlayers = new Class'JsonObject';
 
-	foreach Body.Players(PlayerData) {
+	foreach Body.Players(D) {
 		JsonPlayerData = new Class'JsonObject';
-		JsonPlayerData.SetStringValue("user_name", PlayerData.PlayerName);
-		JsonPlayerData.SetStringValue("user_auth_id", PlayerData.AuthId);
-		JsonPlayerData.SetIntValue("user_auth_type", PlayerData.AuthType);
+		JsonPlayerData.SetStringValue("user_name", D.PlayerName);
+		JsonPlayerData.SetStringValue("user_auth_id", D.AuthId);
+		JsonPlayerData.SetIntValue("user_auth_type", D.AuthType);
 
-		JsonPlayerData.SetIntValue("perk", PlayerData.Perk);
-		JsonPlayerData.SetIntValue("level", PlayerData.Level);
-		JsonPlayerData.SetIntValue("prestige", PlayerData.Prestige);
-		JsonPlayerData.SetBoolValue("is_dead", PlayerData.IsDead);
-		JsonPlayerData.SetIntValue("shots_fired", PlayerData.ShotsFired);
-		JsonPlayerData.SetIntValue("shots_hit", PlayerData.ShotsHit);
-		JsonPlayerData.SetIntValue("shots_hs", PlayerData.ShotsHS);
-		JsonPlayerData.SetIntValue("husk_b", PlayerData.HuskBackpackKills);
-		JsonPlayerData.SetIntValue("husk_r", PlayerData.HuskRages);
-		JsonPlayerData.SetIntValue("dosh_earned", PlayerData.DoshEarned);
-		JsonPlayerData.SetIntValue("heals_given", PlayerData.HealsGiven);
-		JsonPlayerData.SetIntValue("heals_recv", PlayerData.HealsReceived);
-		JsonPlayerData.SetIntValue("damage_dealt", PlayerData.DamageDealt);
-		JsonPlayerData.SetIntValue("damage_taken", PlayerData.DamageTaken);
-		JsonPlayerData.SetIntValue("zedtime_count", PlayerData.ZedTimeCount);
-		JsonPlayerData.SetFloatValue("zedtime_length", PlayerData.ZedTimeLength);
+		JsonPlayerData.SetIntValue("perk", D.Perk);
+		JsonPlayerData.SetIntValue("level", D.Level);
+		JsonPlayerData.SetIntValue("prestige", D.Prestige);
+		JsonPlayerData.SetBoolValue("is_dead", D.IsDead);
+		JsonPlayerData.SetIntValue("shots_fired", D.Stats.ShotsFired);
+		JsonPlayerData.SetIntValue("shots_hit", D.Stats.ShotsHit);
+		JsonPlayerData.SetIntValue("shots_hs", D.Stats.ShotsHS);
+		JsonPlayerData.SetIntValue("husk_b", D.Stats.HuskBackpackKills);
+		JsonPlayerData.SetIntValue("husk_r", D.Stats.HuskRages);
+		JsonPlayerData.SetIntValue("dosh_earned", D.Stats.DoshEarned);
+		JsonPlayerData.SetIntValue("heals_given", D.Stats.HealsGiven);
+		JsonPlayerData.SetIntValue("heals_recv", D.Stats.HealsReceived);
+		JsonPlayerData.SetIntValue("damage_dealt", D.Stats.DamageDealt);
+		JsonPlayerData.SetIntValue("damage_taken", D.Stats.DamageTaken);
+		JsonPlayerData.SetIntValue("zedtime_count", D.Stats.ZedTimeCount);
+		JsonPlayerData.SetFloatValue("zedtime_length", D.Stats.ZedTimeLength);
 
-		JsonPlayerData.SetObject("kills", ConvertZedStatsToJson(PlayerData.Kills, PlayerData.HuskBackpackKills));
-		JsonPlayerData.SetObject("injured_by", ConvertZedStatsToJson(PlayerData.InjuredBy, 0));
+		JsonPlayerData.SetIntValue("request_healing", D.Stats.RadioComms.RequestHealing);
+		JsonPlayerData.SetIntValue("request_dosh", D.Stats.RadioComms.RequestDosh);
+		JsonPlayerData.SetIntValue("request_help", D.Stats.RadioComms.RequestHelp);
+		JsonPlayerData.SetIntValue("taunt_zeds", D.Stats.RadioComms.TauntZeds);
+		JsonPlayerData.SetIntValue("follow_me", D.Stats.RadioComms.FollowMe);
+		JsonPlayerData.SetIntValue("get_to_the_trader", D.Stats.RadioComms.GetToTheTrader);
+		JsonPlayerData.SetIntValue("affirmative", D.Stats.RadioComms.Affirmative);
+		JsonPlayerData.SetIntValue("negative", D.Stats.RadioComms.Negative);
+		JsonPlayerData.SetIntValue("thank_you", D.Stats.RadioComms.ThankYou);
+
+		JsonPlayerData.SetObject("kills", ConvertZedStatsToJson(D.Stats.Kills, D.Stats.HuskBackpackKills));
+		JsonPlayerData.SetObject("injured_by", ConvertZedStatsToJson(D.Stats.InjuredBy, 0));
 
 		JsonPlayers.ObjectArray.AddItem(JsonPlayerData);
 	}
