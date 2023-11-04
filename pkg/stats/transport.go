@@ -2,13 +2,12 @@ package stats
 
 import (
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
-	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
 type CreateWaveStatsRequestPlayer struct {
-	UserName     string         `json:"user_name"`
-	UserAuthId   string         `json:"user_auth_id"`
-	UserAuthType users.AuthType `json:"user_auth_type"`
+	UserName     string          `json:"user_name"`
+	UserAuthId   string          `json:"user_auth_id"`
+	UserAuthType models.AuthType `json:"user_auth_type"`
 
 	Perk     models.Perk `json:"perk"`
 	Level    int         `json:"level"`
@@ -37,6 +36,16 @@ type CreateWaveStatsRequestPlayer struct {
 
 	ZedTimeCount  int     `json:"zedtime_count"`
 	ZedTimeLength float32 `json:"zedtime_length"`
+
+	RequestHealing int `json:"request_healing"`
+	RequestDosh    int `json:"request_dosh"`
+	RequestHelp    int `json:"request_help"`
+	TauntZeds      int `json:"taunt_zeds"`
+	FollowMe       int `json:"follow_me"`
+	GetToTheTrader int `json:"get_to_the_trader"`
+	Affirmative    int `json:"affirmative"`
+	Negative       int `json:"negative"`
+	ThankYou       int `json:"thank_you"`
 }
 
 type CreateWaveStatsRequest struct {

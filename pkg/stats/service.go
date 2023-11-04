@@ -130,6 +130,22 @@ func (s *StatsService) initTables() {
 		boss INTEGER NOT NULL
 	);
 
+	CREATE TABLE IF NOT EXISTS wave_stats_player_comms (
+		player_stats_id INTEGER PRIMARY KEY REFERENCES wave_stats_player(id) 
+			ON UPDATE CASCADE 
+			ON DELETE CASCADE,
+
+		request_healing INTEGER NOT NULL,
+		request_dosh INTEGER NOT NULL,
+		request_help INTEGER NOT NULL,
+		taunt_zeds INTEGER NOT NULL,
+		follow_me INTEGER NOT NULL,
+		get_to_the_trader INTEGER NOT NULL,
+		affirmative INTEGER NOT NULL,
+		negative INTEGER NOT NULL,
+		thank_you INTEGER NOT NULL
+	);
+
 	CREATE TABLE IF NOT EXISTS wave_stats_cd (
 		stats_id INTEGER PRIMARY KEY REFERENCES wave_stats(id)
 			ON UPDATE CASCADE 
@@ -293,6 +309,18 @@ func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRe
 		injuredby.Rioter, injuredby.EliteCrawler, injuredby.Gorefiend,
 		injuredby.Siren, injuredby.Bloat, injuredby.Edar, injuredby.Husk,
 		injuredby.Scrake, injuredby.FP, injuredby.QP, injuredby.Boss,
+	)
+
+	_, err = s.db.Exec(`
+		INSERT INTO wave_stats_player_comms (player_stats_id,
+			request_healing, request_dosh, request_help, 
+			taunt_zeds, follow_me, get_to_the_trader, 
+			affirmative, negative, thank_you) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		int(id),
+		req.RequestHealing, req.RequestDosh, req.RequestHelp,
+		req.TauntZeds, req.FollowMe, req.GetToTheTrader,
+		req.Affirmative, req.Negative, req.ThankYou,
 	)
 
 	return err

@@ -12,7 +12,6 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/stats"
-	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
 type MatchesService struct {
@@ -404,7 +403,7 @@ func (s *MatchesService) getPlayersSteamData(players *[][]Player) (*[][]PlayerWi
 
 	for _, wavePlayers := range *players {
 		for _, player := range wavePlayers {
-			if player.AuthType != users.Steam {
+			if player.AuthType != models.Steam {
 				continue
 			}
 			set[player.AuthId] = true

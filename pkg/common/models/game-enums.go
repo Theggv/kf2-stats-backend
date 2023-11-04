@@ -1,5 +1,12 @@
 package models
 
+type AuthType int
+
+const (
+	Steam AuthType = iota + 1
+	EGS
+)
+
 type Perk = int
 
 const (
@@ -22,6 +29,9 @@ const (
 	Survival
 	Endless
 	ControlledDifficulty
+	Weekly
+	Objective
+	Versus
 )
 
 type GameLength = int

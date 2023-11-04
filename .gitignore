@@ -28,5 +28,6 @@ tmp/
 
 # SQLite database
 store.sqlite
+store*.sqlite
 
 .env

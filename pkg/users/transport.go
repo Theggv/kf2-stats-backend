@@ -7,8 +7,8 @@ import (
 )
 
 type CreateUserRequest struct {
-	AuthId   string   `json:"auth_id"`
-	AuthType AuthType `json:"auth_type"`
+	AuthId   string          `json:"auth_id"`
+	AuthType models.AuthType `json:"auth_type"`
 
 	Name string `json:"name"`
 }
@@ -48,8 +48,8 @@ type FilterUsersResponseUser struct {
 
 	UpdatedAt *time.Time `json:"updated_at"`
 
-	AuthId string   `json:"-"`
-	Type   AuthType `json:"-"`
+	AuthId string          `json:"-"`
+	Type   models.AuthType `json:"-"`
 
 	LastSessionId    *int `json:"-"`
 	CurrentSessionId *int `json:"-"`

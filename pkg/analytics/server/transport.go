@@ -13,7 +13,7 @@ const (
 )
 
 type SessionCountRequest struct {
-	ServerId int `json:"server_id"`
+	ServerId int `json:"server_id" binding:"required"`
 
 	From   time.Time  `json:"date_from" binding:"required"`
 	To     time.Time  `json:"date_to" binding:"required"`
@@ -42,7 +42,7 @@ type UsageInMinutesResponse struct {
 }
 
 type PlayersOnlineRequest struct {
-	ServerId int `json:"server_id"`
+	ServerId int `json:"server_id" binding:"required"`
 
 	From   time.Time  `json:"date_from" binding:"required"`
 	To     time.Time  `json:"date_to" binding:"required"`

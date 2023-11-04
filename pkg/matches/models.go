@@ -4,14 +4,13 @@ import (
 	"time"
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
-	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
 type Player struct {
-	Id       int            `json:"id"`
-	AuthId   string         `json:"auth_id"`
-	AuthType users.AuthType `json:"auth_type"`
-	Name     string         `json:"name"`
+	Id       int             `json:"id"`
+	AuthId   string          `json:"auth_id"`
+	AuthType models.AuthType `json:"auth_type"`
+	Name     string          `json:"name"`
 
 	PlayerStatsId int `json:"player_stats_id"`
 

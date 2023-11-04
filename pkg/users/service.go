@@ -117,7 +117,7 @@ func (s *UserService) FindCreateFind(req CreateUserRequest) (int, error) {
 	return data.Id, err
 }
 
-func (s *UserService) getByAuth(authId string, authType AuthType) (*User, error) {
+func (s *UserService) getByAuth(authId string, authType models.AuthType) (*User, error) {
 	row := s.db.QueryRow(`
 		SELECT * FROM users WHERE auth_id = $1 AND auth_type = $2`,
 		authId, authType,
@@ -177,7 +177,7 @@ func (s *UserService) filter(req FilterUsersRequest) (*FilterUsersResponse, erro
 		if item.CurrentSessionId != nil {
 			sessionIdSet[*item.CurrentSessionId] = true
 		}
-		if item.Type == Steam {
+		if item.Type == models.Steam {
 			steamIdSet[item.AuthId] = true
 		}
 

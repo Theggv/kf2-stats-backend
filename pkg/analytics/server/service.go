@@ -25,12 +25,8 @@ func (s *ServerAnalyticsService) GetSessionCount(
 	conds := make([]string, 0)
 	args := make([]interface{}, 0)
 
-	conds = append(conds, "session.status in (2,3,4)")
-
-	if req.ServerId != 0 {
-		conds = append(conds, "session.server_id = ?")
-		args = append(args, req.ServerId)
-	}
+	conds = append(conds, "session.status in (2,3,4)", "session.server_id = ?")
+	args = append(args, req.ServerId)
 
 	var period string
 	switch req.Period {
@@ -92,8 +88,7 @@ func (s *ServerAnalyticsService) GetUsageInMinutes(
 	conds := make([]string, 0)
 	args := make([]interface{}, 0)
 
-	conds = append(conds, "session.status in (2,3,4)")
-	conds = append(conds, "session.server_id = ?")
+	conds = append(conds, "session.status in (2,3,4)", "session.server_id = ?")
 	args = append(args, req.ServerId)
 
 	var period string
@@ -154,12 +149,8 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 	conds := make([]string, 0)
 	args := make([]interface{}, 0)
 
-	conds = append(conds, "session.status in (2,3,4)")
-
-	if req.ServerId != 0 {
-		conds = append(conds, "session.server_id = ?")
-		args = append(args, req.ServerId)
-	}
+	conds = append(conds, "session.status in (2,3,4)", "session.server_id = ?")
+	args = append(args, req.ServerId)
 
 	var period string
 	switch req.Period {

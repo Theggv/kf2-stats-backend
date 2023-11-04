@@ -27,4 +27,6 @@ type UpdateGameDataRequest struct {
 
 	GameData models.GameData    `json:"game_data"`
 	CDData   *models.CDGameData `json:"cd_data"`
+
+	Players *[]models.PlayerLiveData `json:"players"`
 }
