@@ -1,6 +1,6 @@
 services:
   db:
-    image: mysql/mysql-server:5.7
+    image: mysql/mysql-server:latest
     ports:
       - "3305:3306"
     environment:
