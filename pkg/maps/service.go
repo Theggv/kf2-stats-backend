@@ -11,12 +11,12 @@ type MapsService struct {
 func (s *MapsService) initTables() {
 	s.db.Exec(`
 	CREATE TABLE IF NOT EXISTS maps (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT, 
-		preview TEXT
+		id INTEGER PRIMARY KEY AUTO_INCREMENT,
+		name VARCHAR(64), 
+		preview TEXT,
+		
+		UNIQUE INDEX idx_maps_name (name)
 	);
-	
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_maps_name ON maps (name);
 	`)
 }
 

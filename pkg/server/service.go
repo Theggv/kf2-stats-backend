@@ -11,12 +11,12 @@ type ServerService struct {
 func (s *ServerService) initTables() {
 	s.db.Exec(`
 	CREATE TABLE IF NOT EXISTS server (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT, 
-		address TEXT
+		id INTEGER PRIMARY KEY AUTO_INCREMENT,
+		name VARCHAR(256), 
+		address VARCHAR(64),
+
+		UNIQUE INDEX idx_server_address (address)
 	);
-	
-	CREATE UNIQUE INDEX IF NOT EXISTS idx_server_address ON server (address);
 	`)
 }
 

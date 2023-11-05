@@ -20,15 +20,15 @@ func (s *StatsService) Inject(userService *users.UserService) {
 func (s *StatsService) initTables() {
 	s.db.Exec(`
 	CREATE TABLE IF NOT EXISTS wave_stats (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id INTEGER PRIMARY KEY AUTO_INCREMENT,
 		session_id INTEGER NOT NULL REFERENCES session(id)
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE,
 		wave INTEGER NOT NULL,
 		attempt INTEGER NOT NULL,
 
-		started_at DATETIME NOT NULL,
-		completed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		started_at TIMESTAMP NOT NULL,
+		completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 
 	CREATE UNIQUE INDEX IF NOT EXISTS uniq_wave_stats ON wave_stats (
@@ -36,7 +36,7 @@ func (s *StatsService) initTables() {
 	);
 
 	CREATE TABLE IF NOT EXISTS wave_stats_player (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id INTEGER PRIMARY KEY AUTO_INCREMENT,
 		stats_id INTEGER NOT NULL REFERENCES wave_stats(id)
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE,
@@ -65,7 +65,7 @@ func (s *StatsService) initTables() {
 		zedtime_count INTEGER NOT NULL,
 		zedtime_length REAL NOT NULL,
 
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 
 	CREATE UNIQUE INDEX IF NOT EXISTS uniq_wave_stats_player ON wave_stats_player (
@@ -156,7 +156,7 @@ func (s *StatsService) initTables() {
 		wave_size_fakes INTEGER NOT NULL,
 		zeds_type TEXT NOT NULL,
 
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 
 	CREATE TABLE IF NOT EXISTS aggregated_kills (
@@ -222,7 +222,7 @@ func (s *StatsService) createWaveStats(req *CreateWaveStatsRequest) (int64, erro
 
 	sql := fmt.Sprintf(` 
 		INSERT INTO wave_stats (session_id, wave, attempt, started_at) 
-		VALUES (%v, %v, %v, datetime(CURRENT_TIMESTAMP, '-%v seconds'))`,
+		VALUES (%v, %v, %v, TIMESTAMP(CURRENT_TIMESTAMP, '-%v seconds'))`,
 		req.SessionId, req.Wave, attempt+1, req.Length,
 	)
 

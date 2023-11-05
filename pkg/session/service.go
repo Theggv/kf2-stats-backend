@@ -13,7 +13,7 @@ type SessionService struct {
 func (s *SessionService) initTables() {
 	s.db.Exec(`
 	CREATE TABLE IF NOT EXISTS session (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id INTEGER PRIMARY KEY AUTO_INCREMENT,
 		server_id INTEGER NOT NULL REFERENCES server(id) 
 			ON UPDATE CASCADE 
 			ON DELETE CASCADE,
@@ -25,13 +25,13 @@ func (s *SessionService) initTables() {
 
 		status INTEGER NOT NULL DEFAULT 0,
 
-		created_at DATETIME DEFAULT CURRENT_TIMESTAMP, 
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		started_at DATETIME DEFAULT NULL,
-		completed_at DATETIME DEFAULT NULL
-	);
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		started_at TIMESTAMP,
+		completed_at TIMESTAMP,
 
-	CREATE INDEX idx_session_status_completed_at on session (status, substr(completed_at, 1, 10));
+		INDEX idx_session_status_completed_at (status, (date(completed_at)))
+	);
 	
 	CREATE TABLE IF NOT EXISTS session_game_data (
 		session_id INTEGER PRIMARY KEY REFERENCES session(id)
@@ -46,7 +46,7 @@ func (s *SessionService) initTables() {
 		is_trader_time BOOLEAN NOT NULL DEFAULT 0,
 		zeds_left INTEGER NOT NULL DEFAULT 0,
 
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 
 	CREATE TABLE IF NOT EXISTS session_game_data_cd (
@@ -59,7 +59,7 @@ func (s *SessionService) initTables() {
 		wave_size_fakes INTEGER NOT NULL,
 		zeds_type TEXT NOT NULL,
 
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 	`)
 }

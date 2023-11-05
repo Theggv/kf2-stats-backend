@@ -18,7 +18,7 @@ type UserService struct {
 func (s *UserService) initTables() {
 	s.db.Exec(`
 	CREATE TABLE IF NOT EXISTS users (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		id INTEGER PRIMARY KEY AUTO_INCREMENT,
 		auth_id STRING NOT NULL,
 		auth_type INTEGER NOT NULL,
 
@@ -40,7 +40,7 @@ func (s *UserService) initTables() {
 			ON UPDATE SET NULL
 			ON DELETE SET NULL,
 		
-		updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_users_activity_curr ON users_activity (current_session_id);
