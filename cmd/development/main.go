@@ -27,7 +27,9 @@ import (
 // @BasePath /api
 func main() {
 	config := config.Instance
-	db := database.NewSQLiteDB(config.DatabasePath)
+	db := database.NewDBInstance(
+		config.DBUser, config.DBPassword, config.DBHost, config.DBName, config.DBPort,
+	)
 
 	rootStore := store.New(db, config)
 
