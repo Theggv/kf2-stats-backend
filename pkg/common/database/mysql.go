@@ -189,6 +189,7 @@ func initSchema(db *sql.DB) error {
 			fp INTEGER NOT NULL,
 			qp INTEGER NOT NULL,
 			boss INTEGER NOT NULL,
+			custom INTEGER NOT NULL,
 
 			FOREIGN KEY (player_stats_id) REFERENCES wave_stats_player(id) ON UPDATE CASCADE ON DELETE CASCADE
 		)
@@ -282,7 +283,7 @@ func initSchema(db *sql.DB) error {
 				new.stalker + new.crawler + new.gorefast + 
 				new.rioter + new.elite_crawler + new.gorefiend + 
 				new.siren + new.bloat + new.edar + new.husk_n + new.husk_b + 
-				new.scrake + new.fp + new.qp + new.boss
+				new.scrake + new.fp + new.qp + new.boss + new.custom
 			);
 		END;
 	`)

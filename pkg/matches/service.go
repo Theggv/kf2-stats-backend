@@ -497,7 +497,7 @@ func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResp
 			&kills.Rioter, &kills.EliteCrawler, &kills.Gorefiend,
 			&kills.Siren, &kills.Bloat, &kills.Edar,
 			&kills.Husk, &player.HuskBackpackKills, &player.HuskRages,
-			&kills.Scrake, &kills.FP, &kills.QP, &kills.Boss,
+			&kills.Scrake, &kills.FP, &kills.QP, &kills.Boss, &kills.Custom,
 			&useless,
 			&injuredBy.Cyst, &injuredBy.AlphaClot, &injuredBy.Slasher, &injuredBy.Stalker, &injuredBy.Crawler, &injuredBy.Gorefast,
 			&injuredBy.Rioter, &injuredBy.EliteCrawler, &injuredBy.Gorefiend,
@@ -522,25 +522,25 @@ func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResp
 
 func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPlayerStatsResponse, error) {
 	rows, err := s.db.Query(`
-		SELECT
-			wsp.id,
-			wsp.shots_fired,
-			wsp.shots_hit,
-			wsp.shots_hs,
-			wsp.dosh_earned,
-			wsp.heals_given,
-			wsp.heals_recv,
-			wsp.damage_dealt,
-			wsp.damage_taken,
-			wsp.zedtime_count,
-			wsp.zedtime_length,
-			kills.*,
-			injured_by.*
-		FROM wave_stats ws
-		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
-		INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wsp.id
-		INNER JOIN wave_stats_player_injured_by injured_by ON injured_by.player_stats_id = wsp.id
-		WHERE ws.session_id = ? and wsp.player_id = ?`, sessionId, userId,
+SELECT
+wsp.id,
+wsp.shots_fired,
+wsp.shots_hit,
+wsp.shots_hs,
+wsp.dosh_earned,
+wsp.heals_given,
+wsp.heals_recv,
+wsp.damage_dealt,
+wsp.damage_taken,
+wsp.zedtime_count,
+wsp.zedtime_length,
+kills.*,
+injured_by.*
+FROM wave_stats ws
+INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wsp.id
+INNER JOIN wave_stats_player_injured_by injured_by ON injured_by.player_stats_id = wsp.id
+WHERE ws.session_id = ? and wsp.player_id = ?`, sessionId, userId,
 	)
 
 	if err != nil {
@@ -565,7 +565,7 @@ func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPl
 			&kills.Rioter, &kills.EliteCrawler, &kills.Gorefiend,
 			&kills.Siren, &kills.Bloat, &kills.Edar,
 			&kills.Husk, &player.HuskBackpackKills, &player.HuskRages,
-			&kills.Scrake, &kills.FP, &kills.QP, &kills.Boss,
+			&kills.Scrake, &kills.FP, &kills.QP, &kills.Boss, &kills.Custom,
 			&useless,
 			&injuredBy.Cyst, &injuredBy.AlphaClot, &injuredBy.Slasher, &injuredBy.Stalker, &injuredBy.Crawler, &injuredBy.Gorefast,
 			&injuredBy.Rioter, &injuredBy.EliteCrawler, &injuredBy.Gorefiend,

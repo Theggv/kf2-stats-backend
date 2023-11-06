@@ -109,14 +109,14 @@ func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRe
 			rioter, elite_crawler, gorefiend, 
 			siren, bloat, edar, 
 			husk_n, husk_b, husk_r, 
-			scrake, fp, qp, boss) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			scrake, fp, qp, boss, custom) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		int(id),
 		kills.Cyst, kills.AlphaClot, kills.Slasher, kills.Stalker, kills.Crawler, kills.Gorefast,
 		kills.Rioter, kills.EliteCrawler, kills.Gorefiend,
 		kills.Siren, kills.Bloat, kills.Edar,
 		kills.Husk, req.HuskBackpackKills, req.HuskRages,
-		kills.Scrake, kills.FP, kills.QP, kills.Boss,
+		kills.Scrake, kills.FP, kills.QP, kills.Boss, kills.Custom,
 	)
 
 	injuredby := req.Injuredby
