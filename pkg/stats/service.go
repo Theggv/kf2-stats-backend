@@ -28,7 +28,7 @@ func NewStatsService(db *sql.DB) *StatsService {
 func (s *StatsService) getWaveAttempts(sessionId, wave int) (int, error) {
 	row := s.db.QueryRow(`
 		SELECT COUNT(*) FROM wave_stats
-		WHERE session_id = $1 AND wave = $2`,
+		WHERE session_id = ? AND wave = ?`,
 		sessionId, wave,
 	)
 
@@ -83,7 +83,7 @@ func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRe
 			dosh_earned, heals_given, heals_recv,
 			damage_dealt, damage_taken,
 			zedtime_count, zedtime_length) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		statsId, playerId,
 		req.Perk, req.Level, req.Prestige, req.IsDead,
 		req.ShotsFired, req.ShotsHit, req.ShotsHS,
@@ -110,7 +110,7 @@ func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRe
 			siren, bloat, edar, 
 			husk_n, husk_b, husk_r, 
 			scrake, fp, qp, boss) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		int(id),
 		kills.Cyst, kills.AlphaClot, kills.Slasher, kills.Stalker, kills.Crawler, kills.Gorefast,
 		kills.Rioter, kills.EliteCrawler, kills.Gorefiend,
@@ -127,7 +127,7 @@ func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRe
 			rioter, elite_crawler, gorefiend, 
 			siren, bloat, edar, husk, 
 			scrake, fp, qp, boss) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		int(id),
 		injuredby.Cyst, injuredby.AlphaClot, injuredby.Slasher, injuredby.Stalker, injuredby.Crawler, injuredby.Gorefast,
 		injuredby.Rioter, injuredby.EliteCrawler, injuredby.Gorefiend,
@@ -140,7 +140,7 @@ func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRe
 			request_healing, request_dosh, request_help, 
 			taunt_zeds, follow_me, get_to_the_trader, 
 			affirmative, negative, thank_you) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		int(id),
 		req.RequestHealing, req.RequestDosh, req.RequestHelp,
 		req.TauntZeds, req.FollowMe, req.GetToTheTrader,
@@ -155,7 +155,7 @@ func (s *StatsService) createWaveStatsCD(statsId int, req *models.CDGameData) er
 		INSERT INTO wave_stats_cd (
 			stats_id, 
 			spawn_cycle, max_monsters, wave_size_fakes, zeds_type) 
-		VALUES ($1, $2, $3, $4, $5)`,
+		VALUES (?, ?, ?, ?, ?)`,
 		statsId,
 		req.SpawnCycle, req.MaxMonsters,
 		req.WaveSizeFakes, req.ZedsType,
