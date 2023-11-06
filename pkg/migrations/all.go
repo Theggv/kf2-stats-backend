@@ -8,7 +8,7 @@ import (
 func initTables(db *sql.DB) {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS migrations (
-			name TEXT NOT NULL PRIMARY KEY
+			name VARCHAR(128) NOT NULL PRIMARY KEY
 		);`,
 	)
 
@@ -47,10 +47,10 @@ func writeMigration(db *sql.DB, name string) {
 func ExecuteAll(db *sql.DB) {
 	initTables(db)
 
-	migration_24_10_2023_aggr_kills(db)
-	migration_25_10_2023_alter_fkey(db)
-	migration_25_10_2023_delete_negative_shots(db)
-	migration_27_10_2023_drop_users_name_history(db)
-	migration_27_10_2023_fill_users_activity(db)
-	migration_27_10_2023_fix_game_data_cd(db)
+	// migration_24_10_2023_aggr_kills(db)
+	// migration_25_10_2023_alter_fkey(db)
+	// migration_25_10_2023_delete_negative_shots(db)
+	// migration_27_10_2023_drop_users_name_history(db)
+	// migration_27_10_2023_fill_users_activity(db)
+	// migration_27_10_2023_fix_game_data_cd(db)
 }

@@ -8,33 +8,19 @@ type ServerService struct {
 	db *sql.DB
 }
 
-func (s *ServerService) initTables() {
-	s.db.Exec(`
-	CREATE TABLE IF NOT EXISTS server (
-		id INTEGER PRIMARY KEY AUTO_INCREMENT,
-		name VARCHAR(256), 
-		address VARCHAR(64),
-
-		UNIQUE INDEX idx_server_address (address)
-	);
-	`)
-}
-
 func NewServerService(db *sql.DB) *ServerService {
 	service := ServerService{
 		db: db,
 	}
-
-	service.initTables()
 
 	return &service
 }
 
 func (s *ServerService) Create(req AddServerRequest) (int, error) {
 	_, err := s.db.Exec(`
-		INSERT INTO server (name, address) VALUES ($1, $2)
-			ON CONFLICT(address) DO UPDATE SET name = $1`,
-		req.Name, req.Address)
+		INSERT INTO server (name, address) VALUES (?, ?)
+			ON DUPLICATE KEY UPDATE name = ?`,
+		req.Name, req.Address, req.Name)
 
 	if err != nil {
 		return 0, err
@@ -49,11 +35,11 @@ func (s *ServerService) Create(req AddServerRequest) (int, error) {
 }
 
 func (s *ServerService) GetByPattern(pattern string) ([]Server, error) {
+	sqlPattern := "%" + pattern + "%"
 	rows, err := s.db.Query(`
-		SELECT * FROM server 
-		WHERE (address LIKE $1) OR (name LIKE $1)
-		ORDER BY name`,
-		"%"+pattern+"%")
+		SELECT id, name, address FROM server 
+		WHERE (address LIKE ?) OR (name LIKE ?)
+		ORDER BY name`, sqlPattern, sqlPattern)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +62,7 @@ func (s *ServerService) GetByPattern(pattern string) ([]Server, error) {
 }
 
 func (s *ServerService) GetById(id int) (*Server, error) {
-	row := s.db.QueryRow(`SELECT * FROM server WHERE id = $1`, id)
+	row := s.db.QueryRow(`SELECT id, name, address FROM server WHERE id = ?`, id)
 
 	server := Server{}
 
@@ -89,7 +75,7 @@ func (s *ServerService) GetById(id int) (*Server, error) {
 }
 
 func (s *ServerService) getByAddress(address string) (*Server, error) {
-	row := s.db.QueryRow(`SELECT * FROM server WHERE address = $1`, address)
+	row := s.db.QueryRow(`SELECT id, name, address FROM server WHERE address = ?`, address)
 
 	server := Server{}
 
@@ -102,7 +88,7 @@ func (s *ServerService) getByAddress(address string) (*Server, error) {
 }
 
 func (s *ServerService) UpdateName(data UpdateNameRequest) error {
-	_, err := s.db.Exec(`UPDATE server SET name = $1 WHERE id = $2`,
+	_, err := s.db.Exec(`UPDATE server SET name = ? WHERE id = ?`,
 		data.Name, data.Id)
 
 	return err

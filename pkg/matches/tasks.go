@@ -15,15 +15,15 @@ func (s *MatchesService) setupTasks() {
 func detectDroppedSessions(s *MatchesService) {
 	for range time.Tick(3 * time.Minute) {
 		_, err := s.db.Exec(`
-			UPDATE session
+			UPDATE session, (
+				SELECT max(id) as max_id FROM session
+				GROUP BY server_id
+			) as tbl
 			SET status = -1
-			WHERE id IN (
-				SELECT id FROM session
-				WHERE status NOT IN ($1, $2) AND id NOT IN (
-					SELECT max(id) FROM session
-					GROUP BY server_id
-				)
-			)`, models.Win, models.Lose,
+			WHERE 
+				session.id <> 0 AND session.id NOT IN (tbl.max_id) AND 
+				status NOT IN (?, ?)`,
+			models.Win, models.Lose,
 		)
 
 		if err != nil {
@@ -38,17 +38,14 @@ func abortOldMatches(s *MatchesService) {
 	for range time.Tick(3 * time.Minute) {
 		_, err := s.db.Exec(`
 			UPDATE session
-			SET status = -1
-			WHERE id IN (
-				SELECT
-					session.id
-				FROM session
-				INNER JOIN session_game_data gd ON gd.session_id = session.id
-				INNER JOIN server ON server.id = session.server_id
-				WHERE status IN ($1, $2) and
-					(julianday(CURRENT_TIMESTAMP) - julianday(gd.updated_at)) * 24 * 60 > $3
-				group by session.id
-			)`, models.Lobby, models.InProgress, olderThanMinutes,
+			INNER JOIN server ON server.id = session.server_id
+			INNER JOIN session_game_data gd ON gd.session_id = session.id
+			SET session.status = -1
+			WHERE 
+				session.id <> 0 AND 
+				session.status IN (0, 1) AND 
+				timestampdiff(MINUTE, gd.updated_at, CURRENT_TIMESTAMP) > ?`,
+			olderThanMinutes,
 		)
 
 		if err != nil {
