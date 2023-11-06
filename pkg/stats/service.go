@@ -46,7 +46,7 @@ func (s *StatsService) createWaveStats(req *CreateWaveStatsRequest) (int64, erro
 
 	sql := fmt.Sprintf(` 
 		INSERT INTO wave_stats (session_id, wave, attempt, started_at) 
-		VALUES (%v, %v, %v, TIMESTAMP(CURRENT_TIMESTAMP, '-%v seconds'))`,
+		VALUES (%v, %v, %v, TIMESTAMPADD(SECOND, -%v, CURRENT_TIMESTAMP))`,
 		req.SessionId, req.Wave, attempt+1, req.Length,
 	)
 
@@ -153,8 +153,7 @@ func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRe
 func (s *StatsService) createWaveStatsCD(statsId int, req *models.CDGameData) error {
 	_, err := s.db.Exec(`
 		INSERT INTO wave_stats_cd (
-			stats_id, 
-			spawn_cycle, max_monsters, wave_size_fakes, zeds_type) 
+			stats_id, spawn_cycle, max_monsters, wave_size_fakes, zeds_type) 
 		VALUES (?, ?, ?, ?, ?)`,
 		statsId,
 		req.SpawnCycle, req.MaxMonsters,
