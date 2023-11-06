@@ -1,11 +1,8 @@
-package database
+package mysql
 
 import (
 	"context"
 	"database/sql"
-	"fmt"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 func initSchema(db *sql.DB) error {
@@ -317,23 +314,35 @@ func initSchema(db *sql.DB) error {
 			END IF;
 		END;
 	`)
+	tx.Exec(`
+		DROP PROCEDURE IF EXISTS fix_dropped_sessions;
+		CREATE PROCEDURE fix_dropped_sessions()
+		BEGIN
+			UPDATE session
+			INNER JOIN (
+				SELECT server_id, max(id) as max_id FROM session
+				GROUP BY server_id
+			) as tbl on session.server_id = tbl.server_id
+			SET status = -1
+			WHERE 
+				session.id <> 0 AND session.id NOT IN (tbl.max_id) AND 
+				status IN (0, 1);
+		END;
+	`)
+	tx.Exec(`
+		DROP PROCEDURE IF EXISTS abort_old_sessions;
+		CREATE PROCEDURE abort_old_sessions(IN minutes int)
+		BEGIN
+			UPDATE session
+			INNER JOIN server ON server.id = session.server_id
+			INNER JOIN session_game_data gd ON gd.session_id = session.id
+			SET session.status = -1
+			WHERE 
+				session.id <> 0 AND 
+				session.status IN (0, 1) AND 
+				timestampdiff(MINUTE, gd.updated_at, CURRENT_TIMESTAMP) > minutes;
+		END;
+	`)
 
 	return err
-}
-
-func NewDBInstance(user, pass, host, db string, port int) *sql.DB {
-	connString := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local&multiStatements=True",
-		user, pass, host, port, db,
-	)
-
-	instance, err := sql.Open("mysql", connString)
-	if err != nil {
-		panic(err)
-	}
-
-	if err := initSchema(instance); err != nil {
-		panic(err)
-	}
-
-	return instance
 }

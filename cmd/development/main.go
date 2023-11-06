@@ -6,7 +6,7 @@ import (
 	analyticsMaps "github.com/theggv/kf2-stats-backend/pkg/analytics/maps"
 	analyticsServer "github.com/theggv/kf2-stats-backend/pkg/analytics/server"
 	"github.com/theggv/kf2-stats-backend/pkg/common/config"
-	"github.com/theggv/kf2-stats-backend/pkg/common/database"
+	"github.com/theggv/kf2-stats-backend/pkg/common/database/mysql"
 	"github.com/theggv/kf2-stats-backend/pkg/common/store"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/matches"
@@ -27,7 +27,7 @@ import (
 // @BasePath /api
 func main() {
 	config := config.Instance
-	db := database.NewDBInstance(
+	db := mysql.NewDBInstance(
 		config.DBUser, config.DBPassword, config.DBHost, config.DBName, config.DBPort,
 	)
 

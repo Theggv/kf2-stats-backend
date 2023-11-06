@@ -8,6 +8,7 @@ import (
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/config"
 	"github.com/theggv/kf2-stats-backend/pkg/common/database"
+	"github.com/theggv/kf2-stats-backend/pkg/common/database/mysql"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
@@ -861,7 +862,7 @@ func main() {
 	}(time.Now())
 
 	config := config.Instance
-	mysql := database.NewDBInstance(
+	mysql := mysql.NewDBInstance(
 		config.DBUser, config.DBPassword, config.DBHost, config.DBName, config.DBPort,
 	)
 
