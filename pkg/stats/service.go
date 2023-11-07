@@ -119,22 +119,6 @@ func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRe
 		kills.Scrake, kills.FP, kills.QP, kills.Boss, kills.Custom,
 	)
 
-	injuredby := req.Injuredby
-
-	_, err = s.db.Exec(`
-		INSERT INTO wave_stats_player_injured_by (player_stats_id, 
-			cyst, alpha_clot, slasher, stalker, crawler, gorefast, 
-			rioter, elite_crawler, gorefiend, 
-			siren, bloat, edar, husk, 
-			scrake, fp, qp, boss) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		int(id),
-		injuredby.Cyst, injuredby.AlphaClot, injuredby.Slasher, injuredby.Stalker, injuredby.Crawler, injuredby.Gorefast,
-		injuredby.Rioter, injuredby.EliteCrawler, injuredby.Gorefiend,
-		injuredby.Siren, injuredby.Bloat, injuredby.Edar, injuredby.Husk,
-		injuredby.Scrake, injuredby.FP, injuredby.QP, injuredby.Boss,
-	)
-
 	_, err = s.db.Exec(`
 		INSERT INTO wave_stats_player_comms (player_stats_id,
 			request_healing, request_dosh, request_help, 

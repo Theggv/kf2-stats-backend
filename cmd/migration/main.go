@@ -688,95 +688,6 @@ func insertWaveStatsPlayerKills(sqlite, mysql *sql.DB) {
 	}
 }
 
-func insertWaveStatsPlayerInjuredBy(sqlite, mysql *sql.DB) {
-	fmt.Print("Inserting player injured by...\n")
-
-	type data struct {
-		PlayerStatsId int `json:"player_stats_id"`
-		Cyst          int `json:"cyst"`
-		AlphaClot     int `json:"alpha_clot"`
-		Slasher       int `json:"slasher"`
-		Stalker       int `json:"stalker"`
-		Crawler       int `json:"crawler"`
-		Gorefast      int `json:"gorefast"`
-		Rioter        int `json:"rioter"`
-		EliteCrawler  int `json:"elite_crawler"`
-		Gorefiend     int `json:"gorefiend"`
-		Siren         int `json:"siren"`
-		Bloat         int `json:"bloat"`
-		Edar          int `json:"edar"`
-		Husk          int `json:"husk"`
-		Scrake        int `json:"scrake"`
-		Fp            int `json:"fp"`
-		Qp            int `json:"qp"`
-		Boss          int `json:"boss"`
-	}
-
-	rows, err := sqlite.Query(`
-		SELECT 
-			player_stats_id, 
-			cyst, alpha_clot, slasher, stalker, crawler, 
-			gorefast, rioter, elite_crawler, gorefiend, 
-			siren, bloat, edar, husk, 
-			scrake, fp, qp, boss
-		FROM wave_stats_player_injured_by`,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	chunkSize := 100
-	count := 0
-
-	items := make([]data, 0)
-
-	insert := func() {
-		executeInsert(mysql,
-			`INSERT IGNORE INTO wave_stats_player_injured_by (player_stats_id, 
-				cyst, alpha_clot, slasher, stalker, crawler, 
-				gorefast, rioter, elite_crawler, gorefiend, 
-				siren, bloat, edar, husk,
-				scrake, fp, qp, boss)`,
-			"(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-			items,
-			func(i data) (out []interface{}) {
-				out = append(out,
-					i.PlayerStatsId,
-					i.Cyst, i.AlphaClot, i.Slasher, i.Stalker, i.Crawler,
-					i.Gorefast, i.Rioter, i.EliteCrawler, i.Gorefiend,
-					i.Siren, i.Bloat, i.Edar, i.Husk,
-					i.Scrake, i.Fp, i.Qp, i.Boss,
-				)
-				return
-			},
-		)
-	}
-
-	for rows.Next() {
-		if count == chunkSize {
-			insert()
-			items = items[:0]
-			count = 0
-		}
-
-		item := data{}
-		rows.Scan(
-			&item.PlayerStatsId,
-			&item.Cyst, &item.AlphaClot, &item.Slasher, &item.Stalker, &item.Crawler,
-			&item.Gorefast, &item.Rioter, &item.EliteCrawler, &item.Gorefiend,
-			&item.Siren, &item.Bloat, &item.Edar, &item.Husk,
-			&item.Scrake, &item.Fp, &item.Qp, &item.Boss,
-		)
-
-		count += 1
-		items = append(items, item)
-	}
-
-	if len(items) > 0 {
-		insert()
-	}
-}
-
 func insertUsersActivity(sqlite, mysql *sql.DB) {
 	fmt.Print("Inserting users activity...\n")
 
@@ -830,7 +741,6 @@ func main() {
 	insertWaveStatsCD(sqlite, mysql)
 	insertWaveStatsPlayer(sqlite, mysql)
 	insertWaveStatsPlayerKills(sqlite, mysql)
-	insertWaveStatsPlayerInjuredBy(sqlite, mysql)
 	insertUsersActivity(sqlite, mysql)
 	insertWaveStatsPlayerComms(sqlite, mysql)
 }
