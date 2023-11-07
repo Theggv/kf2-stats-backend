@@ -87,8 +87,6 @@ struct PlayerDataStats {
 	var int HuskBackpackKills;
 	var int HuskRages;
 
-	var ZedCounter InjuredBy;
-
 	var int DoshEarned;
 	
 	var int HealsGiven;
@@ -248,7 +246,6 @@ static function string PrepareWaveStatsBody(CreateWaveStatsBody Body) {
 		JsonPlayerData.SetIntValue("thank_you", D.Stats.RadioComms.ThankYou);
 
 		JsonPlayerData.SetObject("kills", ConvertZedStatsToJson(D.Stats.Kills, D.Stats.HuskBackpackKills));
-		JsonPlayerData.SetObject("injured_by", ConvertZedStatsToJson(D.Stats.InjuredBy, 0));
 
 		JsonPlayers.ObjectArray.AddItem(JsonPlayerData);
 	}
