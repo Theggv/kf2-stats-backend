@@ -54,8 +54,6 @@ type PlayerWaveStats struct {
 
 	HuskBackpackKills int `json:"husk_b"`
 	HuskRages         int `json:"husk_r"`
-
-	Injuredby stats.ZedCounter `json:"injured_by"`
 }
 
 type GetMatchWaveStatsResponse struct {

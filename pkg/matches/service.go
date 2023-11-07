@@ -98,7 +98,7 @@ func (s *MatchesService) getById(id int) (*Match, error) {
 func (s *MatchesService) getLastServerMatch(id int) (*Match, error) {
 	row := s.db.QueryRow(`
 		SELECT server_id FROM session
-		WHERE server_id = $1
+		WHERE server_id = ?
 		ORDER BY id desc
 		LIMIT 1`, id,
 	)
@@ -139,12 +139,12 @@ func (s *MatchesService) filter(req FilterMatchesRequest) (*FilterMatchesRespons
 
 	if req.IncludeMap {
 		attributes = append(attributes, "maps.name", "maps.preview")
-		joins = append(joins, "LEFT JOIN maps ON maps.id = session.map_id")
+		joins = append(joins, "INNER JOIN maps ON maps.id = session.map_id")
 	}
 
 	if req.IncludeServer {
 		attributes = append(attributes, "server.name", "server.address")
-		joins = append(joins, "LEFT JOIN server ON server.id = session.server_id")
+		joins = append(joins, "INNER JOIN server ON server.id = session.server_id")
 	}
 
 	if req.IncludeCDData {
@@ -312,13 +312,12 @@ func (s *MatchesService) filter(req FilterMatchesRequest) (*FilterMatchesRespons
 func (s *MatchesService) getMatchWaves(sessionId int) (*GetMatchWavesResponse, error) {
 	rows, err := s.db.Query(`
 		SELECT 
-			view_indexes.wave_stats_id,
-			ws.wave, ws.attempt, ws.started_at, ws.completed_at
-		FROM view_indexes
-		INNER JOIN wave_stats ws on ws.id = view_indexes.wave_stats_id
-		WHERE view_indexes.session_id = $1
-		GROUP BY wave_stats_id 
-		ORDER BY wave_stats_id`, sessionId,
+			ws.id, ws.wave, ws.attempt, ws.started_at, ws.completed_at
+		FROM session
+		INNER JOIN wave_stats ws on ws.session_id = session.id
+		WHERE session.id = ?
+		GROUP BY ws.id 
+		ORDER BY ws.id`, sessionId,
 	)
 
 	if err != nil {
@@ -363,14 +362,13 @@ func (s *MatchesService) getWavePlayers(waveId int) ([]Player, error) {
 	rows, err := s.db.Query(`
 		SELECT 
 			users.id, users.auth_id, users.auth_type, users.name,
-			view_indexes.wave_stats_player_id,
+			wsp.id,
 			wsp.perk, wsp.level, wsp.prestige, wsp.is_dead
-		FROM view_indexes
-		INNER JOIN wave_stats_player wsp on wsp.id = view_indexes.wave_stats_player_id
+		FROM wave_stats ws
+		INNER JOIN wave_stats_player wsp on wsp.stats_id = ws.id
 		INNER JOIN users on users.id = wsp.player_id
-		WHERE view_indexes.wave_stats_id = $1
-		GROUP BY view_indexes.wave_stats_player_id
-		ORDER BY users.id`,
+		WHERE ws.id = ?
+		GROUP BY wsp.id`,
 		waveId,
 	)
 
@@ -457,24 +455,22 @@ func (s *MatchesService) getPlayersSteamData(players *[][]Player) (*[][]PlayerWi
 func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResponse, error) {
 	rows, err := s.db.Query(`
 		SELECT
-			wave_stats_player.id,
-			wave_stats_player.shots_fired,
-			wave_stats_player.shots_hit,
-			wave_stats_player.shots_hs,
-			wave_stats_player.dosh_earned,
-			wave_stats_player.heals_given,
-			wave_stats_player.heals_recv,
-			wave_stats_player.damage_dealt,
-			wave_stats_player.damage_taken,
-			wave_stats_player.zedtime_count,
-			wave_stats_player.zedtime_length,
+			wsp.id,
+			wsp.shots_fired,
+			wsp.shots_hit,
+			wsp.shots_hs,
+			wsp.dosh_earned,
+			wsp.heals_given,
+			wsp.heals_recv,
+			wsp.damage_dealt,
+			wsp.damage_taken,
+			wsp.zedtime_count,
+			wsp.zedtime_length,
 			kills.*,
-			injured_by.*
-		FROM view_indexes
-		INNER JOIN wave_stats_player ON wave_stats_player.id = view_indexes.wave_stats_player_id
-		INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wave_stats_player.id
-		INNER JOIN wave_stats_player_injured_by injured_by ON injured_by.player_stats_id = wave_stats_player.id
-		WHERE view_indexes.wave_stats_id = $1`, waveId,
+		FROM wave_stats ws
+		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+		INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wsp.id
+		WHERE ws.id = ?`, waveId,
 	)
 
 	if err != nil {
@@ -487,7 +483,6 @@ func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResp
 		var useless int
 		player := PlayerWaveStats{}
 		kills := stats.ZedCounter{}
-		injuredBy := stats.ZedCounter{}
 
 		err := rows.Scan(&player.PlayerStatsId,
 			&player.ShotsFired, &player.ShotsHit, &player.ShotsHS,
@@ -499,12 +494,7 @@ func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResp
 			&kills.Rioter, &kills.EliteCrawler, &kills.Gorefiend,
 			&kills.Siren, &kills.Bloat, &kills.Edar,
 			&kills.Husk, &player.HuskBackpackKills, &player.HuskRages,
-			&kills.Scrake, &kills.FP, &kills.QP, &kills.Boss,
-			&useless,
-			&injuredBy.Cyst, &injuredBy.AlphaClot, &injuredBy.Slasher, &injuredBy.Stalker, &injuredBy.Crawler, &injuredBy.Gorefast,
-			&injuredBy.Rioter, &injuredBy.EliteCrawler, &injuredBy.Gorefiend,
-			&injuredBy.Siren, &injuredBy.Bloat, &injuredBy.Edar, &injuredBy.Husk,
-			&injuredBy.Scrake, &injuredBy.FP, &injuredBy.QP, &injuredBy.Boss,
+			&kills.Scrake, &kills.FP, &kills.QP, &kills.Boss, &kills.Custom,
 		)
 
 		if err != nil {
@@ -512,7 +502,6 @@ func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResp
 		}
 
 		player.Kills = kills
-		player.Injuredby = injuredBy
 
 		players = append(players, player)
 	}
@@ -525,24 +514,22 @@ func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResp
 func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPlayerStatsResponse, error) {
 	rows, err := s.db.Query(`
 		SELECT
-			wave_stats_player.id,
-			wave_stats_player.shots_fired,
-			wave_stats_player.shots_hit,
-			wave_stats_player.shots_hs,
-			wave_stats_player.dosh_earned,
-			wave_stats_player.heals_given,
-			wave_stats_player.heals_recv,
-			wave_stats_player.damage_dealt,
-			wave_stats_player.damage_taken,
-			wave_stats_player.zedtime_count,
-			wave_stats_player.zedtime_length,
+			wsp.id,
+			wsp.shots_fired,
+			wsp.shots_hit,
+			wsp.shots_hs,
+			wsp.dosh_earned,
+			wsp.heals_given,
+			wsp.heals_recv,
+			wsp.damage_dealt,
+			wsp.damage_taken,
+			wsp.zedtime_count,
+			wsp.zedtime_length,
 			kills.*,
-			injured_by.*
-		FROM view_indexes
-		INNER JOIN wave_stats_player ON wave_stats_player.id = view_indexes.wave_stats_player_id
-		INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wave_stats_player.id
-		INNER JOIN wave_stats_player_injured_by injured_by ON injured_by.player_stats_id = wave_stats_player.id
-		WHERE view_indexes.session_id = $1 and wave_stats_player.player_id = $2`, sessionId, userId,
+		FROM wave_stats ws
+		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+		INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wsp.id
+		WHERE ws.session_id = ? and wsp.player_id = ?`, sessionId, userId,
 	)
 
 	if err != nil {
@@ -555,7 +542,6 @@ func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPl
 		var useless int
 		player := PlayerWaveStats{}
 		kills := stats.ZedCounter{}
-		injuredBy := stats.ZedCounter{}
 
 		err := rows.Scan(&player.PlayerStatsId,
 			&player.ShotsFired, &player.ShotsHit, &player.ShotsHS,
@@ -567,12 +553,7 @@ func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPl
 			&kills.Rioter, &kills.EliteCrawler, &kills.Gorefiend,
 			&kills.Siren, &kills.Bloat, &kills.Edar,
 			&kills.Husk, &player.HuskBackpackKills, &player.HuskRages,
-			&kills.Scrake, &kills.FP, &kills.QP, &kills.Boss,
-			&useless,
-			&injuredBy.Cyst, &injuredBy.AlphaClot, &injuredBy.Slasher, &injuredBy.Stalker, &injuredBy.Crawler, &injuredBy.Gorefast,
-			&injuredBy.Rioter, &injuredBy.EliteCrawler, &injuredBy.Gorefiend,
-			&injuredBy.Siren, &injuredBy.Bloat, &injuredBy.Edar, &injuredBy.Husk,
-			&injuredBy.Scrake, &injuredBy.FP, &injuredBy.QP, &injuredBy.Boss,
+			&kills.Scrake, &kills.FP, &kills.QP, &kills.Boss, &kills.Custom,
 		)
 
 		if err != nil {
@@ -580,7 +561,6 @@ func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPl
 		}
 
 		player.Kills = kills
-		player.Injuredby = injuredBy
 
 		waves = append(waves, player)
 	}
@@ -592,21 +572,20 @@ func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPl
 
 func (s *MatchesService) getMatchAggregatedStats(sessionId int) (*GetMatchAggregatedStatsResponse, error) {
 	rows, err := s.db.Query(`
-		select
+		SELECT
 			wsp.player_id,
-			cast(sum((julianday(ws.completed_at) - julianday(ws.started_at)) * 24 * 60 * 60) as integer) as playtime,
+			sum(timestampdiff(MINUTE, ws.started_at, ws.completed_at)) as playtime,
 			sum(shots_fired), sum(shots_hit), sum(shots_hs),
 			sum(dosh_earned), sum(heals_given), sum(heals_recv),
 			sum(damage_dealt), sum(damage_taken),
 			sum(zedtime_count), sum(zedtime_length),
 			sum(aggr_kills.total), sum(aggr_kills.large), sum(husk_r)
-		from view_indexes
-		inner join wave_stats ws on ws.id = view_indexes.wave_stats_id
-		inner join wave_stats_player wsp on wsp.id = view_indexes.wave_stats_player_id
-		inner join wave_stats_player_kills kills on kills.player_stats_id = wsp.id
-		inner join aggregated_kills aggr_kills on aggr_kills.player_stats_id = wsp.id
-		where view_indexes.session_id = $1
-		group by wsp.player_id`, sessionId,
+		FROM wave_stats ws
+		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+		INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wsp.id
+		INNER JOIN aggregated_kills aggr_kills ON aggr_kills.player_stats_id = wsp.id
+		WHERE ws.session_id = ?
+		GROUP BY wsp.player_id`, sessionId,
 	)
 
 	if err != nil {

@@ -108,7 +108,7 @@ func (s *ServerAnalyticsService) GetUsageInMinutes(
 
 	sql := fmt.Sprintf(`
 		SELECT 
-			round(sum(julianday(completed_at) - julianday(started_at)) * 60 * 24), 
+			sum(timestampdiff(MINUTE, started_at, completed_at)), 
 			%v as period
 		FROM session
 		INNER JOIN server ON server.id = session.server_id
@@ -166,7 +166,7 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 		return nil, newIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "substr(session.completed_at, 1, 10) BETWEEN ? AND ?")
+	conds = append(conds, "session.completed_at BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	sql := fmt.Sprintf(`
@@ -174,7 +174,6 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 			count(DISTINCT wsp.player_id), 
 			%v as period
 		FROM session
-		INNER JOIN server ON server.id = session.server_id
 		INNER JOIN wave_stats ws on ws.session_id = session.id
 		INNER JOIN wave_stats_player wsp on wsp.stats_id = ws.id
 		WHERE %v

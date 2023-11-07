@@ -1,8 +1,6 @@
 package config
 
 import (
-	"log"
-
 	"github.com/joho/godotenv"
 )
 
@@ -11,22 +9,29 @@ type AppConfig struct {
 	DatabasePath string
 	Token        string
 	SteamApiKey  string
+
+	DBUser     string
+	DBPassword string
+	DBHost     string
+	DBPort     int
+	DBName     string
 }
 
 var Instance *AppConfig = new()
 
 func new() *AppConfig {
-	// load .env file
-	err := godotenv.Load(".env")
-
-	if err != nil {
-		log.Print(".env file is not located, skipping\n")
-	}
+	godotenv.Load(".env")
 
 	return &AppConfig{
 		ServerAddr:   getEnv("SERVER_ADDR", "127.0.0.1:3000"),
 		DatabasePath: getEnv("DB_PATH", "store.sqlite"),
 		Token:        getEnv("SECRET_TOKEN", ""),
 		SteamApiKey:  getEnv("STEAM_API_KEY", ""),
+
+		DBUser:     getEnv("DB_USER", "user"),
+		DBPassword: getEnv("DB_PASSWORD", ""),
+		DBHost:     getEnv("DB_HOST", "db"),
+		DBPort:     getEnvAsInt("DB_PORT", 3306),
+		DBName:     getEnv("DB_NAME", "stats"),
 	}
 }

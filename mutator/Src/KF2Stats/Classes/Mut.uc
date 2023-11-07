@@ -36,8 +36,6 @@ function NetDamage(
 	class<DamageType> DamageType, 
 	Actor DamageCauser
 ) {
-	local name ZedKey;
-
 	super.NetDamage(OriginalDamage, Damage, Injured, InstigatedBy, HitLocation, Momentum, DamageType, DamageCauser);
 
 	// `log(
@@ -48,6 +46,8 @@ function NetDamage(
 	// 	"type="$DamageType @
 	// 	"causer="$DamageCauser
 	// );
+
+	if (InstigatedBy == None) return;
 
 	// Detect fleshpound rage from husk backback
 	if (KFPlayerController(InstigatedBy) != None &&
@@ -62,12 +62,6 @@ function NetDamage(
 		KFPawn_ZedHusk(Injured) != None && Damage == 10000
 	) {
 		KF2Stats.Stats.AddEvent(KFPlayerController(InstigatedBy), ET_HUSK_BACKPACK);
-	}
-
-	// Detect damage to player
-	if (KFPawn_Human(Injured) != None && KFPawn_Monster(InstigatedBy.Pawn) != None) {
-		Zedkey = KFPawn_Monster(InstigatedBy.Pawn).LocalizationKey;
-		KF2Stats.Stats.AddInjuredByZed(KFPlayerController(Injured.Controller), Zedkey, Damage);
 	}
 }
 

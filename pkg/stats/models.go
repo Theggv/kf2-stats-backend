@@ -20,4 +20,5 @@ type ZedCounter struct {
 	FP     int `json:"fp"`
 	QP     int `json:"qp"`
 	Boss   int `json:"boss"`
+	Custom int `json:"custom"`
 }

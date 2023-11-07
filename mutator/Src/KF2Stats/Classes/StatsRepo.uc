@@ -327,87 +327,6 @@ function AddZedKill(KFPlayerController C, name ZedKey) {
 	}
 }
 
-function AddInjuredByZed(KFPlayerController C, name ZedKey, int Damage) {
-	local int i;
-
-	if (Damage <= 0) return;
-	if (!GetPlayerStatsIndex(C, i)) return;
-
-	switch (ZedKey) {
-		case 'KFPawn_ZedClot_Cyst': 
-			Players[i].Stats.InjuredBy.Cyst += Damage;
-			return;
-		case 'KFPawn_ZedClot_Alpha': 
-			Players[i].Stats.InjuredBy.AlphaClot += Damage;
-			return;
-		case 'KFPawn_ZedClot_Slasher': 
-			Players[i].Stats.InjuredBy.Slasher += Damage;
-			return;
-		case 'KFPawn_ZedCrawler': 
-			Players[i].Stats.InjuredBy.Crawler += Damage;
-			return;
-		case 'KFPawn_ZedGorefast': 
-			Players[i].Stats.InjuredBy.Gorefast += Damage;
-			return;
-		case 'KFPawn_ZedStalker': 
-			Players[i].Stats.InjuredBy.Stalker += Damage;
-			return;
-		case 'KFPawn_ZedScrake': 
-			Players[i].Stats.InjuredBy.Scrake += Damage;
-			return;
-		case 'KFPawn_ZedFleshpound': 
-			Players[i].Stats.InjuredBy.FP += Damage;
-			return;
-		case 'KFPawn_ZedFleshpoundMini': 
-			Players[i].Stats.InjuredBy.QP += Damage;
-			return;
-		case 'KFPawn_ZedBloat': 
-			Players[i].Stats.InjuredBy.Bloat += Damage;
-			return;
-		case 'KFPawn_ZedSiren': 
-			Players[i].Stats.InjuredBy.Siren += Damage;
-			return;
-		case 'KFPawn_ZedHusk': 
-			Players[i].Stats.InjuredBy.Husk += Damage;
-			return;
-		case 'KFPawn_ZedClot_AlphaKing': 
-			Players[i].Stats.InjuredBy.Rioter += Damage;
-			return;
-		case 'KFPawn_ZedCrawlerKing': 
-			Players[i].Stats.InjuredBy.EliteCrawler += Damage;
-			return;
-		case 'KFPawn_ZedGorefastDualBlade': 
-			Players[i].Stats.InjuredBy.Gorefiend += Damage;
-			return;
-		case 'KFPawn_ZedDAR_Emp': 
-			Players[i].Stats.InjuredBy.Edar += Damage;
-			return;
-		case 'KFPawn_ZedDAR_Laser': 
-			Players[i].Stats.InjuredBy.Edar += Damage;
-			return;
-		case 'KFPawn_ZedDAR_Rocket': 
-			Players[i].Stats.InjuredBy.Edar += Damage;
-			return;
-		case 'KFPawn_ZedHans': 
-			Players[i].Stats.InjuredBy.Boss += Damage;
-			return;
-		case 'KFPawn_ZedPatriarch': 
-			Players[i].Stats.InjuredBy.Boss += Damage;
-			return;
-		case 'KFPawn_ZedFleshpoundKing': 
-			Players[i].Stats.InjuredBy.Boss += Damage;
-			return;
-		case 'KFPawn_ZedBloatKing': 
-			Players[i].Stats.InjuredBy.Boss += Damage;
-			return;
-		case 'KFPawn_ZedMatriarch': 
-			Players[i].Stats.InjuredBy.Boss += Damage;
-			return;
-		default:
-			return;
-	}
-}
-
 function AddEvent(KFPlayerController C, EventType type) {
 	local int i;
 
@@ -522,25 +441,6 @@ function ResetPlayerData(KFPlayerController C) {
 	Players[i].Stats.Kills.Custom = 0;
 	Players[i].Stats.HuskBackpackKills = 0;
 	Players[i].Stats.HuskRages = 0;
-
-	Players[i].Stats.InjuredBy.Cyst = 0;
-	Players[i].Stats.InjuredBy.AlphaClot = 0;
-	Players[i].Stats.InjuredBy.Slasher = 0;
-	Players[i].Stats.InjuredBy.Stalker = 0;
-	Players[i].Stats.InjuredBy.Crawler = 0;
-	Players[i].Stats.InjuredBy.Gorefast = 0;
-	Players[i].Stats.InjuredBy.Rioter = 0;
-	Players[i].Stats.InjuredBy.EliteCrawler = 0;
-	Players[i].Stats.InjuredBy.Gorefiend = 0;
-	Players[i].Stats.InjuredBy.Siren = 0;
-	Players[i].Stats.InjuredBy.Bloat = 0;
-	Players[i].Stats.InjuredBy.Edar = 0;
-	Players[i].Stats.InjuredBy.Husk = 0;
-	Players[i].Stats.InjuredBy.Scrake = 0;
-	Players[i].Stats.InjuredBy.FP = 0;
-	Players[i].Stats.InjuredBy.QP = 0;
-	Players[i].Stats.InjuredBy.Boss = 0;
-	Players[i].Stats.InjuredBy.Scrake = 0;
 }
 
 private function UpdateGameData() {
