@@ -2,8 +2,10 @@ package session
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
+	"github.com/theggv/kf2-stats-backend/pkg/common/util"
 )
 
 type SessionService struct {
@@ -185,6 +187,61 @@ func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
 			cdData.SpawnCycle, cdData.MaxMonsters, cdData.WaveSizeFakes, cdData.ZedsType,
 			cdData.SpawnCycle, cdData.MaxMonsters, cdData.WaveSizeFakes, cdData.ZedsType,
 		)
+	}
+
+	if data.Players != nil {
+		ids := []int{}
+		for _, p := range *data.Players {
+			var id int
+			err := s.db.QueryRow("SELECT id FROM users WHERE auth_id = ? AND auth_type = ?",
+				p.AuthId, p.AuthType).Scan(&id)
+
+			if err != nil {
+				if err == sql.ErrNoRows {
+					continue
+				}
+
+				return err
+			}
+
+			ids = append(ids, id)
+			_, err = s.db.Exec(`
+				UPDATE users_activity 
+				SET current_session_id = ?,
+					perk = ?, level = ?, prestige = ?, 
+					health = ?, armor = ?, is_spectator = ?,
+					updated_at = CURRENT_TIMESTAMP
+				WHERE user_id = ?`,
+				data.SessionId, p.Perk, p.Level, p.Prestige,
+				p.Health, p.Armor, p.IsSpectator, id,
+			)
+			if err != nil {
+				return err
+			}
+		}
+
+		_, err = s.db.Exec(fmt.Sprintf(`
+			UPDATE users_activity 
+			SET last_session_id = current_session_id, 
+				current_session_id = NULL, 
+				updated_at = CURRENT_TIMESTAMP
+			WHERE current_session_id = %v AND user_id NOT IN (%v)`,
+			data.SessionId, util.IntArrayToString(ids, ",")),
+		)
+		if err != nil {
+			return err
+		}
+
+		_, err = s.db.Exec(fmt.Sprintf(`
+			UPDATE users_activity 
+			SET current_session_id = %v, 
+				updated_at = CURRENT_TIMESTAMP
+			WHERE user_id IN (%v)`,
+			data.SessionId, util.IntArrayToString(ids, ",")),
+		)
+		if err != nil {
+			return err
+		}
 	}
 
 	return err

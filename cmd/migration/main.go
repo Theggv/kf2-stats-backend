@@ -780,62 +780,15 @@ func insertWaveStatsPlayerInjuredBy(sqlite, mysql *sql.DB) {
 func insertUsersActivity(sqlite, mysql *sql.DB) {
 	fmt.Print("Inserting users activity...\n")
 
-	type data struct {
-		UserId           int `json:"user_id"`
-		CurrentSessionId int `json:"current_session_id"`
-		LastSessionId    int `json:"last_session_id"`
-
-		UpdatedAt *time.Time `json:"updated_at"`
-	}
-
-	rows, err := sqlite.Query(`
-		SELECT user_id, current_session_id, last_session_id, updated_at
-		FROM users_activity`,
+	_, err := mysql.Exec(`
+		INSERT INTO users_activity (
+			user_id, current_session_id, last_session_id)
+		SELECT id, NULL, NULL
+		FROM users`,
 	)
+
 	if err != nil {
 		panic(err)
-	}
-
-	chunkSize := 100
-	count := 0
-
-	items := make([]data, 0)
-
-	insert := func() {
-		executeInsert(mysql,
-			`INSERT IGNORE INTO users_activity (user_id, 
-				current_session_id, last_session_id, updated_at)`,
-			"(?, ?, ?, ?)",
-			items,
-			func(i data) (out []interface{}) {
-				out = append(out,
-					i.UserId, i.CurrentSessionId,
-					i.LastSessionId, i.UpdatedAt,
-				)
-				return
-			},
-		)
-	}
-
-	for rows.Next() {
-		if count == chunkSize {
-			insert()
-			items = items[:0]
-			count = 0
-		}
-
-		item := data{}
-		rows.Scan(
-			&item.UserId, &item.CurrentSessionId,
-			&item.LastSessionId, &item.UpdatedAt,
-		)
-
-		count += 1
-		items = append(items, item)
-	}
-
-	if len(items) > 0 {
-		insert()
 	}
 }
 
@@ -853,7 +806,6 @@ func insertWaveStatsPlayerComms(sqlite, mysql *sql.DB) {
 	if err != nil {
 		panic(err)
 	}
-
 }
 
 func main() {

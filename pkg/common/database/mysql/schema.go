@@ -36,6 +36,8 @@ func initSchema(db *sql.DB) error {
 			auth_type INTEGER NOT NULL,
 		
 			name VARCHAR(64) NOT NULL,
+			
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
 		
 			UNIQUE INDEX idx_uniq_users_auth (auth_id, auth_type)
 		)`,
@@ -252,6 +254,14 @@ func initSchema(db *sql.DB) error {
 			user_id INTEGER PRIMARY KEY NOT NULL,
 			current_session_id INTEGER,
 			last_session_id INTEGER,
+
+			perk INTEGER NOT NULL DEFAULT 0,
+			level INTEGER NOT NULL DEFAULT 0,
+			prestige INTEGER NOT NULL DEFAULT 0,
+
+			health INTEGER NOT NULL DEFAULT 0,
+			armor INTEGER NOT NULL DEFAULT 0,
+			is_spectator BOOLEAN NOT NULL DEFAULT FALSE,
 			
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -282,21 +292,6 @@ func initSchema(db *sql.DB) error {
 				new.siren + new.bloat + new.edar + new.husk_n + new.husk_b + 
 				new.scrake + new.fp + new.qp + new.boss + new.custom
 			);
-		END;
-	`)
-	tx.Exec(`
-		DROP TRIGGER IF EXISTS update_user_activity_on_wave_end;
-		CREATE TRIGGER update_user_activity_on_wave_end
-		AFTER INSERT ON wave_stats_player
-		FOR EACH ROW
-		BEGIN
-			UPDATE users_activity
-			SET current_session_id = 
-				(select min(ws.session_id) from wave_stats ws
-				inner join wave_stats_player wsp on wsp.stats_id = ws.id
-				where wsp.id = new.id),
-				updated_at = CURRENT_TIMESTAMP
-			WHERE user_id = new.player_id;
 		END;
 	`)
 	tx.Exec(`
