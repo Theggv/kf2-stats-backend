@@ -193,33 +193,6 @@ func initSchema(db *sql.DB) error {
 			FOREIGN KEY (player_stats_id) REFERENCES wave_stats_player(id) ON UPDATE CASCADE ON DELETE CASCADE
 		)
 	`)
-	tx.Exec(`
-		CREATE TABLE IF NOT EXISTS wave_stats_player_injured_by (
-			player_stats_id INTEGER PRIMARY KEY NOT NULL,
-
-			cyst INTEGER NOT NULL,
-			alpha_clot INTEGER NOT NULL,
-			slasher INTEGER NOT NULL,
-			stalker INTEGER NOT NULL,
-			crawler INTEGER NOT NULL,
-			gorefast INTEGER NOT NULL,
-			rioter INTEGER NOT NULL,
-			elite_crawler INTEGER NOT NULL,
-			gorefiend INTEGER NOT NULL,
-
-			siren INTEGER NOT NULL,
-			bloat INTEGER NOT NULL,
-			edar INTEGER NOT NULL,
-			husk INTEGER NOT NULL,
-
-			scrake INTEGER NOT NULL,
-			fp INTEGER NOT NULL,
-			qp INTEGER NOT NULL,
-			boss INTEGER NOT NULL,
-
-			FOREIGN KEY (player_stats_id) REFERENCES wave_stats_player(id) ON UPDATE CASCADE ON DELETE CASCADE
-		)
-	`)
 	tx.Exec(
 		`CREATE TABLE IF NOT EXISTS wave_stats_player_comms (
 			player_stats_id INTEGER PRIMARY KEY NOT NULL,

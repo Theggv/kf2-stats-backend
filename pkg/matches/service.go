@@ -467,11 +467,9 @@ func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResp
 			wsp.zedtime_count,
 			wsp.zedtime_length,
 			kills.*,
-			injured_by.*
 		FROM wave_stats ws
 		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
 		INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wsp.id
-		INNER JOIN wave_stats_player_injured_by injured_by ON injured_by.player_stats_id = wsp.id
 		WHERE ws.id = ?`, waveId,
 	)
 
@@ -485,7 +483,6 @@ func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResp
 		var useless int
 		player := PlayerWaveStats{}
 		kills := stats.ZedCounter{}
-		injuredBy := stats.ZedCounter{}
 
 		err := rows.Scan(&player.PlayerStatsId,
 			&player.ShotsFired, &player.ShotsHit, &player.ShotsHS,
@@ -498,11 +495,6 @@ func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResp
 			&kills.Siren, &kills.Bloat, &kills.Edar,
 			&kills.Husk, &player.HuskBackpackKills, &player.HuskRages,
 			&kills.Scrake, &kills.FP, &kills.QP, &kills.Boss, &kills.Custom,
-			&useless,
-			&injuredBy.Cyst, &injuredBy.AlphaClot, &injuredBy.Slasher, &injuredBy.Stalker, &injuredBy.Crawler, &injuredBy.Gorefast,
-			&injuredBy.Rioter, &injuredBy.EliteCrawler, &injuredBy.Gorefiend,
-			&injuredBy.Siren, &injuredBy.Bloat, &injuredBy.Edar, &injuredBy.Husk,
-			&injuredBy.Scrake, &injuredBy.FP, &injuredBy.QP, &injuredBy.Boss,
 		)
 
 		if err != nil {
@@ -510,7 +502,6 @@ func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResp
 		}
 
 		player.Kills = kills
-		player.Injuredby = injuredBy
 
 		players = append(players, player)
 	}
@@ -522,25 +513,23 @@ func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResp
 
 func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPlayerStatsResponse, error) {
 	rows, err := s.db.Query(`
-SELECT
-wsp.id,
-wsp.shots_fired,
-wsp.shots_hit,
-wsp.shots_hs,
-wsp.dosh_earned,
-wsp.heals_given,
-wsp.heals_recv,
-wsp.damage_dealt,
-wsp.damage_taken,
-wsp.zedtime_count,
-wsp.zedtime_length,
-kills.*,
-injured_by.*
-FROM wave_stats ws
-INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
-INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wsp.id
-INNER JOIN wave_stats_player_injured_by injured_by ON injured_by.player_stats_id = wsp.id
-WHERE ws.session_id = ? and wsp.player_id = ?`, sessionId, userId,
+		SELECT
+			wsp.id,
+			wsp.shots_fired,
+			wsp.shots_hit,
+			wsp.shots_hs,
+			wsp.dosh_earned,
+			wsp.heals_given,
+			wsp.heals_recv,
+			wsp.damage_dealt,
+			wsp.damage_taken,
+			wsp.zedtime_count,
+			wsp.zedtime_length,
+			kills.*,
+		FROM wave_stats ws
+		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+		INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wsp.id
+		WHERE ws.session_id = ? and wsp.player_id = ?`, sessionId, userId,
 	)
 
 	if err != nil {
@@ -553,7 +542,6 @@ WHERE ws.session_id = ? and wsp.player_id = ?`, sessionId, userId,
 		var useless int
 		player := PlayerWaveStats{}
 		kills := stats.ZedCounter{}
-		injuredBy := stats.ZedCounter{}
 
 		err := rows.Scan(&player.PlayerStatsId,
 			&player.ShotsFired, &player.ShotsHit, &player.ShotsHS,
@@ -566,11 +554,6 @@ WHERE ws.session_id = ? and wsp.player_id = ?`, sessionId, userId,
 			&kills.Siren, &kills.Bloat, &kills.Edar,
 			&kills.Husk, &player.HuskBackpackKills, &player.HuskRages,
 			&kills.Scrake, &kills.FP, &kills.QP, &kills.Boss, &kills.Custom,
-			&useless,
-			&injuredBy.Cyst, &injuredBy.AlphaClot, &injuredBy.Slasher, &injuredBy.Stalker, &injuredBy.Crawler, &injuredBy.Gorefast,
-			&injuredBy.Rioter, &injuredBy.EliteCrawler, &injuredBy.Gorefiend,
-			&injuredBy.Siren, &injuredBy.Bloat, &injuredBy.Edar, &injuredBy.Husk,
-			&injuredBy.Scrake, &injuredBy.FP, &injuredBy.QP, &injuredBy.Boss,
 		)
 
 		if err != nil {
@@ -578,7 +561,6 @@ WHERE ws.session_id = ? and wsp.player_id = ?`, sessionId, userId,
 		}
 
 		player.Kills = kills
-		player.Injuredby = injuredBy
 
 		waves = append(waves, player)
 	}
