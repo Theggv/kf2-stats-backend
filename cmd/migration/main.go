@@ -242,7 +242,7 @@ func insertSessionGameData(sqlite, mysql *sql.DB) {
 		PlayersOnline int        `json:"players_online"`
 		PlayersAlive  int        `json:"players_alive"`
 		Wave          int        `json:"wave"`
-		IsTraderTime  int        `json:"is_trader_time"`
+		IsTraderTime  bool       `json:"is_trader_time"`
 		ZedsLeft      int        `json:"zeds_left"`
 		UpdatedAt     *time.Time `json:"updated_at"`
 	}
