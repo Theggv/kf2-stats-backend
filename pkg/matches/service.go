@@ -466,7 +466,7 @@ func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResp
 			wsp.damage_taken,
 			wsp.zedtime_count,
 			wsp.zedtime_length,
-			kills.*,
+			kills.*
 		FROM wave_stats ws
 		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
 		INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wsp.id
@@ -525,7 +525,7 @@ func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPl
 			wsp.damage_taken,
 			wsp.zedtime_count,
 			wsp.zedtime_length,
-			kills.*,
+			kills.*
 		FROM wave_stats ws
 		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
 		INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wsp.id
