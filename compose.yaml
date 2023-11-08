@@ -12,7 +12,8 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
   app:
-    container_name: kf2-stats-backend
+    image: kf2-stats-backend
+    container_name: backend
     init: true
     build:
       context: .
