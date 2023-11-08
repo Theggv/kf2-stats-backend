@@ -1,5 +1,3 @@
-## KF2 Stats Backend
-
 ## Requirements
 
 - MySQL 8.0+ (non-docker setup)
@@ -34,7 +32,6 @@ Generated docs are available on http://localhost:3000/docs/index.html
 ```
 go build -o ./main.exe -a -ldflags '-linkmode external -extldflags "-static"' ./cmd/production
 ```
-
 
 ### Docker
 ```
