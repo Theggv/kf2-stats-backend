@@ -9,8 +9,6 @@ services:
       - "MYSQL_PASSWORD=${DB_PASSWORD}"
       - "MYSQL_DATABASE=${DB_NAME}"
     command: ["--log_bin_trust_function_creators=1"]
-    volumes:
-      - mysql-data:/var/lib/mysql
   app:
     container_name: kf2-stats-backend
     init: true
