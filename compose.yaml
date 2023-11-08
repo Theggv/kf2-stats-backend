@@ -11,9 +11,12 @@ services:
     command: ["--log_bin_trust_function_creators=1"]
     volumes:
       - mysql-data:/var/lib/mysql
-  app:
+    networks:
+      - backend
+  backend:
     container_name: kf2-stats-backend
     init: true
+    restart: always
     build:
       context: .
       dockerfile: docker/Dockerfile
@@ -29,5 +32,16 @@ services:
     links:
       - "db:database"
     working_dir: /code
+    networks:
+      - backend
+      - frontend
+
+networks:
+  backend:
+    name: backend
+  frontend:
+    name: frontend
+    driver: bridge
+
 volumes:
   mysql-data:
