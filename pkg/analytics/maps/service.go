@@ -28,14 +28,14 @@ func (s *MapAnalyticsService) GetMapAnalytics(
 	conds := make([]string, 0)
 	args := make([]interface{}, 0)
 
-	conds = append(conds, "session.status in (2,3,4)")
+	conds = append(conds, "session.is_completed = TRUE")
 
 	if req.ServerId != 0 {
 		conds = append(conds, "session.server_id = ?")
 		args = append(args, req.ServerId)
 	}
 
-	conds = append(conds, "session.completed_at BETWEEN ? AND ?")
+	conds = append(conds, "DATE(session.completed_at) BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	sql := fmt.Sprintf(`

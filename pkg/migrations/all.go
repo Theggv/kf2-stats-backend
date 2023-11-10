@@ -46,4 +46,6 @@ func writeMigration(db *sql.DB, name string) {
 
 func ExecuteAll(db *sql.DB) {
 	initTables(db)
+
+	migration_2023_10_11_indexes(db)
 }
