@@ -59,7 +59,7 @@ func initSchema(db *sql.DB) error {
 			started_at TIMESTAMP,
 			completed_at TIMESTAMP,
 
-			is_completed BOOLEAN GENERATED ALWAYS AS (status IN (2,3,4)) STORED,
+			is_completed BOOLEAN GENERATED ALWAYS AS (status IN (-1,2,3,4)) STORED,
 
 			FOREIGN KEY (server_id) REFERENCES server(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			FOREIGN KEY (map_id) REFERENCES maps(id) ON UPDATE CASCADE ON DELETE CASCADE,
