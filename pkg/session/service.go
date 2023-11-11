@@ -165,28 +165,26 @@ func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
 		data.SessionId,
 	)
 
-	if data.CDData == nil {
-		return err
-	}
+	if data.CDData != nil {
+		length, err := s.getLength(data.SessionId)
+		if err != nil {
+			return err
+		}
 
-	length, err := s.getLength(data.SessionId)
-	if err != nil {
-		return err
-	}
+		if data.GameData.Wave <= *length {
+			cdData := data.CDData
 
-	if data.GameData.Wave <= *length {
-		cdData := data.CDData
-
-		_, err = s.db.Exec(`
+			_, err = s.db.Exec(`
 			INSERT INTO session_game_data_cd 
 				(session_id, spawn_cycle, max_monsters, wave_size_fakes, zeds_type)
 			VALUES (?, ?, ?, ?, ?)
 				ON DUPLICATE KEY UPDATE
 				spawn_cycle = ?, max_monsters = ?, wave_size_fakes = ?, zeds_type = ?`,
-			data.SessionId,
-			cdData.SpawnCycle, cdData.MaxMonsters, cdData.WaveSizeFakes, cdData.ZedsType,
-			cdData.SpawnCycle, cdData.MaxMonsters, cdData.WaveSizeFakes, cdData.ZedsType,
-		)
+				data.SessionId,
+				cdData.SpawnCycle, cdData.MaxMonsters, cdData.WaveSizeFakes, cdData.ZedsType,
+				cdData.SpawnCycle, cdData.MaxMonsters, cdData.WaveSizeFakes, cdData.ZedsType,
+			)
+		}
 	}
 
 	if data.Players != nil {
