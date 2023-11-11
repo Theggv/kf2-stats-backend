@@ -52,19 +52,3 @@ type PlayersOnlineRequest struct {
 type PlayersOnlineResponse struct {
 	Items []PeriodData `json:"items"`
 }
-
-type PerkStats struct {
-	Perk  int `json:"perk"`
-	Count int `json:"count"`
-}
-
-type PerksPlayTimeRequest struct {
-	ServerId int `json:"server_id"`
-
-	From time.Time `json:"date_from" binding:"required"`
-	To   time.Time `json:"date_to" binding:"required"`
-}
-
-type PerksPlayTimeResponse struct {
-	Items []PerkStats `json:"items"`
-}

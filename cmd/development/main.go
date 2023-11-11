@@ -7,6 +7,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	analyticsMaps "github.com/theggv/kf2-stats-backend/pkg/analytics/maps"
+	analyticsPerks "github.com/theggv/kf2-stats-backend/pkg/analytics/perks"
 	analyticsServer "github.com/theggv/kf2-stats-backend/pkg/analytics/server"
 	"github.com/theggv/kf2-stats-backend/pkg/common/config"
 	"github.com/theggv/kf2-stats-backend/pkg/common/database/mysql"
@@ -57,6 +58,7 @@ func main() {
 
 	analyticsMaps.RegisterRoutes(api, rootStore.AnalyticsMaps, memoryStore)
 	analyticsServer.RegisterRoutes(api, rootStore.AnalyticsServer, memoryStore)
+	analyticsPerks.RegisterRoutes(api, rootStore.AnalyticsPerks, memoryStore)
 
 	// Setup swagger
 	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

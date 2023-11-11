@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	analyticsMaps "github.com/theggv/kf2-stats-backend/pkg/analytics/maps"
+	analyticsPerks "github.com/theggv/kf2-stats-backend/pkg/analytics/perks"
 	analyticsServer "github.com/theggv/kf2-stats-backend/pkg/analytics/server"
 	"github.com/theggv/kf2-stats-backend/pkg/common/config"
 	"github.com/theggv/kf2-stats-backend/pkg/common/steamapi"
@@ -28,6 +29,7 @@ type Store struct {
 
 	AnalyticsMaps   *analyticsMaps.MapAnalyticsService
 	AnalyticsServer *analyticsServer.ServerAnalyticsService
+	AnalyticsPerks  *analyticsPerks.PerksAnalyticsService
 }
 
 func New(db *sql.DB, config *config.AppConfig) *Store {
@@ -43,6 +45,7 @@ func New(db *sql.DB, config *config.AppConfig) *Store {
 
 		AnalyticsMaps:   analyticsMaps.NewMapAnalyticsService(db),
 		AnalyticsServer: analyticsServer.NewServerAnalyticsService(db),
+		AnalyticsPerks:  analyticsPerks.NewPerksAnalyticsService(db),
 	}
 
 	store.Stats.Inject(store.Users)
