@@ -25,24 +25,24 @@ func (s *ServerAnalyticsService) GetSessionCount(
 	conds := make([]string, 0)
 	args := make([]interface{}, 0)
 
-	conds = append(conds, "session.status in (2,3,4)", "session.server_id = ?")
+	conds = append(conds, "session.is_completed = TRUE", "session.server_id = ?")
 	args = append(args, req.ServerId)
 
 	var period string
 	switch req.Period {
 	case Hour:
-		period = "substr(session.completed_at, 12, 2)"
+		period = "HOUR(session.completed_at)"
 	case Day, Week:
-		period = "substr(session.completed_at, 9, 2)"
+		period = "DAY(session.completed_at)"
 	case Month:
-		period = "substr(session.completed_at, 6, 2)"
+		period = "MONTH(session.completed_at)"
 	case Year:
-		period = "substr(session.completed_at, 1, 4)"
+		period = "YEAR(session.completed_at)"
 	default:
 		return nil, newIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "substr(session.completed_at, 1, 10) BETWEEN ? AND ?")
+	conds = append(conds, "DATE(session.completed_at) BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	sql := fmt.Sprintf(`
@@ -50,7 +50,6 @@ func (s *ServerAnalyticsService) GetSessionCount(
 			count(*) AS times_played, 
 			%v as period
 		FROM session
-		INNER JOIN server ON server.id = session.server_id
 		WHERE %v
 		GROUP BY period
 		ORDER BY period`,
@@ -88,22 +87,22 @@ func (s *ServerAnalyticsService) GetUsageInMinutes(
 	conds := make([]string, 0)
 	args := make([]interface{}, 0)
 
-	conds = append(conds, "session.status in (2,3,4)", "session.server_id = ?")
+	conds = append(conds, "session.is_completed = TRUE", "session.server_id = ?")
 	args = append(args, req.ServerId)
 
 	var period string
 	switch req.Period {
 	case Day, Week:
-		period = "substr(session.completed_at, 9, 2)"
+		period = "DAY(session.completed_at)"
 	case Month:
-		period = "substr(session.completed_at, 6, 2)"
+		period = "MONTH(session.completed_at)"
 	case Year:
-		period = "substr(session.completed_at, 1, 4)"
+		period = "YEAR(session.completed_at)"
 	default:
 		return nil, newIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "substr(session.completed_at, 1, 10) BETWEEN ? AND ?")
+	conds = append(conds, "DATE(session.completed_at) BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	sql := fmt.Sprintf(`
@@ -111,7 +110,6 @@ func (s *ServerAnalyticsService) GetUsageInMinutes(
 			sum(timestampdiff(MINUTE, started_at, completed_at)), 
 			%v as period
 		FROM session
-		INNER JOIN server ON server.id = session.server_id
 		WHERE %v
 		GROUP BY period
 		ORDER BY period`,
@@ -149,24 +147,24 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 	conds := make([]string, 0)
 	args := make([]interface{}, 0)
 
-	conds = append(conds, "session.status in (2,3,4)", "session.server_id = ?")
+	conds = append(conds, "session.is_completed = TRUE", "session.server_id = ?")
 	args = append(args, req.ServerId)
 
 	var period string
 	switch req.Period {
 	case Hour:
-		period = "substr(session.completed_at, 12, 2)"
+		period = "HOUR(session.completed_at)"
 	case Day, Week:
-		period = "substr(session.completed_at, 9, 2)"
+		period = "DAY(session.completed_at)"
 	case Month:
-		period = "substr(session.completed_at, 6, 2)"
+		period = "MONTH(session.completed_at)"
 	case Year:
-		period = "substr(session.completed_at, 1, 4)"
+		period = "YEAR(session.completed_at)"
 	default:
 		return nil, newIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "session.completed_at BETWEEN ? AND ?")
+	conds = append(conds, "DATE(session.completed_at) BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	sql := fmt.Sprintf(`

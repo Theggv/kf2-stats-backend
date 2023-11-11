@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 )
 
 type controller struct {
@@ -19,7 +20,7 @@ type controller struct {
 // @Router /analytics/maps [post]
 func (c *controller) getMapAnalytics(ctx *gin.Context) {
 	var req MapAnalyticsRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())
 		return

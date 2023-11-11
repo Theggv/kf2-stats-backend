@@ -1,9 +1,13 @@
 package main
 
 import (
+	"time"
+
+	"github.com/chenyahui/gin-cache/persist"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	analyticsMaps "github.com/theggv/kf2-stats-backend/pkg/analytics/maps"
+	analyticsPerks "github.com/theggv/kf2-stats-backend/pkg/analytics/perks"
 	analyticsServer "github.com/theggv/kf2-stats-backend/pkg/analytics/server"
 	"github.com/theggv/kf2-stats-backend/pkg/common/config"
 	"github.com/theggv/kf2-stats-backend/pkg/common/database/mysql"
@@ -24,6 +28,7 @@ func main() {
 	)
 
 	rootStore := store.New(db, config)
+	memoryStore := persist.NewMemoryStore(5 * time.Minute)
 
 	// Run migrations
 	migrations.ExecuteAll(db)
@@ -41,10 +46,11 @@ func main() {
 	session.RegisterRoutes(api, rootStore.Sessions)
 	stats.RegisterRoutes(api, rootStore.Stats)
 	users.RegisterRoutes(api, rootStore.Users)
-	matches.RegisterRoutes(api, rootStore.Matches)
+	matches.RegisterRoutes(api, rootStore.Matches, memoryStore)
 
-	analyticsMaps.RegisterRoutes(api, rootStore.AnalyticsMaps)
-	analyticsServer.RegisterRoutes(api, rootStore.AnalyticsServer)
+	analyticsMaps.RegisterRoutes(api, rootStore.AnalyticsMaps, memoryStore)
+	analyticsServer.RegisterRoutes(api, rootStore.AnalyticsServer, memoryStore)
+	analyticsPerks.RegisterRoutes(api, rootStore.AnalyticsPerks, memoryStore)
 
 	// Run app
 	r.Run(config.ServerAddr)

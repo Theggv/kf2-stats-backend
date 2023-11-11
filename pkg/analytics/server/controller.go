@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 )
 
 type controller struct {
@@ -19,7 +20,7 @@ type controller struct {
 // @Router /analytics/server/session/count [post]
 func (c *controller) getSessionCount(ctx *gin.Context) {
 	var req SessionCountRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())
 		return
@@ -45,7 +46,7 @@ func (c *controller) getSessionCount(ctx *gin.Context) {
 // @Router /analytics/server/usage [post]
 func (c *controller) getUsageInMinutes(ctx *gin.Context) {
 	var req UsageInMinutesRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())
 		return
@@ -71,7 +72,7 @@ func (c *controller) getUsageInMinutes(ctx *gin.Context) {
 // @Router /analytics/server/online [post]
 func (c *controller) getPlayersOnline(ctx *gin.Context) {
 	var req PlayersOnlineRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())
 		return
