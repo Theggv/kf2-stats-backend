@@ -35,7 +35,7 @@ func (s *MapAnalyticsService) GetMapAnalytics(
 		args = append(args, req.ServerId)
 	}
 
-	conds = append(conds, "DATE(session.completed_at) BETWEEN ? AND ?")
+	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	sql := fmt.Sprintf(`

@@ -16,4 +16,5 @@ func RegisterRoutes(r *gin.RouterGroup, serverService *ServerService) {
 	routes.GET("/", controller.getByPattern)
 	routes.GET("/:id", controller.getById)
 	routes.PUT("/name", middleware.AuthMiddleware, controller.updateName)
+	routes.POST("/users/recent", controller.getRecentUsers)
 }

@@ -2,10 +2,22 @@ package server
 
 import (
 	"database/sql"
+	"fmt"
+	"strings"
+
+	"github.com/theggv/kf2-stats-backend/pkg/common/models"
+	"github.com/theggv/kf2-stats-backend/pkg/common/util"
+	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
 type ServerService struct {
 	db *sql.DB
+
+	userService *users.UserService
+}
+
+func (s *ServerService) Inject(userService *users.UserService) {
+	s.userService = userService
 }
 
 func NewServerService(db *sql.DB) *ServerService {
@@ -92,4 +104,188 @@ func (s *ServerService) UpdateName(data UpdateNameRequest) error {
 		data.Name, data.Id)
 
 	return err
+}
+
+type userIdTuple struct {
+	SessionId         int
+	WaveStatsPlayerId int
+}
+
+func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResponse, error) {
+	page, limit := util.ParsePagination(req.Pager)
+
+	conds := []string{}
+	conds = append(conds, fmt.Sprintf("session.server_id = %v", req.ServerId))
+
+	sql := fmt.Sprintf(`
+		SELECT 
+			users.id,
+			users.name,
+			users.auth_id,
+			users.auth_type,
+			max(session.id),
+			max(wsp.id),
+			max(wsp.created_at)
+		FROM session
+		INNER JOIN wave_stats ws ON ws.session_id = session.id
+		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+		INNER JOIN users ON wsp.player_id = users.id
+		WHERE %v
+		GROUP BY users.id
+		ORDER BY max(wsp.id) DESC
+		LIMIT %v, %v
+		`, strings.Join(conds, " AND "), page*limit, limit,
+	)
+
+	rows, err := s.db.Query(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	waveStatsPlayerIdSet := make(map[int]userIdTuple)
+	steamIdSet := make(map[string]bool)
+	items := []*RecentUsersResponseUser{}
+
+	for rows.Next() {
+		item := RecentUsersResponseUser{}
+
+		rows.Scan(
+			&item.Id, &item.Name, &item.AuthId, &item.Type,
+			&item.SessionId, &item.WaveStatsPlayerId, &item.UpdatedAt,
+		)
+
+		waveStatsPlayerIdSet[item.Id] = userIdTuple{
+			SessionId:         item.SessionId,
+			WaveStatsPlayerId: item.WaveStatsPlayerId,
+		}
+
+		if item.Type == models.Steam {
+			steamIdSet[item.AuthId] = true
+		}
+
+		items = append(items, &item)
+	}
+
+	{
+		steamIds := []string{}
+		for key := range steamIdSet {
+			steamIds = append(steamIds, key)
+		}
+
+		steamData, err := s.userService.GetSteamData(steamIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, item := range items {
+			if data, ok := steamData[item.AuthId]; ok {
+				item.Avatar = &data.Avatar
+				item.ProfileUrl = &data.ProfileUrl
+			}
+		}
+	}
+
+	{
+		sessions, err := s.getSessions(waveStatsPlayerIdSet)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, item := range items {
+			if data, ok := sessions[item.Id]; ok {
+				item.Session = data
+			}
+		}
+	}
+
+	return &RecentUsersResponse{
+		Items: items,
+	}, nil
+}
+
+func (s *ServerService) getSessions(
+	userIds map[int]userIdTuple,
+) (map[int]*RecentUsersResponseUserSession, error) {
+	wspIds := []int{}
+	for _, value := range userIds {
+		wspIds = append(wspIds, value.WaveStatsPlayerId)
+	}
+
+	sql := fmt.Sprintf(`
+		SELECT
+			wsp.player_id,
+			session.id,
+			session.mode,
+			session.length,
+			session.diff,
+			session.status,
+			gd.wave,
+			cd.spawn_cycle,
+			cd.max_monsters,
+			cd.wave_size_fakes,
+			cd.zeds_type,
+			maps.name
+		FROM session
+		INNER JOIN wave_stats ws ON ws.session_id = session.id
+		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+		INNER JOIN maps ON maps.id = session.map_id
+		INNER JOIN session_game_data gd ON gd.session_id = session.id
+		LEFT JOIN session_game_data_cd cd ON cd.session_id = session.id
+		WHERE wsp.id IN (%v)
+		`, util.IntArrayToString(wspIds, ","),
+	)
+
+	rows, err := s.db.Query(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	perkConds := []string{}
+	items := make(map[int]*RecentUsersResponseUserSession)
+	for rows.Next() {
+		item := RecentUsersResponseUserSession{}
+		cdData := models.CDGameData{}
+
+		rows.Scan(
+			&item.PlayerId, &item.Id, &item.Mode, &item.Length, &item.Difficulty, &item.Status, &item.Wave,
+			&cdData.SpawnCycle, &cdData.MaxMonsters, &cdData.WaveSizeFakes, &cdData.ZedsType,
+			&item.MapName,
+		)
+
+		if cdData.SpawnCycle != nil {
+			item.CDData = &cdData
+		}
+
+		items[item.PlayerId] = &item
+		perkConds = append(perkConds,
+			fmt.Sprintf("(session.id = %v AND wsp.player_id = %v)", item.Id, item.PlayerId),
+		)
+	}
+
+	sql = fmt.Sprintf(`
+		SELECT DISTINCT wsp.player_id, perk
+		FROM session
+		INNER JOIN wave_stats ws ON ws.session_id = session.id
+		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+		INNER JOIN maps on maps.id = session.map_id
+		WHERE %v
+		`, strings.Join(perkConds, " OR "),
+	)
+
+	rows, err = s.db.Query(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var playerId, perk int
+
+		rows.Scan(&playerId, &perk)
+
+		if data, ok := items[playerId]; ok {
+			data.Perks = append(data.Perks, perk)
+		}
+	}
+
+	return items, nil
 }
