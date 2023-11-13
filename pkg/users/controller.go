@@ -3,6 +3,7 @@ package users
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -59,4 +60,52 @@ func (c *userController) filter(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, res)
+}
+
+// @Summary Get recent sessions for user
+// @Tags 	Users
+// @Produce json
+// @Param   user body    RecentSessionsRequest true "Filter JSON"
+// @Success 201 {object} RecentSessionsResponse
+// @Router /users/sessions/recent [post]
+func (c *userController) getRecentSessions(ctx *gin.Context) {
+	var req RecentSessionsRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	res, err := c.service.getRecentSessions(req)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
+}
+
+// @Summary Get user with detailed by id
+// @Tags 	Users
+// @Produce json
+// @Param   id path   	 	int true "User id"
+// @Success 200 {object} 	FilterUsersResponseUser
+// @Router /users/{id}/detailed [get]
+func (c *userController) getUserDetailed(ctx *gin.Context) {
+	id, err := strconv.Atoi(ctx.Params.ByName("id"))
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	item, err := c.service.getUserDetailed(id)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, item)
 }

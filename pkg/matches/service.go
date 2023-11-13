@@ -97,7 +97,7 @@ func (s *MatchesService) getById(id int) (*Match, error) {
 
 func (s *MatchesService) getLastServerMatch(id int) (*Match, error) {
 	row := s.db.QueryRow(`
-		SELECT server_id FROM session
+		SELECT session.id FROM session
 		WHERE server_id = ?
 		ORDER BY id desc
 		LIMIT 1`, id,

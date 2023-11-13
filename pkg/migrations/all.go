@@ -49,4 +49,5 @@ func ExecuteAll(db *sql.DB) {
 
 	migration_2023_10_11_indexes(db)
 	migration_2023_10_11_is_completed(db)
+	migration_2023_10_13_indexes(db)
 }

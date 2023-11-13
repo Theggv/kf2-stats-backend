@@ -48,6 +48,7 @@ func New(db *sql.DB, config *config.AppConfig) *Store {
 		AnalyticsPerks:  analyticsPerks.NewPerksAnalyticsService(db),
 	}
 
+	store.Servers.Inject(store.Users)
 	store.Stats.Inject(store.Users)
 	store.Matches.Inject(store.Sessions, store.Maps, store.Servers, store.SteamApi)
 	store.Users.Inject(store.SteamApi)

@@ -31,18 +31,18 @@ func (s *ServerAnalyticsService) GetSessionCount(
 	var period string
 	switch req.Period {
 	case Hour:
-		period = "HOUR(session.completed_at)"
+		period = "HOUR(session.started_at)"
 	case Day, Week:
-		period = "DAY(session.completed_at)"
+		period = "DAY(session.started_at)"
 	case Month:
-		period = "MONTH(session.completed_at)"
+		period = "MONTH(session.started_at)"
 	case Year:
-		period = "YEAR(session.completed_at)"
+		period = "YEAR(session.started_at)"
 	default:
 		return nil, newIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "DATE(session.completed_at) BETWEEN ? AND ?")
+	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	sql := fmt.Sprintf(`
@@ -93,16 +93,16 @@ func (s *ServerAnalyticsService) GetUsageInMinutes(
 	var period string
 	switch req.Period {
 	case Day, Week:
-		period = "DAY(session.completed_at)"
+		period = "DAY(session.started_at)"
 	case Month:
-		period = "MONTH(session.completed_at)"
+		period = "MONTH(session.started_at)"
 	case Year:
-		period = "YEAR(session.completed_at)"
+		period = "YEAR(session.started_at)"
 	default:
 		return nil, newIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "DATE(session.completed_at) BETWEEN ? AND ?")
+	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?", "session.completed_at IS NOT NULL")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	sql := fmt.Sprintf(`
@@ -153,18 +153,18 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 	var period string
 	switch req.Period {
 	case Hour:
-		period = "HOUR(session.completed_at)"
+		period = "HOUR(session.started_at)"
 	case Day, Week:
-		period = "DAY(session.completed_at)"
+		period = "DAY(session.started_at)"
 	case Month:
-		period = "MONTH(session.completed_at)"
+		period = "MONTH(session.started_at)"
 	case Year:
-		period = "YEAR(session.completed_at)"
+		period = "YEAR(session.started_at)"
 	default:
 		return nil, newIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "DATE(session.completed_at) BETWEEN ? AND ?")
+	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	sql := fmt.Sprintf(`

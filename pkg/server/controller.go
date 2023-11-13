@@ -106,3 +106,27 @@ func (c *serverController) updateName(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{})
 }
+
+// @Summary Get recent server users
+// @Tags 	Server
+// @Produce json
+// @Param   body body 		RecentUsersRequest true "Body"
+// @Success 201 {object} 	RecentUsersResponse
+// @Router /servers/users/recent [post]
+func (c *serverController) getRecentUsers(ctx *gin.Context) {
+	var req RecentUsersRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	res, err := c.service.GetRecentUsers(req)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
+}
