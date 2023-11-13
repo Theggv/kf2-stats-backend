@@ -198,8 +198,29 @@ func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResp
 		}
 	}
 
+	// Prepare count query
+	sql = fmt.Sprintf(`
+		SELECT count(distinct users.id) FROM session
+		INNER JOIN wave_stats ws ON ws.session_id = session.id
+		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+		INNER JOIN users ON wsp.player_id = users.id
+		WHERE %v`,
+		strings.Join(conds, " AND "),
+	)
+
+	row := s.db.QueryRow(sql)
+	var total int
+	if row.Scan(&total) != nil {
+		return nil, err
+	}
+
 	return &RecentUsersResponse{
 		Items: items,
+		Metadata: models.PaginationResponse{
+			Page:           page,
+			ResultsPerPage: limit,
+			TotalResults:   total,
+		},
 	}, nil
 }
 

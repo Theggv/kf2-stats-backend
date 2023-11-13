@@ -281,22 +281,19 @@ func (s *MatchesService) filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		items = append(items, item)
 	}
 
-	// Prepare count query
-	sql = fmt.Sprintf(`
-		SELECT count(*) FROM session
-		%v
-		WHERE %v`,
-		strings.Join(joins, "\n"),
-		strings.Join(conditions, " AND "),
-	)
-
-	// Execute count query
-	row := s.db.QueryRow(sql)
-
-	// Parsing results
 	var total int
-	if row.Scan(&total) != nil {
-		return nil, err
+	{
+		sql = fmt.Sprintf(`
+			SELECT count(*) FROM session
+			%v
+			WHERE %v`,
+			strings.Join(joins, "\n"),
+			strings.Join(conditions, " AND "),
+		)
+
+		if err := s.db.QueryRow(sql).Scan(&total); err != nil {
+			return nil, err
+		}
 	}
 
 	return &FilterMatchesResponse{

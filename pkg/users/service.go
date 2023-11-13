@@ -174,7 +174,7 @@ func (s *UserService) filter(req FilterUsersRequest) (*FilterUsersResponse, erro
 			users_activity.updated_at
 		FROM users
 		INNER JOIN users_activity ON users_activity.user_id = users.id
-		WHERE lower(users.name) like '%%%v%%'
+		WHERE lower(users.name) LIKE '%%%v%%'
 		ORDER BY users_activity.updated_at DESC
 		LIMIT %v, %v
 		`, req.SearchText, page*limit, limit,
@@ -255,8 +255,28 @@ func (s *UserService) filter(req FilterUsersRequest) (*FilterUsersResponse, erro
 		}
 	}
 
+	var total int
+	{
+		// Prepare count query
+		sql = fmt.Sprintf(`
+			SELECT count(*) FROM users
+			INNER JOIN users_activity ON users_activity.user_id = users.id
+			WHERE lower(users.name) LIKE '%%%v%%'`,
+			req.SearchText,
+		)
+
+		if err := s.db.QueryRow(sql).Scan(&total); err != nil {
+			return nil, err
+		}
+	}
+
 	return &FilterUsersResponse{
 		Items: items,
+		Metadata: models.PaginationResponse{
+			Page:           page,
+			ResultsPerPage: limit,
+			TotalResults:   total,
+		},
 	}, nil
 }
 
@@ -418,7 +438,27 @@ func (s *UserService) getRecentSessions(req RecentSessionsRequest) (*RecentSessi
 		}
 	}
 
+	var total int
+	{
+		sql = fmt.Sprintf(`
+			SELECT count(distinct session.id) FROM session
+			INNER JOIN wave_stats ws ON ws.session_id = session.id
+			INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+			WHERE wsp.player_id = %v`,
+			req.UserId,
+		)
+
+		if err := s.db.QueryRow(sql).Scan(&total); err != nil {
+			return nil, err
+		}
+	}
+
 	return &RecentSessionsResponse{
 		Items: items,
+		Metadata: models.PaginationResponse{
+			Page:           page,
+			ResultsPerPage: limit,
+			TotalResults:   total,
+		},
 	}, nil
 }
