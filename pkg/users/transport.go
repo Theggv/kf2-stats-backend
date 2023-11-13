@@ -18,6 +18,8 @@ type CreateUserResponse struct {
 }
 
 type FilterUsersRequest struct {
+	SearchText string `json:"search_text"`
+
 	Pager models.PaginationRequest `json:"pager"`
 }
 

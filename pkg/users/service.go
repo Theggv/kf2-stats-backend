@@ -174,9 +174,10 @@ func (s *UserService) filter(req FilterUsersRequest) (*FilterUsersResponse, erro
 			users_activity.updated_at
 		FROM users
 		INNER JOIN users_activity ON users_activity.user_id = users.id
+		WHERE lower(users.name) like '%%%v%%'
 		ORDER BY users_activity.updated_at DESC
 		LIMIT %v, %v
-		`, page*limit, limit,
+		`, req.SearchText, page*limit, limit,
 	)
 
 	rows, err := s.db.Query(sql)
