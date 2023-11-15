@@ -204,7 +204,7 @@ func (s *MatchesService) filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		SELECT %v FROM session
 		%v
 		WHERE %v
-		ORDER BY session.id %v
+		ORDER BY session.updated_at %v
 		LIMIT %v, %v`,
 		strings.Join(attributes, ", "),
 		strings.Join(joins, "\n"),
