@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/chenyahui/gin-cache/persist"
 )
 
 const (
@@ -15,12 +18,21 @@ const (
 type SteamApiUserService struct {
 	apiKey string
 	client *http.Client
+
+	memoryStore *persist.MemoryStore
+}
+
+type SteamUser struct {
+	AuthId     string
+	ProfileUrl *string
+	Avatar     *string
 }
 
 func NewSteamApiUserService(apiKey string) *SteamApiUserService {
 	return &SteamApiUserService{
-		apiKey: apiKey,
-		client: &http.Client{},
+		apiKey:      apiKey,
+		client:      &http.Client{},
+		memoryStore: persist.NewMemoryStore(5 * time.Minute),
 	}
 }
 
@@ -28,22 +40,30 @@ func (s *SteamApiUserService) GetUserSummary(steamIds []string) ([]GetUserSummar
 	summaries := []GetUserSummaryPlayer{}
 	chunkSize := 100
 
-	for i := 0; i < len(steamIds); i += chunkSize {
-		end := i + chunkSize
-		if end > len(steamIds) {
-			end = len(steamIds)
-		}
-		if i == end {
-			break
-		}
-
-		data, err := s.getUsersSummaryInternal(steamIds[i:end])
-		if err != nil {
-			fmt.Printf("warn: %v\n", err)
-			return summaries, nil
+	var cached GetUserSummaryPlayer
+	chunk := []string{}
+	for i, steamId := range steamIds {
+		if err := s.memoryStore.Get(steamId, &cached); err == nil {
+			summaries = append(summaries, cached)
+			continue
 		}
 
-		summaries = append(summaries, data...)
+		chunk = append(chunk, steamId)
+
+		if len(chunk) == chunkSize || i == len(steamIds)-1 {
+			data, err := s.getUsersSummaryInternal(chunk)
+			if err != nil {
+				fmt.Printf("warn: %v\n", err)
+				return summaries, nil
+			}
+
+			summaries = append(summaries, data...)
+			chunk = chunk[:0]
+		}
+	}
+
+	for _, item := range summaries {
+		s.memoryStore.Set(item.SteamId, item, 5*time.Minute)
 	}
 
 	return summaries, nil

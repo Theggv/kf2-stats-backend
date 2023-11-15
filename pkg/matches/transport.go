@@ -93,3 +93,32 @@ type AggregatedPlayerStats struct {
 type GetMatchAggregatedStatsResponse struct {
 	Players []AggregatedPlayerStats `json:"players"`
 }
+
+type GetMatchLiveDataResponsePlayer struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+
+	ProfileUrl *string `json:"profile_url"`
+	Avatar     *string `json:"avatar"`
+
+	Perk     models.Perk `json:"perk"`
+	Level    int         `json:"level"`
+	Prestige int         `json:"prestige"`
+
+	Health int `json:"health"`
+	Armor  int `json:"armor"`
+
+	AuthId      string          `json:"-"`
+	AuthType    models.AuthType `json:"-"`
+	IsSpectator bool            `json:"-"`
+}
+
+type GetMatchLiveDataResponse struct {
+	Status models.GameStatus `json:"status"`
+
+	GameData models.GameData    `json:"game_data"`
+	CDData   *models.CDGameData `json:"cd_data"`
+
+	Players    []*GetMatchLiveDataResponsePlayer `json:"players"`
+	Spectators []*GetMatchLiveDataResponsePlayer `json:"spectators"`
+}

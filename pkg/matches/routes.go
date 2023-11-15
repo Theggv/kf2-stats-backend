@@ -22,6 +22,8 @@ func RegisterRoutes(
 	routes.GET("/:id",
 		cache.CacheByRequestURI(memoryStore, 15*time.Second),
 		controller.getById)
+	routes.GET("/:id/live",
+		controller.getMatchLiveData)
 	routes.GET("/:id/waves",
 		cache.CacheByRequestURI(memoryStore, 15*time.Second),
 		controller.getMatchWaves)

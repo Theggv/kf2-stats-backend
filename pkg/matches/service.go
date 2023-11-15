@@ -12,11 +12,13 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/stats"
+	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
 type MatchesService struct {
 	db *sql.DB
 
+	userService     *users.UserService
 	sessionService  *session.SessionService
 	mapsService     *maps.MapsService
 	serverService   *server.ServerService
@@ -24,11 +26,13 @@ type MatchesService struct {
 }
 
 func (s *MatchesService) Inject(
+	userService *users.UserService,
 	sessionService *session.SessionService,
 	mapsService *maps.MapsService,
 	serverService *server.ServerService,
 	steamApiService *steamapi.SteamApiUserService,
 ) {
+	s.userService = userService
 	s.sessionService = sessionService
 	s.mapsService = mapsService
 	s.serverService = serverService
@@ -607,4 +611,113 @@ func (s *MatchesService) getMatchAggregatedStats(sessionId int) (*GetMatchAggreg
 	return &GetMatchAggregatedStatsResponse{
 		Players: players,
 	}, nil
+}
+
+func (s *MatchesService) getMatchLiveData(sessionId int) (*GetMatchLiveDataResponse, error) {
+	sql := `
+		SELECT
+			max_players, players_online, players_alive, 
+			wave, is_trader_time, zeds_left,
+			spawn_cycle, max_monsters, wave_size_fakes, zeds_type
+		FROM session_game_data gd
+		LEFT JOIN session_game_data_cd cd ON cd.session_id = gd.session_id
+		WHERE gd.session_id = ?`
+
+	gameData := models.GameData{}
+	cdData := models.CDGameData{}
+
+	err := s.db.QueryRow(sql, sessionId).Scan(
+		&gameData.MaxPlayers, &gameData.PlayersOnline, &gameData.PlayersAlive,
+		&gameData.Wave, &gameData.IsTraderTime, &gameData.ZedsLeft,
+		&cdData.SpawnCycle, &cdData.MaxMonsters,
+		&cdData.WaveSizeFakes, &cdData.ZedsType,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if gameData.IsTraderTime {
+		gameData.ZedsLeft = 0
+	}
+
+	var status models.GameStatus
+	err = s.db.QueryRow(`SELECT status FROM session WHERE id = ?`, sessionId).Scan(&status)
+
+	res := GetMatchLiveDataResponse{
+		Status:     status,
+		GameData:   gameData,
+		Players:    []*GetMatchLiveDataResponsePlayer{},
+		Spectators: []*GetMatchLiveDataResponsePlayer{},
+	}
+	if cdData.MaxMonsters != nil {
+		res.CDData = &cdData
+	}
+
+	rows, err := s.db.Query(`
+		SELECT 
+			users.id,
+			users.name,
+			users.auth_id,
+			users.auth_type,
+			activity.perk,
+			activity.level,
+			activity.prestige,
+			activity.health,
+			activity.armor,
+			activity.is_spectator
+		FROM users
+		INNER JOIN users_activity activity ON users.id = activity.user_id
+		where current_session_id = ?
+		`, sessionId,
+	)
+
+	steamIdSet := make(map[string]bool)
+	for rows.Next() {
+		item := GetMatchLiveDataResponsePlayer{}
+
+		err = rows.Scan(
+			&item.Id, &item.Name, &item.AuthId, &item.AuthType,
+			&item.Perk, &item.Level, &item.Prestige,
+			&item.Health, &item.Armor,
+			&item.IsSpectator,
+		)
+
+		if item.AuthType == models.Steam {
+			steamIdSet[item.AuthId] = true
+		}
+
+		if item.IsSpectator {
+			res.Spectators = append(res.Spectators, &item)
+		} else {
+			res.Players = append(res.Players, &item)
+		}
+	}
+
+	{
+		steamIds := []string{}
+		for key := range steamIdSet {
+			steamIds = append(steamIds, key)
+		}
+
+		steamData, err := s.userService.GetSteamData(steamIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, item := range res.Players {
+			if data, ok := steamData[item.AuthId]; ok {
+				item.Avatar = &data.Avatar
+				item.ProfileUrl = &data.ProfileUrl
+			}
+		}
+
+		for _, item := range res.Spectators {
+			if data, ok := steamData[item.AuthId]; ok {
+				item.Avatar = &data.Avatar
+				item.ProfileUrl = &data.ProfileUrl
+			}
+		}
+	}
+
+	return &res, nil
 }
