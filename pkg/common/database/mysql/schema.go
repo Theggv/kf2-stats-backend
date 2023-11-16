@@ -311,6 +311,42 @@ func initSchema(db *sql.DB) error {
 				timestampdiff(MINUTE, gd.updated_at, CURRENT_TIMESTAMP) > minutes;
 		END;
 	`)
+	tx.Exec(`
+		DROP FUNCTION IF EXISTS get_avg_zt;
+		/* 	Get user's average zed time length for certain period by using trimmed mean.
+		 *
+		 *	It calculates average zed time for each session played by user,
+		 *	drops worst and best results, determined by percent parameter and
+		 *	calculates average on rest of data.
+		 */
+		CREATE FUNCTION get_avg_zt(user_id INT, percent REAL, date_from DATE, date_to DATE)
+		RETURNS REAL READS SQL DATA
+		BEGIN
+			DECLARE value REAL;
+
+			SELECT coalesce(avg(avg_zedtime), 0) INTO value
+			FROM (
+				SELECT 
+					avg_zedtime,
+					cume_dist() OVER (ORDER BY avg_zedtime) as dist 
+				FROM (
+					SELECT round(coalesce(sum(wsp.zedtime_length) / sum(wsp.zedtime_count), 0), 2) as avg_zedtime
+					FROM session
+					INNER JOIN wave_stats ws ON ws.session_id = session.id
+					INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+					INNER JOIN aggregated_kills kills ON wsp.id = kills.player_stats_id
+					WHERE 
+						wsp.player_id = user_id 
+						AND session.started_at BETWEEN date_from AND date_to 
+						AND wsp.perk = 2
+					GROUP BY session.id
+				) t
+			) t
+			WHERE dist >= percent AND dist <= (1 - percent);
+
+			RETURN round(value, 2);
+		END;
+	`)
 
 	return err
 }
