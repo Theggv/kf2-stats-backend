@@ -42,7 +42,7 @@ func (s *SteamApiUserService) GetUserSummary(steamIds []string) ([]GetUserSummar
 
 	var cached GetUserSummaryPlayer
 	chunk := []string{}
-	for i, steamId := range steamIds {
+	for _, steamId := range steamIds {
 		if err := s.memoryStore.Get(steamId, &cached); err == nil {
 			summaries = append(summaries, cached)
 			continue
@@ -50,7 +50,7 @@ func (s *SteamApiUserService) GetUserSummary(steamIds []string) ([]GetUserSummar
 
 		chunk = append(chunk, steamId)
 
-		if len(chunk) == chunkSize || i == len(steamIds)-1 {
+		if len(chunk) == chunkSize {
 			data, err := s.getUsersSummaryInternal(chunk)
 			if err != nil {
 				fmt.Printf("warn: %v\n", err)
@@ -60,6 +60,17 @@ func (s *SteamApiUserService) GetUserSummary(steamIds []string) ([]GetUserSummar
 			summaries = append(summaries, data...)
 			chunk = chunk[:0]
 		}
+	}
+
+	if len(chunk) > 0 {
+		data, err := s.getUsersSummaryInternal(chunk)
+		if err != nil {
+			fmt.Printf("warn: %v\n", err)
+			return summaries, nil
+		}
+
+		summaries = append(summaries, data...)
+		chunk = chunk[:0]
 	}
 
 	for _, item := range summaries {
