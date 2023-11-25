@@ -2,7 +2,6 @@ package perks
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -134,8 +133,4 @@ func (s *PerksAnalyticsService) GetPerksKills(
 	}
 
 	return &items, nil
-}
-
-func newIncorrectPeriod(period int) error {
-	return errors.New(fmt.Sprintf("expected TimePeriod enum, got %v", period))
 }

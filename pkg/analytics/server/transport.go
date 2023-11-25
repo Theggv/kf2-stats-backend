@@ -1,23 +1,17 @@
 package server
 
-import "time"
+import (
+	"time"
 
-type TimePeriod = int
-
-const (
-	Hour TimePeriod = iota + 1
-	Day
-	Week
-	Month
-	Year
+	"github.com/theggv/kf2-stats-backend/pkg/analytics"
 )
 
 type SessionCountRequest struct {
 	ServerId int `json:"server_id" binding:"required"`
 
-	From   time.Time  `json:"date_from" binding:"required"`
-	To     time.Time  `json:"date_to" binding:"required"`
-	Period TimePeriod `json:"period" binding:"required"`
+	From   time.Time            `json:"date_from" binding:"required"`
+	To     time.Time            `json:"date_to" binding:"required"`
+	Period analytics.TimePeriod `json:"period" binding:"required"`
 }
 
 type PeriodData struct {
@@ -32,9 +26,9 @@ type SessionCountResponse struct {
 type UsageInMinutesRequest struct {
 	ServerId int `json:"server_id" binding:"required"`
 
-	From   time.Time  `json:"date_from" binding:"required"`
-	To     time.Time  `json:"date_to" binding:"required"`
-	Period TimePeriod `json:"period" binding:"required"`
+	From   time.Time            `json:"date_from" binding:"required"`
+	To     time.Time            `json:"date_to" binding:"required"`
+	Period analytics.TimePeriod `json:"period" binding:"required"`
 }
 
 type UsageInMinutesResponse struct {
@@ -44,9 +38,9 @@ type UsageInMinutesResponse struct {
 type PlayersOnlineRequest struct {
 	ServerId int `json:"server_id" binding:"required"`
 
-	From   time.Time  `json:"date_from" binding:"required"`
-	To     time.Time  `json:"date_to" binding:"required"`
-	Period TimePeriod `json:"period" binding:"required"`
+	From   time.Time            `json:"date_from" binding:"required"`
+	To     time.Time            `json:"date_to" binding:"required"`
+	Period analytics.TimePeriod `json:"period" binding:"required"`
 }
 
 type PlayersOnlineResponse struct {

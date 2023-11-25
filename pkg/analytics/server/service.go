@@ -2,9 +2,10 @@ package server
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/theggv/kf2-stats-backend/pkg/analytics"
 )
 
 type ServerAnalyticsService struct {
@@ -30,16 +31,16 @@ func (s *ServerAnalyticsService) GetSessionCount(
 
 	var period string
 	switch req.Period {
-	case Hour:
+	case analytics.Hour:
 		period = "HOUR(session.started_at)"
-	case Day, Week:
+	case analytics.Day, analytics.Week:
 		period = "DAY(session.started_at)"
-	case Month:
+	case analytics.Month:
 		period = "MONTH(session.started_at)"
-	case Year:
+	case analytics.Year:
 		period = "YEAR(session.started_at)"
 	default:
-		return nil, newIncorrectPeriod(req.Period)
+		return nil, analytics.NewIncorrectPeriod(req.Period)
 	}
 
 	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
@@ -92,14 +93,14 @@ func (s *ServerAnalyticsService) GetUsageInMinutes(
 
 	var period string
 	switch req.Period {
-	case Day, Week:
+	case analytics.Day, analytics.Week:
 		period = "DAY(session.started_at)"
-	case Month:
+	case analytics.Month:
 		period = "MONTH(session.started_at)"
-	case Year:
+	case analytics.Year:
 		period = "YEAR(session.started_at)"
 	default:
-		return nil, newIncorrectPeriod(req.Period)
+		return nil, analytics.NewIncorrectPeriod(req.Period)
 	}
 
 	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?", "session.completed_at IS NOT NULL")
@@ -152,16 +153,16 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 
 	var period string
 	switch req.Period {
-	case Hour:
+	case analytics.Hour:
 		period = "HOUR(session.started_at)"
-	case Day, Week:
+	case analytics.Day, analytics.Week:
 		period = "DAY(session.started_at)"
-	case Month:
+	case analytics.Month:
 		period = "MONTH(session.started_at)"
-	case Year:
+	case analytics.Year:
 		period = "YEAR(session.started_at)"
 	default:
-		return nil, newIncorrectPeriod(req.Period)
+		return nil, analytics.NewIncorrectPeriod(req.Period)
 	}
 
 	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
@@ -203,8 +204,4 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 	}
 
 	return &items, nil
-}
-
-func newIncorrectPeriod(period int) error {
-	return errors.New(fmt.Sprintf("expected TimePeriod enum, got %v", period))
 }

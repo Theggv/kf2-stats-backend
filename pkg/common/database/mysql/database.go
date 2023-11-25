@@ -21,5 +21,13 @@ func NewDBInstance(user, pass, host, db string, port int) *sql.DB {
 		panic(err)
 	}
 
+	if err := initTriggers(instance); err != nil {
+		panic(err)
+	}
+
+	if err := initStored(instance); err != nil {
+		panic(err)
+	}
+
 	return instance
 }

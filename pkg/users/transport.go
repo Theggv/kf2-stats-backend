@@ -66,6 +66,21 @@ type FilterUsersResponse struct {
 type RecentSessionsRequest struct {
 	UserId int `json:"user_id" binding:"required"`
 
+	Date *time.Time `json:"date"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+	MapIds    []int `json:"map_ids"`
+
+	Mode       *models.GameMode       `json:"mode"`
+	Length     *models.GameLength     `json:"length"`
+	Difficulty *models.GameDifficulty `json:"diff"`
+	Status     *models.GameStatus     `json:"status"`
+
+	SpawnCycle     *string `json:"spawn_cycle"`
+	MinWave        *int    `json:"min_wave"`
+	MinMaxMonsters *int    `json:"min_mm"`
+
 	Pager models.PaginationRequest `json:"pager"`
 }
 

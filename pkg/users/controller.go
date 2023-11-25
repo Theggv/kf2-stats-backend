@@ -62,13 +62,13 @@ func (c *userController) filter(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, res)
 }
 
-// @Summary Get recent sessions for user
+// @Summary Get sessions for user by filter
 // @Tags 	Users
 // @Produce json
 // @Param   user body    RecentSessionsRequest true "Filter JSON"
 // @Success 201 {object} RecentSessionsResponse
-// @Router /users/sessions/recent [post]
-func (c *userController) getRecentSessions(ctx *gin.Context) {
+// @Router /users/sessions [post]
+func (c *userController) getUserSessions(ctx *gin.Context) {
 	var req RecentSessionsRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
@@ -76,7 +76,7 @@ func (c *userController) getRecentSessions(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.service.getRecentSessions(req)
+	res, err := c.service.getUserSessions(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())

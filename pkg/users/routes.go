@@ -15,5 +15,5 @@ func RegisterRoutes(r *gin.RouterGroup, service *UserService) {
 	routes.POST("/", middleware.AuthMiddleware, controller.create)
 	routes.GET("/:id/detailed", controller.getUserDetailed)
 	routes.POST("/filter", controller.filter)
-	routes.POST("/sessions/recent", controller.getRecentSessions)
+	routes.POST("/sessions", controller.getUserSessions)
 }

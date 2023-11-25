@@ -246,106 +246,48 @@ func initSchema(db *sql.DB) error {
 		)`,
 	)
 	tx.Exec(`
-		DROP TRIGGER IF EXISTS insert_aggregated_kills;
-		CREATE TRIGGER insert_aggregated_kills
-		AFTER INSERT ON wave_stats_player_kills
-		FOR EACH ROW
-		BEGIN
-			INSERT INTO aggregated_kills (player_stats_id, trash, medium, large, total)
-			VALUES (
-				new.player_stats_id,
-				new.cyst + new.alpha_clot + new.slasher + 
-				new.stalker + new.crawler + new.gorefast + 
-				new.rioter + new.elite_crawler + new.gorefiend,
-				new.siren + new.bloat + new.edar + new.husk_n + new.husk_b, 
-				new.scrake + new.fp + new.qp, 
-				new.cyst + new.alpha_clot + new.slasher + 
-				new.stalker + new.crawler + new.gorefast + 
-				new.rioter + new.elite_crawler + new.gorefiend + 
-				new.siren + new.bloat + new.edar + new.husk_n + new.husk_b + 
-				new.scrake + new.fp + new.qp + new.boss + new.custom
-			);
-		END;
-	`)
-	tx.Exec(`
-		DROP TRIGGER IF EXISTS update_user_activity_on_session_end;
-		CREATE TRIGGER update_user_activity_on_session_end
-		AFTER UPDATE ON session
-		FOR EACH ROW
-		BEGIN
-			IF new.status <> old.status && new.status IN (2,3,4,-1) THEN
-				UPDATE users_activity
-				SET last_session_id = current_session_id, 
-					current_session_id = NULL, 
-					updated_at = CURRENT_TIMESTAMP
-				WHERE current_session_id = new.id;
-			END IF;
-		END;
-	`)
-	tx.Exec(`
-		DROP PROCEDURE IF EXISTS fix_dropped_sessions;
-		CREATE PROCEDURE fix_dropped_sessions()
-		BEGIN
-			UPDATE session
-			INNER JOIN (
-				SELECT server_id, max(id) as max_id FROM session
-				GROUP BY server_id
-			) as tbl on session.server_id = tbl.server_id
-			SET status = -1
-			WHERE 
-				session.id <> 0 AND session.id NOT IN (tbl.max_id) AND 
-				status IN (0, 1);
-		END;
-	`)
-	tx.Exec(`
-		DROP PROCEDURE IF EXISTS abort_old_sessions;
-		CREATE PROCEDURE abort_old_sessions(IN minutes int)
-		BEGIN
-			UPDATE session
-			INNER JOIN server ON server.id = session.server_id
-			INNER JOIN session_game_data gd ON gd.session_id = session.id
-			SET session.status = -1
-			WHERE 
-				session.id <> 0 AND 
-				session.status IN (0, 1) AND 
-				timestampdiff(MINUTE, gd.updated_at, CURRENT_TIMESTAMP) > minutes;
-		END;
-	`)
-	tx.Exec(`
-		DROP FUNCTION IF EXISTS get_avg_zt;
-		/* 	Get user's average zed time length for certain period by using trimmed mean.
-		 *
-		 *	It calculates average zed time for each session played by user,
-		 *	drops worst and best results, determined by percent parameter and
-		 *	calculates average on rest of data.
-		 */
-		CREATE FUNCTION get_avg_zt(user_id INT, percent REAL, date_from DATE, date_to DATE)
-		RETURNS REAL READS SQL DATA
-		BEGIN
-			DECLARE value REAL;
+		CREATE TABLE IF NOT EXISTS session_aggregated (
+			id INTEGER PRIMARY KEY AUTO_INCREMENT,
+			session_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			perk INTEGER NOT NULL,
 
-			SELECT coalesce(avg(avg_zedtime), 0) INTO value
-			FROM (
-				SELECT 
-					avg_zedtime,
-					cume_dist() OVER (ORDER BY avg_zedtime) as dist 
-				FROM (
-					SELECT round(coalesce(sum(wsp.zedtime_length) / sum(wsp.zedtime_count), 0), 2) as avg_zedtime
-					FROM session
-					INNER JOIN wave_stats ws ON ws.session_id = session.id
-					INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
-					INNER JOIN aggregated_kills kills ON wsp.id = kills.player_stats_id
-					WHERE 
-						wsp.player_id = user_id 
-						AND session.started_at BETWEEN date_from AND date_to 
-						AND wsp.perk = 2
-					GROUP BY session.id
-				) t
-			) t
-			WHERE dist >= percent AND dist <= (1 - percent);
+			playtime_seconds INTEGER NOT NULL,
+			waves_played INTEGER NOT NULL, 
+			deaths INTEGER NOT NULL,
 
-			RETURN round(value, 2);
-		END;
+			shots_fired INTEGER NOT NULL,
+			shots_hit INTEGER NOT NULL,
+			shots_hs INTEGER NOT NULL,
+
+			dosh_earned INTEGER NOT NULL,
+
+			heals_given INTEGER NOT NULL,
+			heals_recv INTEGER NOT NULL,
+
+			damage_dealt INTEGER NOT NULL,
+			damage_taken INTEGER NOT NULL,
+
+			zedtime_count INTEGER NOT NULL,
+			zedtime_length REAL NOT NULL,
+
+			FOREIGN KEY (session_id) REFERENCES session(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+
+			UNIQUE INDEX idx_uniq_perk_user_id_session_id (perk, user_id, session_id)
+		)
+	`)
+	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS session_aggregated_kills (
+			id INTEGER PRIMARY KEY NOT NULL,
+
+			trash INTEGER NOT NULL,
+			medium INTEGER NOT NULL,
+			large INTEGER NOT NULL,
+			total INTEGER NOT NULL,
+
+			FOREIGN KEY (id) REFERENCES session_aggregated(id) ON UPDATE CASCADE ON DELETE CASCADE
+		)
 	`)
 
 	return err
