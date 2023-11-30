@@ -310,3 +310,24 @@ func (s *ServerService) getSessions(
 
 	return items, nil
 }
+
+func (s *ServerService) GetLastSession(id int) (*ServerLastSessionResponse, error) {
+
+	res := ServerLastSessionResponse{}
+
+	err := s.db.
+		QueryRow(`
+			SELECT id, status
+			FROM session
+			WHERE server_id = ?
+			ORDER BY id DESC
+			LIMIT 1`, id,
+		).
+		Scan(&res.Id, &res.Status)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}

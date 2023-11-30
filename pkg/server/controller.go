@@ -130,3 +130,27 @@ func (c *serverController) getRecentUsers(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, res)
 }
+
+// @Summary Get last session by server id
+// @Tags 	Server
+// @Produce json
+// @Param   id path   	 	int true "Server id"
+// @Success 200 {object} 	ServerLastSessionResponse
+// @Router /servers/{id}/last-session [get]
+func (c *serverController) getLastSession(ctx *gin.Context) {
+	id, err := strconv.Atoi(ctx.Params.ByName("id"))
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	item, err := c.service.GetLastSession(id)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, item)
+}

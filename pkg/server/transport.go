@@ -71,3 +71,8 @@ type RecentUsersResponse struct {
 	Items    []*RecentUsersResponseUser `json:"items"`
 	Metadata models.PaginationResponse  `json:"metadata"`
 }
+
+type ServerLastSessionResponse struct {
+	Id     int               `json:"id"`
+	Status models.GameStatus `json:"status"`
+}
