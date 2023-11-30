@@ -13,6 +13,8 @@ const (
 	Week
 	Month
 	Year
+	Date
+	DateHour
 )
 
 func NewIncorrectPeriod(period int) error {

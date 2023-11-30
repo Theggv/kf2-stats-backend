@@ -26,8 +26,12 @@ func (s *ServerAnalyticsService) GetSessionCount(
 	conds := make([]string, 0)
 	args := make([]interface{}, 0)
 
-	conds = append(conds, "session.is_completed = TRUE", "session.server_id = ?")
-	args = append(args, req.ServerId)
+	conds = append(conds, "session.is_completed = TRUE")
+
+	if req.ServerId != 0 {
+		conds = append(conds, "session.server_id = ?")
+		args = append(args, req.ServerId)
+	}
 
 	var period string
 	switch req.Period {
@@ -36,9 +40,13 @@ func (s *ServerAnalyticsService) GetSessionCount(
 	case analytics.Day, analytics.Week:
 		period = "DAY(session.started_at)"
 	case analytics.Month:
-		period = "MONTH(session.started_at)"
+		period = "DATE_FORMAT(session.started_at, '%Y-%m-01 00:00:00')"
 	case analytics.Year:
-		period = "YEAR(session.started_at)"
+		period = "DATE_FORMAT(session.started_at, '%Y-01-01 00:00:00')"
+	case analytics.Date:
+		period = "DATE_FORMAT(session.started_at, '%Y-%m-%d 00:00:00')"
+	case analytics.DateHour:
+		period = "DATE_FORMAT(session.started_at, '%Y-%m-%d %H:00:00')"
 	default:
 		return nil, analytics.NewIncorrectPeriod(req.Period)
 	}
@@ -148,8 +156,12 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 	conds := make([]string, 0)
 	args := make([]interface{}, 0)
 
-	conds = append(conds, "session.is_completed = TRUE", "session.server_id = ?")
-	args = append(args, req.ServerId)
+	conds = append(conds, "session.is_completed = TRUE")
+
+	if req.ServerId != 0 {
+		conds = append(conds, "session.server_id = ?")
+		args = append(args, req.ServerId)
+	}
 
 	var period string
 	switch req.Period {
@@ -158,9 +170,13 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 	case analytics.Day, analytics.Week:
 		period = "DAY(session.started_at)"
 	case analytics.Month:
-		period = "MONTH(session.started_at)"
+		period = "DATE_FORMAT(session.started_at, '%Y-%m-01 00:00:00')"
 	case analytics.Year:
-		period = "YEAR(session.started_at)"
+		period = "DATE_FORMAT(session.started_at, '%Y-01-01 00:00:00')"
+	case analytics.Date:
+		period = "DATE_FORMAT(session.started_at, '%Y-%m-%d 00:00:00')"
+	case analytics.DateHour:
+		period = "DATE_FORMAT(session.started_at, '%Y-%m-%d %H:00:00')"
 	default:
 		return nil, analytics.NewIncorrectPeriod(req.Period)
 	}
@@ -170,11 +186,10 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 
 	sql := fmt.Sprintf(`
 		SELECT
-			count(DISTINCT wsp.player_id), 
+			count(DISTINCT aggr.user_id), 
 			%v as period
 		FROM session
-		INNER JOIN wave_stats ws on ws.session_id = session.id
-		INNER JOIN wave_stats_player wsp on wsp.stats_id = ws.id
+		INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
 		WHERE %v
 		GROUP BY period
 		ORDER BY period`,
@@ -204,4 +219,68 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 	}
 
 	return &items, nil
+}
+
+func (s *ServerAnalyticsService) GetPopularServers() (*PopularServersResponse, error) {
+	sql := fmt.Sprintf(`
+		SELECT
+			server.id,
+			server.name,
+			total_sessions,
+			total_users,
+			diff
+		FROM (
+			SELECT
+				session.server_id as server_id,
+				count(DISTINCT session.id) as total_sessions,
+				count(DISTINCT aggr.user_id) as total_users,
+				min(session.diff) as diff
+			FROM session
+			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
+			WHERE DATE(session.started_at) BETWEEN now() - interval 30 day AND now()
+			GROUP BY server_id
+			ORDER BY total_users desc
+			LIMIT 5
+		) t
+		INNER JOIN server ON server.id = t.server_id`,
+	)
+
+	rows, err := s.db.Query(sql)
+	if err != nil {
+		return nil, err
+	}
+
+	items := []PopularServersResponseItem{}
+	for rows.Next() {
+		item := PopularServersResponseItem{}
+
+		err = rows.Scan(&item.Id, &item.Name,
+			&item.TotalSessions, &item.TotalUsers, &item.Difficulty,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, item)
+	}
+
+	return &PopularServersResponse{
+		Items: items,
+	}, nil
+}
+
+func (s *ServerAnalyticsService) GetCurrentOnline() (*TotalOnlineResponse, error) {
+	sql := fmt.Sprintf(`
+		SELECT count(*) as total_online
+		FROM users_activity
+		WHERE current_session_id is not null OR updated_at >= now() - interval 1 minute`,
+	)
+
+	res := TotalOnlineResponse{}
+	err := s.db.QueryRow(sql).Scan(&res.Count)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res, nil
 }

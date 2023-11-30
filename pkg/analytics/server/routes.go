@@ -45,4 +45,11 @@ func RegisterRoutes(
 			}),
 		),
 		controller.getPlayersOnline)
+
+	routes.GET("/server/popular",
+		cache.CacheByRequestURI(memoryStore, 5*time.Minute),
+		controller.getPopularServers)
+	routes.GET("/server/current-online",
+		cache.CacheByRequestURI(memoryStore, 1*time.Minute),
+		controller.getCurrentOnline)
 }

@@ -7,7 +7,7 @@ import (
 )
 
 type SessionCountRequest struct {
-	ServerId int `json:"server_id" binding:"required"`
+	ServerId int `json:"server_id"`
 
 	From   time.Time            `json:"date_from" binding:"required"`
 	To     time.Time            `json:"date_to" binding:"required"`
@@ -36,7 +36,7 @@ type UsageInMinutesResponse struct {
 }
 
 type PlayersOnlineRequest struct {
-	ServerId int `json:"server_id" binding:"required"`
+	ServerId int `json:"server_id"`
 
 	From   time.Time            `json:"date_from" binding:"required"`
 	To     time.Time            `json:"date_to" binding:"required"`
@@ -45,4 +45,21 @@ type PlayersOnlineRequest struct {
 
 type PlayersOnlineResponse struct {
 	Items []PeriodData `json:"items"`
+}
+
+type PopularServersResponseItem struct {
+	Id         int    `json:"id"`
+	Name       string `json:"name"`
+	Difficulty int    `json:"diff"`
+
+	TotalSessions int `json:"total_sessions"`
+	TotalUsers    int `json:"total_users"`
+}
+
+type PopularServersResponse struct {
+	Items []PopularServersResponseItem `json:"items"`
+}
+
+type TotalOnlineResponse struct {
+	Count int `json:"count"`
 }

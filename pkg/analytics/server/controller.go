@@ -89,3 +89,35 @@ func (c *controller) getPlayersOnline(ctx *gin.Context) {
 		Items: *items,
 	})
 }
+
+// @Summary Get popular servers by sessions count
+// @Tags 	Analytics
+// @Produce json
+// @Success 200 {object} 	PopularServersResponse
+// @Router /analytics/server/popular [get]
+func (c *controller) getPopularServers(ctx *gin.Context) {
+	res, err := c.service.GetPopularServers()
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
+}
+
+// @Summary Get number of currently online players
+// @Tags 	Analytics
+// @Produce json
+// @Success 200 {object} 	TotalOnlineResponse
+// @Router /analytics/server/current-online [get]
+func (c *controller) getCurrentOnline(ctx *gin.Context) {
+	res, err := c.service.GetCurrentOnline()
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
+}
