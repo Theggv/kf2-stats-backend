@@ -30,7 +30,7 @@ func (s *PerksAnalyticsService) GetPerksPlayTime(
 	}
 
 	if req.UserId != 0 {
-		conds = append(conds, "wsp.player_id = ?")
+		conds = append(conds, "aggr.user_id = ?")
 		args = append(args, req.UserId)
 	}
 
@@ -39,15 +39,14 @@ func (s *PerksAnalyticsService) GetPerksPlayTime(
 
 	sql := fmt.Sprintf(`
 		SELECT 
-			floor(sum(timestampdiff(SECOND, ws.started_at, ws.completed_at)) / 3600) as time_played_hours,
-			wsp.perk
+			floor(sum(aggr.playtime_seconds) / 3600) as time_played_hours,
+			aggr.perk
 		FROM session
-		INNER JOIN wave_stats ws ON session.id = ws.session_id
-		INNER JOIN wave_stats_player wsp ON ws.id = wsp.stats_id
+		INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
 		WHERE %v
-		GROUP BY wsp.perk
+		GROUP BY aggr.perk
 		HAVING time_played_hours > 0
-		ORDER BY wsp.perk`,
+		ORDER BY aggr.perk`,
 		strings.Join(conds, " AND "),
 	)
 
@@ -88,7 +87,7 @@ func (s *PerksAnalyticsService) GetPerksKills(
 	}
 
 	if req.UserId != 0 {
-		conds = append(conds, "wsp.player_id = ?")
+		conds = append(conds, "aggr.user_id = ?")
 		args = append(args, req.UserId)
 	}
 
@@ -98,15 +97,14 @@ func (s *PerksAnalyticsService) GetPerksKills(
 	sql := fmt.Sprintf(`
 		SELECT
 			sum(kills.total) as kills,
-			wsp.perk
+			aggr.perk
 		FROM session
-		INNER JOIN wave_stats ws ON session.id = ws.session_id
-		INNER JOIN wave_stats_player wsp ON ws.id = wsp.stats_id
-		INNER JOIN aggregated_kills kills ON wsp.id = kills.player_stats_id
+		INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
+		INNER JOIN session_aggregated_kills kills ON kills.id = aggr.id
 		WHERE %v
-		GROUP BY wsp.perk
+		GROUP BY aggr.perk
 		HAVING kills > 0
-		ORDER BY wsp.perk`,
+		ORDER BY aggr.perk`,
 		strings.Join(conds, " AND "),
 	)
 
