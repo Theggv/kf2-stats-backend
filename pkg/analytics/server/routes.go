@@ -50,6 +50,6 @@ func RegisterRoutes(
 		cache.CacheByRequestURI(memoryStore, 5*time.Minute),
 		controller.getPopularServers)
 	routes.GET("/server/current-online",
-		cache.CacheByRequestURI(memoryStore, 1*time.Minute),
+		cache.CacheByRequestURI(memoryStore, 15*time.Second),
 		controller.getCurrentOnline)
 }

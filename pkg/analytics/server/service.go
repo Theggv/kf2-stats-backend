@@ -277,7 +277,7 @@ func (s *ServerAnalyticsService) GetCurrentOnline() (*TotalOnlineResponse, error
 	sql := fmt.Sprintf(`
 		SELECT count(*) as total_online
 		FROM users_activity
-		WHERE current_session_id is not null OR updated_at >= now() - interval 1 minute`,
+		WHERE current_session_id is not null`,
 	)
 
 	res := TotalOnlineResponse{}
