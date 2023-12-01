@@ -104,9 +104,13 @@ func (s *ServerAnalyticsService) GetUsageInMinutes(
 	case analytics.Day, analytics.Week:
 		period = "DAY(session.started_at)"
 	case analytics.Month:
-		period = "MONTH(session.started_at)"
+		period = "DATE_FORMAT(session.started_at, '%Y-%m-01 00:00:00')"
 	case analytics.Year:
-		period = "YEAR(session.started_at)"
+		period = "DATE_FORMAT(session.started_at, '%Y-01-01 00:00:00')"
+	case analytics.Date:
+		period = "DATE_FORMAT(session.started_at, '%Y-%m-%d 00:00:00')"
+	case analytics.DateHour:
+		period = "DATE_FORMAT(session.started_at, '%Y-%m-%d %H:00:00')"
 	default:
 		return nil, analytics.NewIncorrectPeriod(req.Period)
 	}
