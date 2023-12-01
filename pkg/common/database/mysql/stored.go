@@ -206,7 +206,7 @@ func initStored(db *sql.DB) error {
 		CREATE PROCEDURE insert_session_aggregated(session_id INT)
 		BEGIN
 			DO SLEEP(3);
-			INSERT INTO session_aggregated (
+			INSERT IGNORE INTO session_aggregated (
 				session_id, user_id, perk, 
 				playtime_seconds, waves_played, deaths, 
 				shots_fired, shots_hit, shots_hs, 
@@ -238,7 +238,7 @@ func initStored(db *sql.DB) error {
 				GROUP BY session.id, wsp.player_id, wsp.perk
 			);
 
-			INSERT INTO session_aggregated_kills (id, trash, medium, large, total)
+			INSERT IGNORE INTO session_aggregated_kills (id, trash, medium, large, total)
 			(
 				SELECT
 					aggr.id,
