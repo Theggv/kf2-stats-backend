@@ -2,6 +2,7 @@ package users
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -403,5 +404,295 @@ func (s *UserAnalyticsService) getTeammates(
 		}
 	}
 
+	return &res, nil
+}
+
+func (s *UserAnalyticsService) GetUsersTop(
+	req GetUsersTopRequest,
+) (*GetUsersTopResponse, error) {
+	switch req.Type {
+	case AverageZedtime:
+		return s.getZedtimeTop(req)
+	case MostHsAccuracy:
+		return s.getHSAccuracyTop(req)
+	}
+
+	conds := make([]string, 0)
+	args := make([]interface{}, 0)
+
+	var metric string
+	switch req.Type {
+	case MostKills:
+		metric = "coalesce(sum(kills.total), 0) as metric"
+	case MostDeaths:
+		metric = "coalesce(sum(deaths), 0) as metric"
+	case MostPlaytime:
+		metric = "floor(coalesce(sum(playtime_seconds), 0) / 60) as metric"
+	case MostDamageDealt:
+		metric = "coalesce(sum(damage_dealt), 0) as metric"
+	case MostHealsGiven:
+		metric = "coalesce(sum(heals_given), 0) as metric"
+	}
+
+	if req.From != nil && req.To != nil {
+		conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	}
+
+	sql := fmt.Sprintf(`
+		SELECT
+			users.id,
+			users.name,
+			users.auth_type,
+			users.auth_id,
+			t.total_games,
+			t.metric
+		FROM (
+			SELECT
+				user_id,
+				count(distinct session.id) as total_games,
+				%v
+			FROM session
+			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
+			INNER JOIN session_aggregated_kills kills ON aggr.id = kills.id
+			WHERE %v
+			GROUP BY user_id
+			HAVING total_games >= 10
+			ORDER BY metric DESC
+			LIMIT 50
+		) t
+		INNER JOIN users ON users.id = t.user_id
+		GROUP BY user_id
+		ORDER BY metric DESC, name ASC
+		`, metric, strings.Join(conds, " AND "),
+	)
+
+	rows, err := s.db.Query(sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	res := GetUsersTopResponse{
+		Items: []*GetUsersTopResponseItem{},
+	}
+	steamIdSet := make(map[string]bool)
+
+	for rows.Next() {
+		item := GetUsersTopResponseItem{}
+
+		err := rows.Scan(
+			&item.Id, &item.Name,
+			&item.Type, &item.AuthId,
+			&item.Games, &item.Metric,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if item.Type == models.Steam {
+			steamIdSet[item.AuthId] = true
+		}
+
+		res.Items = append(res.Items, &item)
+	}
+
+	{
+		steamIds := []string{}
+		for key := range steamIdSet {
+			steamIds = append(steamIds, key)
+		}
+
+		steamData, err := s.userService.GetSteamData(steamIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, item := range res.Items {
+			if data, ok := steamData[item.AuthId]; ok {
+				item.Avatar = &data.Avatar
+				item.ProfileUrl = &data.ProfileUrl
+			}
+		}
+	}
+	return &res, nil
+}
+
+func (s *UserAnalyticsService) getHSAccuracyTop(
+	req GetUsersTopRequest,
+) (*GetUsersTopResponse, error) {
+	conds := make([]string, 0)
+	args := make([]interface{}, 0)
+
+	if req.Perk == 0 {
+		return nil, errors.New(fmt.Sprintf("perk cannot be null with selected type"))
+	}
+
+	if req.From == nil || req.To == nil {
+		return nil, errors.New(fmt.Sprintf("incorrect date"))
+	}
+
+	args = append(args, req.Perk, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+
+	conds = append(conds, "perk = ?")
+	args = append(args, req.Perk)
+
+	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
+	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+
+	sql := fmt.Sprintf(`
+		SELECT
+			users.id as user_id,
+			users.name as name,
+			users.auth_type,
+			users.auth_id,
+			total_games,
+			get_avg_hs_acc(users.id, ?, ?, ?) as metric
+		FROM (
+			SELECT
+				user_id,
+				count(distinct session.id) as total_games
+			FROM session
+			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
+			WHERE %v
+			GROUP BY user_id
+			HAVING total_games >= 10
+		) t
+		INNER JOIN users ON users.id = t.user_id
+		ORDER BY metric DESC
+		LIMIT 50`, strings.Join(conds, " AND "),
+	)
+
+	rows, err := s.db.Query(sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	res := GetUsersTopResponse{
+		Items: []*GetUsersTopResponseItem{},
+	}
+	steamIdSet := make(map[string]bool)
+
+	for rows.Next() {
+		item := GetUsersTopResponseItem{}
+
+		err := rows.Scan(
+			&item.Id, &item.Name,
+			&item.Type, &item.AuthId,
+			&item.Games, &item.Metric,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if item.Type == models.Steam {
+			steamIdSet[item.AuthId] = true
+		}
+
+		res.Items = append(res.Items, &item)
+	}
+
+	{
+		steamIds := []string{}
+		for key := range steamIdSet {
+			steamIds = append(steamIds, key)
+		}
+
+		steamData, err := s.userService.GetSteamData(steamIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, item := range res.Items {
+			if data, ok := steamData[item.AuthId]; ok {
+				item.Avatar = &data.Avatar
+				item.ProfileUrl = &data.ProfileUrl
+			}
+		}
+	}
+	return &res, nil
+}
+
+func (s *UserAnalyticsService) getZedtimeTop(
+	req GetUsersTopRequest,
+) (*GetUsersTopResponse, error) {
+	conds := make([]string, 0)
+	args := make([]interface{}, 0)
+
+	if req.From != nil && req.To != nil {
+		conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	}
+
+	sql := fmt.Sprintf(`
+		SELECT
+			users.id as user_id,
+			users.name as name,
+			users.auth_type,
+			users.auth_id,
+			total_games,
+			get_avg_zt(users.id, ?, ?) as metric
+		FROM (
+			SELECT
+				user_id,
+				count(distinct session.id) as total_games
+			FROM session
+			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
+			WHERE %v
+			GROUP BY user_id
+			HAVING total_games >= 10
+		) t
+		INNER JOIN users ON users.id = t.user_id
+		ORDER BY metric DESC
+		LIMIT 50`, strings.Join(conds, " AND "),
+	)
+
+	rows, err := s.db.Query(sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	res := GetUsersTopResponse{
+		Items: []*GetUsersTopResponseItem{},
+	}
+	steamIdSet := make(map[string]bool)
+
+	for rows.Next() {
+		item := GetUsersTopResponseItem{}
+
+		err := rows.Scan(
+			&item.Id, &item.Name,
+			&item.Type, &item.AuthId,
+			&item.Games, &item.Metric,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if item.Type == models.Steam {
+			steamIdSet[item.AuthId] = true
+		}
+
+		res.Items = append(res.Items, &item)
+	}
+
+	{
+		steamIds := []string{}
+		for key := range steamIdSet {
+			steamIds = append(steamIds, key)
+		}
+
+		steamData, err := s.userService.GetSteamData(steamIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, item := range res.Items {
+			if data, ok := steamData[item.AuthId]; ok {
+				item.Avatar = &data.Avatar
+				item.ProfileUrl = &data.ProfileUrl
+			}
+		}
+	}
 	return &res, nil
 }
