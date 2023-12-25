@@ -8,6 +8,7 @@ import (
 	analyticsServer "github.com/theggv/kf2-stats-backend/pkg/analytics/server"
 	analyticsUsers "github.com/theggv/kf2-stats-backend/pkg/analytics/users"
 	"github.com/theggv/kf2-stats-backend/pkg/common/store"
+	"github.com/theggv/kf2-stats-backend/pkg/leaderboards"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/matches"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
@@ -30,4 +31,6 @@ func RegisterApiRoutes(r *gin.Engine, store *store.Store, memoryStore *persist.M
 	analyticsServer.RegisterRoutes(api, store.AnalyticsServer, memoryStore)
 	analyticsPerks.RegisterRoutes(api, store.AnalyticsPerks, memoryStore)
 	analyticsUsers.RegisterRoutes(api, store.AnalyticsUsers, memoryStore)
+
+	leaderboards.RegisterRoutes(api, store.LeaderBoards, memoryStore)
 }

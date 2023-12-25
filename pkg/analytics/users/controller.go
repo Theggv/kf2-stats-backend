@@ -131,27 +131,3 @@ func (c *controller) getTeammates(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, res)
 }
-
-// @Summary Get users top
-// @Tags 	Analytics
-// @Produce json
-// @Param   body body 		GetUsersTopRequest true "Body"
-// @Success 200 {object} 	GetUsersTopResponse
-// @Router /analytics/users/top [post]
-func (c *controller) getUsersTop(ctx *gin.Context) {
-	var req GetUsersTopRequest
-	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	res, err := c.service.GetUsersTop(req)
-	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	ctx.JSON(http.StatusOK, res)
-}

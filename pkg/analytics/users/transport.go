@@ -110,29 +110,3 @@ type GetTeammatesResponseItem struct {
 type GetTeammatesResponse struct {
 	Items []*GetTeammatesResponseItem `json:"items"`
 }
-
-type GetUsersTopRequest struct {
-	Type UsersTopType `json:"type" binding:"required"`
-	Perk int          `json:"perk"`
-
-	From *time.Time `json:"date_from" binding:"required"`
-	To   *time.Time `json:"date_to" binding:"required"`
-}
-
-type GetUsersTopResponseItem struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
-
-	ProfileUrl *string `json:"profile_url"`
-	Avatar     *string `json:"avatar"`
-
-	Games  int     `json:"games"`
-	Metric float64 `json:"metric"`
-
-	AuthId string          `json:"-"`
-	Type   models.AuthType `json:"-"`
-}
-
-type GetUsersTopResponse struct {
-	Items []*GetUsersTopResponseItem `json:"items"`
-}

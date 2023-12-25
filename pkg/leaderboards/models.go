@@ -1,9 +1,9 @@
-package users
+package leaderboards
 
-type UsersTopType = int
+type LeaderBoardType = int
 
 const (
-	TotalGames UsersTopType = iota + 1
+	TotalGames LeaderBoardType = iota + 1
 	TotalDeaths
 
 	Accuracy
