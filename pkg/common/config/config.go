@@ -5,10 +5,9 @@ import (
 )
 
 type AppConfig struct {
-	ServerAddr   string
-	DatabasePath string
-	Token        string
-	SteamApiKey  string
+	ServerAddr  string
+	Token       string
+	SteamApiKey string
 
 	DBUser     string
 	DBPassword string
@@ -23,10 +22,9 @@ func new() *AppConfig {
 	godotenv.Load(".env")
 
 	return &AppConfig{
-		ServerAddr:   getEnv("SERVER_ADDR", "127.0.0.1:3000"),
-		DatabasePath: getEnv("DB_PATH", "store.sqlite"),
-		Token:        getEnv("SECRET_TOKEN", ""),
-		SteamApiKey:  getEnv("STEAM_API_KEY", ""),
+		ServerAddr:  getEnv("SERVER_ADDR", "127.0.0.1:3000"),
+		Token:       getEnv("SECRET_TOKEN", ""),
+		SteamApiKey: getEnv("STEAM_API_KEY", ""),
 
 		DBUser:     getEnv("DB_USER", "user"),
 		DBPassword: getEnv("DB_PASSWORD", ""),
