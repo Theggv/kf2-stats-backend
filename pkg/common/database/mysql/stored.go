@@ -86,7 +86,8 @@ func initStored(db *sql.DB) error {
 					INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
 					WHERE 
 						aggr.user_id = user_id AND 
-						aggr.perk = 2 AND 
+						aggr.perk = 2 AND
+						aggr.playtime_seconds >= 30 AND
 						session.started_at BETWEEN date_from AND date_to
 					GROUP BY aggr.id
 				) t
@@ -128,6 +129,7 @@ func initStored(db *sql.DB) error {
 					WHERE 
 						aggr.user_id = user_id AND 
 						aggr.perk = perk AND 
+						aggr.playtime_seconds >= 30 AND
 						session.started_at BETWEEN date_from AND date_to
 					GROUP BY session.id
 				) t
@@ -169,6 +171,7 @@ func initStored(db *sql.DB) error {
 					WHERE 
 						aggr.user_id = user_id AND 
 						aggr.perk = perk AND 
+						aggr.playtime_seconds >= 30 AND
 						session.started_at BETWEEN date_from AND date_to
 					GROUP BY aggr.id
 				) t
