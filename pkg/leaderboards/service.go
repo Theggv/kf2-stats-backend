@@ -42,6 +42,8 @@ func (s *LeaderBoardsService) getLeaderBoard(
 	switch req.Type {
 	case AverageZedtime:
 		userIds, err = s.getZedtimeTop(req)
+	case Accuracy:
+		userIds, err = s.getAccuracyTop(req)
 	case HsAccuracy:
 		userIds, err = s.getHSAccuracyTop(req)
 	case MostDamage:
@@ -224,6 +226,62 @@ func (s *LeaderBoardsService) getLeaderBoard(
 		}
 	}
 	return &res, nil
+}
+
+func (s *LeaderBoardsService) getAccuracyTop(
+	req LeaderBoardsRequest,
+) ([]int, error) {
+	conds := make([]string, 0)
+	args := make([]interface{}, 0)
+
+	if req.Perk == 0 {
+		return nil, errors.New(fmt.Sprintf("perk cannot be null with selected type"))
+	}
+
+	args = append(args, req.Perk, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+
+	conds = append(conds, "perk = ?")
+	args = append(args, req.Perk)
+
+	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
+	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+
+	sql := fmt.Sprintf(`
+		SELECT
+			user_id,
+			get_avg_acc(user_id, ?, ?, ?) as metric
+		FROM (
+			SELECT
+				user_id,
+				count(distinct session.id) as total_games
+			FROM session
+			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
+			WHERE %v
+			GROUP BY user_id
+			HAVING total_games >= 10
+		) t
+		ORDER BY metric DESC
+		LIMIT 50`, strings.Join(conds, " AND "),
+	)
+
+	rows, err := s.db.Query(sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	items := []int{}
+	for rows.Next() {
+		var item int
+		var unused float64
+		err := rows.Scan(&item, &unused)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, item)
+	}
+
+	return items, nil
 }
 
 func (s *LeaderBoardsService) getHSAccuracyTop(
