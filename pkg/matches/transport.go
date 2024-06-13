@@ -6,13 +6,13 @@ import (
 )
 
 type FilterMatchesRequest struct {
-	ServerId []int `json:"server_id"`
-	MapId    []int `json:"map_id"`
+	ServerId []int               `json:"server_id"`
+	MapId    []int               `json:"map_id"`
+	Status   []models.GameStatus `json:"status"`
 
 	Mode       *models.GameMode       `json:"mode"`
 	Length     *models.GameLength     `json:"length"`
 	Difficulty *models.GameDifficulty `json:"diff"`
-	Status     *models.GameStatus     `json:"status"`
 
 	IncludeServer   bool `json:"include_server"`
 	IncludeMap      bool `json:"include_map"`

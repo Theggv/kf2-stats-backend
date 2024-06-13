@@ -191,8 +191,10 @@ func (s *MatchesService) filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		conditions = append(conditions, fmt.Sprintf("session.mode = %v", *req.Mode))
 	}
 
-	if req.Status != nil {
-		conditions = append(conditions, fmt.Sprintf("session.status = %v", *req.Status))
+	if len(req.Status) > 0 {
+		conditions = append(conditions,
+			fmt.Sprintf("session.status in (%s)", util.IntArrayToString(req.Status, ",")),
+		)
 	}
 
 	// Order
