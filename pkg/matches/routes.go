@@ -33,9 +33,6 @@ func RegisterRoutes(
 	routes.GET("/:id/summary",
 		cache.CacheByRequestURI(memoryStore, 15*time.Second),
 		controller.getMatchAggregatedStats)
-	routes.GET("/wave/:id/stats",
-		cache.CacheByRequestURI(memoryStore, 5*time.Minute),
-		controller.getWavePlayersStats)
 	routes.GET("/server/:id",
 		cache.CacheByRequestURI(memoryStore, 15*time.Second),
 		controller.getLastServerMatch)

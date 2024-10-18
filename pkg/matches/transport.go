@@ -29,7 +29,8 @@ type FilterMatchesResponse struct {
 }
 
 type GetMatchWavesResponse struct {
-	Waves []MatchWave `json:"waves"`
+	Waves []*MatchWave          `json:"waves"`
+	Users []*models.UserProfile `json:"users"`
 }
 
 type PlayerWaveStats struct {

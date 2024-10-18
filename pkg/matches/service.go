@@ -15,6 +15,16 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
+type getMatchWavesPlayersResponse struct {
+	WaveId int
+	Player *MatchWavePlayer
+}
+
+type getMatchWavesPlayersStatsResponse struct {
+	PlayerStatsId int
+	Stats         *MatchWavePlayerStats
+}
+
 type MatchesService struct {
 	db *sql.DB
 
@@ -313,6 +323,63 @@ func (s *MatchesService) filter(req FilterMatchesRequest) (*FilterMatchesRespons
 }
 
 func (s *MatchesService) getMatchWaves(sessionId int) (*GetMatchWavesResponse, error) {
+	waves, err := s.getMatchWavesOverview(sessionId)
+	if err != nil {
+		return nil, err
+	}
+
+	players, err := s.getMatchWavesPlayers(sessionId)
+	if err != nil {
+		return nil, err
+	}
+
+	playerStats, err := s.getMatchWavesPlayersStats(sessionId)
+	if err != nil {
+		return nil, err
+	}
+
+	// Join stats with players
+	for i := 0; i < len(players); i++ {
+		for j := 0; j < len(playerStats); j++ {
+			if players[i].Player.PlayerStatsId == playerStats[j].PlayerStatsId {
+				players[i].Player.Stats = playerStats[j].Stats
+			}
+		}
+	}
+
+	// Join players with waves
+	for i := 0; i < len(waves); i++ {
+		for j := 0; j < len(players); j++ {
+			if waves[i].WaveId == players[j].WaveId {
+				waves[i].Players = append(waves[i].Players, players[j].Player)
+			}
+		}
+	}
+
+	// Get unique user ids
+	userId := []int{}
+	userIdSet := make(map[int]bool)
+
+	for _, player := range players {
+		userIdSet[player.Player.UserId] = true
+	}
+
+	for key := range userIdSet {
+		userId = append(userId, key)
+	}
+
+	users, err := s.getUserProfiles(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	return &GetMatchWavesResponse{
+		Waves: waves,
+		Users: users,
+	}, nil
+}
+
+func (s *MatchesService) getMatchWavesOverview(sessionId int) ([]*MatchWave, error) {
 	rows, err := s.db.Query(`
 		SELECT 
 			ws.id, ws.wave, ws.attempt, ws.started_at, ws.completed_at
@@ -320,95 +387,150 @@ func (s *MatchesService) getMatchWaves(sessionId int) (*GetMatchWavesResponse, e
 		INNER JOIN wave_stats ws on ws.session_id = session.id
 		WHERE session.id = ?
 		GROUP BY ws.id 
-		ORDER BY ws.id`, sessionId,
+		ORDER BY ws.id`,
+		sessionId,
 	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	waves := []MatchWave{}
-	players := [][]Player{}
-
+	// Get waves data
+	waves := []*MatchWave{}
 	for rows.Next() {
 		wave := MatchWave{}
 
-		err := rows.Scan(&wave.Id, &wave.Wave, &wave.Attempt, &wave.StartedAt, &wave.CompletedAt)
+		err := rows.Scan(&wave.WaveId, &wave.Wave, &wave.Attempt, &wave.StartedAt, &wave.CompletedAt)
 		if err != nil {
 			return nil, err
 		}
 
-		wavePlayers, err := s.getWavePlayers(wave.Id)
-		if err != nil {
-			return nil, err
-		}
-
-		players = append(players, wavePlayers)
-		waves = append(waves, wave)
+		waves = append(waves, &wave)
 	}
 
-	playersWithExtraData, err := s.getPlayersSteamData(&players)
-	if err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < len(waves); i++ {
-		waves[i].Players = (*playersWithExtraData)[i]
-	}
-
-	return &GetMatchWavesResponse{
-		Waves: waves,
-	}, nil
+	return waves, nil
 }
 
-func (s *MatchesService) getWavePlayers(waveId int) ([]Player, error) {
+func (s *MatchesService) getMatchWavesPlayers(sessionId int) ([]*getMatchWavesPlayersResponse, error) {
 	rows, err := s.db.Query(`
 		SELECT 
-			users.id, users.auth_id, users.auth_type, users.name,
-			wsp.id,
+			wsp.player_id, ws.id, wsp.id,
 			wsp.perk, wsp.level, wsp.prestige, wsp.is_dead
-		FROM wave_stats ws
+		FROM session
+		INNER JOIN wave_stats ws on ws.session_id = session.id
 		INNER JOIN wave_stats_player wsp on wsp.stats_id = ws.id
-		INNER JOIN users on users.id = wsp.player_id
-		WHERE ws.id = ?
+		WHERE session.id = ?
 		GROUP BY wsp.id`,
-		waveId,
+		sessionId,
 	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	players := []Player{}
+	result := []*getMatchWavesPlayersResponse{}
 
 	for rows.Next() {
-		p := Player{}
+		p := getMatchWavesPlayersResponse{
+			Player: &MatchWavePlayer{},
+		}
 
 		err := rows.Scan(
-			&p.Id, &p.AuthId, &p.AuthType, &p.Name,
-			&p.PlayerStatsId, &p.Perk, &p.Level, &p.Prestige, &p.IsDead,
+			&p.Player.UserId, &p.WaveId, &p.Player.PlayerStatsId,
+			&p.Player.Perk, &p.Player.Level, &p.Player.Prestige, &p.Player.IsDead,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		players = append(players, p)
+		result = append(result, &p)
+	}
+
+	return result, nil
+}
+
+func (s *MatchesService) getMatchWavesPlayersStats(sessionId int) (
+	[]*getMatchWavesPlayersStatsResponse, error,
+) {
+	rows, err := s.db.Query(`
+		SELECT
+			wsp.id,
+			wsp.shots_fired,
+			wsp.shots_hit,
+			wsp.shots_hs,
+			wsp.dosh_earned,
+			wsp.heals_given,
+			wsp.heals_recv,
+			wsp.damage_dealt,
+			wsp.damage_taken,
+			wsp.zedtime_count,
+			wsp.zedtime_length,
+			kills.*
+		FROM session
+		INNER JOIN wave_stats ws on ws.session_id = session.id
+		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+		INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wsp.id
+		WHERE session.id = ?`, sessionId,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	players := []*getMatchWavesPlayersStatsResponse{}
+
+	for rows.Next() {
+		var (
+			unused        int
+			playerStatsId int
+		)
+		s := MatchWavePlayerStats{}
+		kills := stats.ZedCounter{}
+
+		err := rows.Scan(&playerStatsId,
+			&s.ShotsFired, &s.ShotsHit, &s.ShotsHS,
+			&s.DoshEarned, &s.HealsGiven, &s.HealsReceived,
+			&s.DamageDealt, &s.DamageTaken,
+			&s.ZedTimeCount, &s.ZedTimeLength,
+			&unused,
+			&kills.Cyst, &kills.AlphaClot, &kills.Slasher, &kills.Stalker, &kills.Crawler, &kills.Gorefast,
+			&kills.Rioter, &kills.EliteCrawler, &kills.Gorefiend,
+			&kills.Siren, &kills.Bloat, &kills.Edar,
+			&kills.Husk, &s.HuskBackpackKills, &s.HuskRages,
+			&kills.Scrake, &kills.FP, &kills.QP, &kills.Boss, &kills.Custom,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		s.Kills = kills
+
+		players = append(players, &getMatchWavesPlayersStatsResponse{
+			PlayerStatsId: playerStatsId,
+			Stats:         &s,
+		})
 	}
 
 	return players, nil
 }
 
-func (s *MatchesService) getPlayersSteamData(players *[][]Player) (*[][]PlayerWithSteamData, error) {
+func (s *MatchesService) getUserProfiles(userId []int) (
+	[]*models.UserProfile, error,
+) {
+	users, err := s.userService.GetManyById(userId)
+	if err != nil {
+		return nil, err
+	}
+
 	set := make(map[string]bool)
 	steamIds := []string{}
 
-	for _, wavePlayers := range *players {
-		for _, player := range wavePlayers {
-			if player.AuthType != models.Steam {
-				continue
-			}
-			set[player.AuthId] = true
+	for _, player := range users {
+		if player.Type != models.Steam {
+			continue
 		}
+		set[player.AuthId] = true
 	}
 
 	for key := range set {
@@ -425,93 +547,23 @@ func (s *MatchesService) getPlayersSteamData(players *[][]Player) (*[][]PlayerWi
 		steamDataSet[data.SteamId] = data
 	}
 
-	playersWithSteamData := [][]PlayerWithSteamData{}
+	profiles := []*models.UserProfile{}
 
-	for _, wavePlayers := range *players {
-		wavePlayersWithSteamData := []PlayerWithSteamData{}
-
-		for _, player := range wavePlayers {
-			playerWithSteamData := PlayerWithSteamData{
-				Id:            player.Id,
-				Name:          player.Name,
-				PlayerStatsId: player.PlayerStatsId,
-				Perk:          player.Perk,
-				Level:         player.Level,
-				Prestige:      player.Prestige,
-				IsDead:        player.IsDead,
-			}
-
-			if data, exists := steamDataSet[player.AuthId]; exists {
-				playerWithSteamData.ProfileUrl = &data.ProfileUrl
-				playerWithSteamData.Avatar = &data.Avatar
-			}
-
-			wavePlayersWithSteamData = append(wavePlayersWithSteamData, playerWithSteamData)
+	for _, player := range users {
+		profile := models.UserProfile{
+			Id:   player.Id,
+			Name: player.Name,
 		}
 
-		playersWithSteamData = append(playersWithSteamData, wavePlayersWithSteamData)
-	}
-
-	return &playersWithSteamData, nil
-}
-
-func (s *MatchesService) getWavePlayersStats(waveId int) (*GetMatchWaveStatsResponse, error) {
-	rows, err := s.db.Query(`
-		SELECT
-			wsp.id,
-			wsp.shots_fired,
-			wsp.shots_hit,
-			wsp.shots_hs,
-			wsp.dosh_earned,
-			wsp.heals_given,
-			wsp.heals_recv,
-			wsp.damage_dealt,
-			wsp.damage_taken,
-			wsp.zedtime_count,
-			wsp.zedtime_length,
-			kills.*
-		FROM wave_stats ws
-		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
-		INNER JOIN wave_stats_player_kills kills ON kills.player_stats_id = wsp.id
-		WHERE ws.id = ?`, waveId,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	players := []PlayerWaveStats{}
-
-	for rows.Next() {
-		var useless int
-		player := PlayerWaveStats{}
-		kills := stats.ZedCounter{}
-
-		err := rows.Scan(&player.PlayerStatsId,
-			&player.ShotsFired, &player.ShotsHit, &player.ShotsHS,
-			&player.DoshEarned, &player.HealsGiven, &player.HealsReceived,
-			&player.DamageDealt, &player.DamageTaken,
-			&player.ZedTimeCount, &player.ZedTimeLength,
-			&useless,
-			&kills.Cyst, &kills.AlphaClot, &kills.Slasher, &kills.Stalker, &kills.Crawler, &kills.Gorefast,
-			&kills.Rioter, &kills.EliteCrawler, &kills.Gorefiend,
-			&kills.Siren, &kills.Bloat, &kills.Edar,
-			&kills.Husk, &player.HuskBackpackKills, &player.HuskRages,
-			&kills.Scrake, &kills.FP, &kills.QP, &kills.Boss, &kills.Custom,
-		)
-
-		if err != nil {
-			return nil, err
+		if data, exists := steamDataSet[player.AuthId]; exists {
+			profile.ProfileUrl = &data.ProfileUrl
+			profile.Avatar = &data.Avatar
 		}
 
-		player.Kills = kills
-
-		players = append(players, player)
+		profiles = append(profiles, &profile)
 	}
 
-	return &GetMatchWaveStatsResponse{
-		Players: players,
-	}, nil
+	return profiles, nil
 }
 
 func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPlayerStatsResponse, error) {

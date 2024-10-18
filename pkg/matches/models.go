@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
+	"github.com/theggv/kf2-stats-backend/pkg/stats"
 )
 
 type Player struct {
@@ -21,13 +22,19 @@ type Player struct {
 	IsDead bool `json:"is_dead"`
 }
 
-type PlayerWithSteamData struct {
-	Id int `json:"id"`
+type MatchWave struct {
+	WaveId  int `json:"wave_id"`
+	Wave    int `json:"wave"`
+	Attempt int `json:"attempt"`
 
-	Name       string  `json:"name"`
-	ProfileUrl *string `json:"profile_url"`
-	Avatar     *string `json:"avatar"`
+	Players []*MatchWavePlayer `json:"players"`
 
+	StartedAt   *time.Time `json:"started_at"`
+	CompletedAt *time.Time `json:"completed_at"`
+}
+
+type MatchWavePlayer struct {
+	UserId        int `json:"user_id"`
 	PlayerStatsId int `json:"player_stats_id"`
 
 	Perk     models.Perk `json:"perk"`
@@ -35,17 +42,30 @@ type PlayerWithSteamData struct {
 	Prestige int         `json:"prestige"`
 
 	IsDead bool `json:"is_dead"`
+
+	Stats *MatchWavePlayerStats `json:"stats"`
 }
 
-type MatchWave struct {
-	Id      int `json:"id"`
-	Wave    int `json:"wave"`
-	Attempt int `json:"attempt"`
+type MatchWavePlayerStats struct {
+	ShotsFired int `json:"shots_fired"`
+	ShotsHit   int `json:"shots_hit"`
+	ShotsHS    int `json:"shots_hs"`
 
-	Players []PlayerWithSteamData `json:"players"`
+	DoshEarned int `json:"dosh_earned"`
 
-	StartedAt   *time.Time `json:"started_at"`
-	CompletedAt *time.Time `json:"completed_at"`
+	HealsGiven    int `json:"heals_given"`
+	HealsReceived int `json:"heals_recv"`
+
+	DamageDealt int `json:"damage_dealt"`
+	DamageTaken int `json:"damage_taken"`
+
+	ZedTimeCount  int     `json:"zedtime_count"`
+	ZedTimeLength float32 `json:"zedtime_length"`
+
+	Kills stats.ZedCounter `json:"kills"`
+
+	HuskBackpackKills int `json:"husk_b"`
+	HuskRages         int `json:"husk_r"`
 }
 
 type MatchSession struct {

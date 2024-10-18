@@ -81,6 +81,37 @@ func (s *UserService) GetById(id int) (*User, error) {
 	return &item, nil
 }
 
+func (s *UserService) GetManyById(userId []int) ([]*User, error) {
+	if len(userId) == 0 {
+		return []*User{}, nil
+	}
+
+	sql := fmt.Sprintf(`
+		SELECT id, auth_id, auth_type, name FROM users WHERE id IN (%v)`,
+		util.IntArrayToString(userId, ","),
+	)
+
+	rows, err := s.db.Query(sql)
+
+	if err != nil {
+		return nil, err
+	}
+
+	items := []*User{}
+	for rows.Next() {
+		item := User{}
+
+		err := rows.Scan(&item.Id, &item.AuthId, &item.Type, &item.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, &item)
+	}
+
+	return items, nil
+}
+
 func (s *UserService) getByAuth(authId string, authType models.AuthType) (*User, error) {
 	row := s.db.QueryRow(`
 		SELECT id, auth_id, auth_type, name FROM users WHERE auth_id = ? AND auth_type = ?`,
