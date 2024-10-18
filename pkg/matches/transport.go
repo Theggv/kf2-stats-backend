@@ -14,18 +14,23 @@ type FilterMatchesRequest struct {
 	Length     *models.GameLength     `json:"length"`
 	Difficulty *models.GameDifficulty `json:"diff"`
 
-	IncludeServer   bool `json:"include_server"`
-	IncludeMap      bool `json:"include_map"`
-	IncludeGameData bool `json:"include_game_data"`
-	IncludeCDData   bool `json:"include_cd_data"`
+	IncludeServer   *bool `json:"include_server"`
+	IncludeMap      *bool `json:"include_map"`
+	IncludeGameData *bool `json:"include_game_data"`
+	IncludeCDData   *bool `json:"include_cd_data"`
+	IncludePlayers  *bool `json:"include_players"`
 
 	ReverseOrder *bool                    `json:"reverse_order"`
 	Pager        models.PaginationRequest `json:"pager"`
 }
 
 type FilterMatchesResponse struct {
-	Items    []Match                   `json:"items"`
+	Items    []*Match                  `json:"items"`
 	Metadata models.PaginationResponse `json:"metadata"`
+}
+
+type GetLiveMatchesResponse struct {
+	Items []Match `json:"items"`
 }
 
 type GetMatchWavesResponse struct {

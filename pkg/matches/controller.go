@@ -26,7 +26,7 @@ func (c *matchesController) getById(ctx *gin.Context) {
 		return
 	}
 
-	item, err := c.service.getById(id)
+	item, err := c.service.GetById(id)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())
@@ -50,7 +50,7 @@ func (c *matchesController) getMatchLiveData(ctx *gin.Context) {
 		return
 	}
 
-	item, err := c.service.getMatchLiveData(id)
+	item, err := c.service.GetMatchLiveData(id)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())
@@ -74,7 +74,7 @@ func (c *matchesController) getLastServerMatch(ctx *gin.Context) {
 		return
 	}
 
-	item, err := c.service.getLastServerMatch(id)
+	item, err := c.service.GetLastServerMatch(id)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())
@@ -98,7 +98,7 @@ func (c *matchesController) filter(ctx *gin.Context) {
 		return
 	}
 
-	res, err := c.service.filter(req)
+	res, err := c.service.Filter(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())
@@ -122,7 +122,7 @@ func (c *matchesController) getMatchWaves(ctx *gin.Context) {
 		return
 	}
 
-	item, err := c.service.getMatchWaves(id)
+	item, err := c.service.GetMatchWaves(id)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())
@@ -149,7 +149,7 @@ func (c *matchesController) getMatchPlayerStats(ctx *gin.Context) {
 		return
 	}
 
-	item, err := c.service.getMatchPlayerStats(sessionId, userId)
+	item, err := c.service.GetMatchPlayerStats(sessionId, userId)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())
@@ -174,7 +174,7 @@ func (c *matchesController) getMatchAggregatedStats(ctx *gin.Context) {
 		return
 	}
 
-	item, err := c.service.getMatchAggregatedStats(sessionId)
+	item, err := c.service.GetMatchAggregatedStats(sessionId)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())

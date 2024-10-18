@@ -7,23 +7,9 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/stats"
 )
 
-type Player struct {
-	Id       int             `json:"id"`
-	AuthId   string          `json:"auth_id"`
-	AuthType models.AuthType `json:"auth_type"`
-	Name     string          `json:"name"`
-
-	PlayerStatsId int `json:"player_stats_id"`
-
-	Perk     models.Perk `json:"perk"`
-	Level    int         `json:"level"`
-	Prestige int         `json:"prestige"`
-
-	IsDead bool `json:"is_dead"`
-}
-
 type MatchWave struct {
-	WaveId  int `json:"wave_id"`
+	WaveId int `json:"wave_id"`
+
 	Wave    int `json:"wave"`
 	Attempt int `json:"attempt"`
 
@@ -96,10 +82,26 @@ type MatchServer struct {
 	Address *string `json:"address"`
 }
 
+type MatchPlayer struct {
+	Profile *models.UserProfile `json:"profile"`
+
+	Perk     models.Perk `json:"perk"`
+	Level    int         `json:"level"`
+	Prestige int         `json:"prestige"`
+
+	Health int `json:"health"`
+	Armor  int `json:"armor"`
+}
+
 type Match struct {
-	Session  MatchSession       `json:"session"`
-	Map      *MatchMap          `json:"map"`
-	Server   *MatchServer       `json:"server"`
+	Session MatchSession `json:"session"`
+
+	Map    *MatchMap    `json:"map"`
+	Server *MatchServer `json:"server"`
+
 	GameData *models.GameData   `json:"game_data"`
 	CDData   *models.CDGameData `json:"cd_data"`
+
+	Players    []*MatchPlayer `json:"players"`
+	Spectators []*MatchPlayer `json:"spectators"`
 }

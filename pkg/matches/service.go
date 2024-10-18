@@ -2,12 +2,9 @@ package matches
 
 import (
 	"database/sql"
-	"fmt"
-	"strings"
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/steamapi"
-	"github.com/theggv/kf2-stats-backend/pkg/common/util"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
@@ -59,7 +56,7 @@ func NewMatchesService(db *sql.DB) *MatchesService {
 	return &service
 }
 
-func (s *MatchesService) getById(id int) (*Match, error) {
+func (s *MatchesService) GetById(id int) (*Match, error) {
 	match := Match{}
 
 	session, err := s.sessionService.GetById(id)
@@ -109,7 +106,7 @@ func (s *MatchesService) getById(id int) (*Match, error) {
 	return &match, nil
 }
 
-func (s *MatchesService) getLastServerMatch(id int) (*Match, error) {
+func (s *MatchesService) GetLastServerMatch(id int) (*Match, error) {
 	row := s.db.QueryRow(`
 		SELECT session.id FROM session
 		WHERE server_id = ?
@@ -124,205 +121,10 @@ func (s *MatchesService) getLastServerMatch(id int) (*Match, error) {
 		return nil, err
 	}
 
-	return s.getById(sessionId)
+	return s.GetById(sessionId)
 }
 
-func (s *MatchesService) filter(req FilterMatchesRequest) (*FilterMatchesResponse, error) {
-	page, limit := util.ParsePagination(req.Pager)
-
-	attributes := []string{}
-	conditions := []string{}
-	joins := []string{}
-	order := "asc"
-
-	// Prepare fields
-	attributes = append(attributes,
-		"session.id", "session.server_id", "session.map_id",
-		"session.mode", "session.length", "session.diff",
-		"session.status", "session.created_at", "session.updated_at",
-		"session.started_at", "session.completed_at",
-	)
-
-	if req.IncludeGameData {
-		attributes = append(attributes,
-			"gd.max_players", "gd.players_online", "gd.players_alive",
-			"gd.wave", "gd.is_trader_time", "gd.zeds_left",
-		)
-		joins = append(joins, "INNER JOIN session_game_data gd ON session.id = gd.session_id")
-	}
-
-	if req.IncludeMap {
-		attributes = append(attributes, "maps.name", "maps.preview")
-		joins = append(joins, "INNER JOIN maps ON maps.id = session.map_id")
-	}
-
-	if req.IncludeServer {
-		attributes = append(attributes, "server.name", "server.address")
-		joins = append(joins, "INNER JOIN server ON server.id = session.server_id")
-	}
-
-	if req.IncludeCDData {
-		attributes = append(attributes,
-			"cd.spawn_cycle", "cd.max_monsters",
-			"cd.wave_size_fakes", "cd.zeds_type",
-		)
-		joins = append(joins, "LEFT JOIN session_game_data_cd cd ON session.id = cd.session_id")
-	}
-
-	// Prepare filter query
-	conditions = append(conditions, "1") // in case if no filters passed
-
-	if len(req.ServerId) > 0 {
-		conditions = append(conditions,
-			fmt.Sprintf("session.server_id in (%s)", util.IntArrayToString(req.ServerId, ",")),
-		)
-	}
-
-	if len(req.MapId) > 0 {
-		conditions = append(conditions,
-			fmt.Sprintf("session.map_id in (%s)", util.IntArrayToString(req.MapId, ",")),
-		)
-	}
-
-	if req.Difficulty != nil {
-		conditions = append(conditions, fmt.Sprintf("session.diff = %v", *req.Difficulty))
-	}
-
-	if req.Length != nil {
-		if *req.Length == models.Custom {
-			conditions = append(conditions, fmt.Sprintf("session.length NOT IN (%v, %v, %v)",
-				models.Short, models.Medium, models.Long))
-		} else {
-			conditions = append(conditions, fmt.Sprintf("session.length = %v", *req.Length))
-		}
-	}
-
-	if req.Mode != nil {
-		conditions = append(conditions, fmt.Sprintf("session.mode = %v", *req.Mode))
-	}
-
-	if len(req.Status) > 0 {
-		conditions = append(conditions,
-			fmt.Sprintf("session.status in (%s)", util.IntArrayToString(req.Status, ",")),
-		)
-	}
-
-	// Order
-	if req.ReverseOrder != nil && *req.ReverseOrder == true {
-		order = "desc"
-	}
-
-	sql := fmt.Sprintf(`
-		SELECT %v FROM session
-		%v
-		WHERE %v
-		ORDER BY session.updated_at %v
-		LIMIT %v, %v`,
-		strings.Join(attributes, ", "),
-		strings.Join(joins, "\n"),
-		strings.Join(conditions, " AND "), order, page*limit, limit,
-	)
-
-	// Execute filter query
-	rows, err := s.db.Query(sql)
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-	items := []Match{}
-
-	// Parsing results
-	for rows.Next() {
-		item := Match{}
-		sessionData := MatchSession{}
-		mapData := MatchMap{}
-		serverData := MatchServer{}
-		gameData := models.GameData{}
-		cdData := models.CDGameData{}
-
-		fields := []any{
-			&sessionData.SessionId, &sessionData.ServerId, &sessionData.MapId,
-			&sessionData.Mode, &sessionData.Length, &sessionData.Difficulty,
-			&sessionData.Status, &sessionData.CreatedAt, &sessionData.UpdatedAt,
-			&sessionData.StartedAt, &sessionData.CompletedAt,
-		}
-
-		if req.IncludeGameData {
-			fields = append(fields,
-				&gameData.MaxPlayers, &gameData.PlayersOnline, &gameData.PlayersAlive,
-				&gameData.Wave, &gameData.IsTraderTime, &gameData.ZedsLeft,
-			)
-		}
-
-		if req.IncludeMap {
-			fields = append(fields, &mapData.Name, &mapData.Preview)
-		}
-
-		if req.IncludeServer {
-			fields = append(fields, &serverData.Name, &serverData.Address)
-		}
-
-		if req.IncludeCDData {
-			fields = append(fields,
-				&cdData.SpawnCycle, &cdData.MaxMonsters,
-				&cdData.WaveSizeFakes, &cdData.ZedsType,
-			)
-		}
-
-		err := rows.Scan(fields...)
-		if err != nil {
-			fmt.Print(err)
-			continue
-		}
-
-		item.Session = sessionData
-
-		if req.IncludeGameData {
-			item.GameData = &gameData
-		}
-
-		if req.IncludeMap {
-			item.Map = &mapData
-		}
-
-		if req.IncludeServer {
-			item.Server = &serverData
-		}
-
-		if req.IncludeCDData && cdData.SpawnCycle != nil {
-			item.CDData = &cdData
-		}
-
-		items = append(items, item)
-	}
-
-	var total int
-	{
-		sql = fmt.Sprintf(`
-			SELECT count(*) FROM session
-			%v
-			WHERE %v`,
-			strings.Join(joins, "\n"),
-			strings.Join(conditions, " AND "),
-		)
-
-		if err := s.db.QueryRow(sql).Scan(&total); err != nil {
-			return nil, err
-		}
-	}
-
-	return &FilterMatchesResponse{
-		Items: items,
-		Metadata: models.PaginationResponse{
-			Page:           page,
-			ResultsPerPage: limit,
-			TotalResults:   total,
-		},
-	}, nil
-}
-
-func (s *MatchesService) getMatchWaves(sessionId int) (*GetMatchWavesResponse, error) {
+func (s *MatchesService) GetMatchWaves(sessionId int) (*GetMatchWavesResponse, error) {
 	waves, err := s.getMatchWavesOverview(sessionId)
 	if err != nil {
 		return nil, err
@@ -566,7 +368,7 @@ func (s *MatchesService) getUserProfiles(userId []int) (
 	return profiles, nil
 }
 
-func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPlayerStatsResponse, error) {
+func (s *MatchesService) GetMatchPlayerStats(sessionId, userId int) (*GetMatchPlayerStatsResponse, error) {
 	rows, err := s.db.Query(`
 		SELECT
 			wsp.id,
@@ -625,7 +427,7 @@ func (s *MatchesService) getMatchPlayerStats(sessionId, userId int) (*GetMatchPl
 	}, nil
 }
 
-func (s *MatchesService) getMatchAggregatedStats(sessionId int) (*GetMatchAggregatedStatsResponse, error) {
+func (s *MatchesService) GetMatchAggregatedStats(sessionId int) (*GetMatchAggregatedStatsResponse, error) {
 	rows, err := s.db.Query(`
 		SELECT
 			wsp.player_id,
@@ -667,7 +469,8 @@ func (s *MatchesService) getMatchAggregatedStats(sessionId int) (*GetMatchAggreg
 	}, nil
 }
 
-func (s *MatchesService) getMatchLiveData(sessionId int) (*GetMatchLiveDataResponse, error) {
+// Deprecated, needs rework
+func (s *MatchesService) GetMatchLiveData(sessionId int) (*GetMatchLiveDataResponse, error) {
 	sql := `
 		SELECT
 			max_players, players_online, players_alive, 

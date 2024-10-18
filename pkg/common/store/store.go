@@ -16,7 +16,6 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/stats"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
-	"github.com/theggv/kf2-stats-backend/pkg/views"
 )
 
 type Store struct {
@@ -26,7 +25,6 @@ type Store struct {
 	Stats    *stats.StatsService
 	Users    *users.UserService
 	Matches  *matches.MatchesService
-	Views    *views.ViewsService
 	SteamApi *steamapi.SteamApiUserService
 
 	AnalyticsMaps   *analyticsMaps.MapAnalyticsService
@@ -45,7 +43,6 @@ func New(db *sql.DB, config *config.AppConfig) *Store {
 		Stats:    stats.NewStatsService(db),
 		Users:    users.NewUserService(db),
 		Matches:  matches.NewMatchesService(db),
-		Views:    views.NewViewsService(db),
 		SteamApi: steamapi.NewSteamApiUserService(config.SteamApiKey),
 
 		AnalyticsMaps:   analyticsMaps.NewMapAnalyticsService(db),
