@@ -8,6 +8,7 @@ import (
 func (s *MatchesService) setupTasks() {
 	go detectDroppedSessions(s)
 	go abortOldMatches(s)
+	go deleteEmptySessions(s)
 }
 
 func detectDroppedSessions(s *MatchesService) {
@@ -28,6 +29,16 @@ func abortOldMatches(s *MatchesService) {
 
 		if err != nil {
 			fmt.Printf("[abortOldMatches] error: %v\n", err)
+		}
+	}
+}
+
+func deleteEmptySessions(s *MatchesService) {
+	for range time.Tick(60 * time.Minute) {
+		_, err := s.db.Exec(`CALL delete_empty_sessions()`)
+
+		if err != nil {
+			fmt.Printf("[deleteEmptySessions] error: %v\n", err)
 		}
 	}
 }
