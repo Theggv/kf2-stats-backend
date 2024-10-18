@@ -41,6 +41,23 @@ func initStored(db *sql.DB) error {
 		END;
 	`)
 	tx.Exec(`
+		DROP PROCEDURE IF EXISTS delete_empty_sessions;
+		CREATE PROCEDURE delete_empty_sessions()
+		BEGIN
+			DELETE FROM session WHERE id IN (
+				SELECT id FROM (
+					SELECT distinct session.id, session.status
+					FROM session
+						LEFT JOIN wave_stats ws ON ws.session_id = session.id
+						LEFT JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+					WHERE session.status IN (-1, 2, 3)
+					GROUP BY session.id
+					HAVING count(wsp.id) = 0
+				) t
+			);
+		END;
+	`)
+	tx.Exec(`
 		DROP FUNCTION IF EXISTS get_user_games_by_perk;
 		CREATE FUNCTION get_user_games_by_perk(user_id INT, perk INT, date_from DATE, date_to DATE)
 		RETURNS INTEGER READS SQL DATA

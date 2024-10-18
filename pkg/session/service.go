@@ -130,6 +130,23 @@ func (s *SessionService) UpdateStatus(data UpdateStatusRequest) error {
 			UPDATE session 
 			SET completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
 			WHERE id = ?`, data.Id)
+
+		row := s.db.QueryRow(`
+			SELECT count(*)
+			FROM session
+			INNER JOIN wave_stats ws ON ws.session_id = session.id
+			INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+			WHERE session.id = ?`, data.Id)
+
+		var count int
+		err := row.Scan(&count)
+		if err != nil {
+			return err
+		}
+
+		if count == 0 {
+			_, err = s.db.Exec(`DELETE FROM session WHERE id = ?`, data.Id)
+		}
 	}
 
 	return err
