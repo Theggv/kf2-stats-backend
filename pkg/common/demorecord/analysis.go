@@ -179,7 +179,7 @@ func Transform(demo *DemoRecord) (*DemoRecordAnalysis, error) {
 	for i := range analysis.Waves {
 		wave := analysis.Waves[i]
 
-		calcWaveBuffsUptime(wave, analysis.Players)
+		calcWaveBuffsUptime(wave)
 	}
 
 	return &analysis, nil
@@ -417,7 +417,7 @@ func analyzeWaveDifficulty(wave *DemoRecordAnalysisWave) *DemoRecordAnalysisWave
 	return &difficulty
 }
 
-func calcWaveBuffsUptime(wave *DemoRecordAnalysisWave, players []*DemoRecordAnalysisPlayer) {
+func calcWaveBuffsUptime(wave *DemoRecordAnalysisWave) {
 	type PlayerBuffs struct {
 		Buffs []*DemoRecordAnalysisWaveBuff
 
@@ -427,8 +427,8 @@ func calcWaveBuffsUptime(wave *DemoRecordAnalysisWave, players []*DemoRecordAnal
 	playerBuffs := map[int]*PlayerBuffs{}
 	maxBuffDurationInTicks := 500
 
-	for i := range players {
-		item := players[i]
+	for i := range wave.Perks {
+		item := wave.Perks[i]
 
 		playerBuffs[item.UserId] = &PlayerBuffs{}
 	}
