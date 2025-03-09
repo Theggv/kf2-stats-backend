@@ -23,7 +23,7 @@ func RegisterRoutes(
 
 	routes.POST("/",
 		cache.Cache(memoryStore, 5*time.Minute,
-			strategy.CacheByRequestBody[LeaderBoardsRequest](func(req LeaderBoardsRequest) string {
+			strategy.CacheByRequestBody(func(req LeaderBoardsRequest) string {
 				return fmt.Sprintf("%v/%v/%v/%v",
 					req.Type, req.Perk, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 			}),

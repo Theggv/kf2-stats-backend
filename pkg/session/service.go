@@ -6,10 +6,15 @@ import (
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
+	"github.com/theggv/kf2-stats-backend/pkg/maps"
+	"github.com/theggv/kf2-stats-backend/pkg/server"
 )
 
 type SessionService struct {
 	db *sql.DB
+
+	mapsService   *maps.MapsService
+	serverService *server.ServerService
 }
 
 func NewSessionService(db *sql.DB) *SessionService {
@@ -20,11 +25,36 @@ func NewSessionService(db *sql.DB) *SessionService {
 	return &service
 }
 
+func (s *SessionService) Inject(
+	mapsService *maps.MapsService,
+	serverService *server.ServerService,
+) {
+	s.mapsService = mapsService
+	s.serverService = serverService
+}
+
 func (s *SessionService) Create(req CreateSessionRequest) (int, error) {
+	serverId, err := s.serverService.Create(server.AddServerRequest{
+		Name:    req.ServerName,
+		Address: req.ServerAddress,
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
+	mapId, err := s.mapsService.Create(maps.AddMapRequest{
+		Name: req.MapName,
+	})
+
+	if err != nil {
+		return 0, err
+	}
+
 	res, err := s.db.Exec(`
 		INSERT INTO session (server_id, map_id, mode, length, diff) 
 		VALUES (?, ?, ?, ?, ?)`,
-		req.ServerId, req.MapId, req.Mode, req.Length, req.Difficulty,
+		serverId, mapId, req.Mode, req.Length, req.Difficulty,
 	)
 
 	if err != nil {

@@ -12,32 +12,6 @@ type serverController struct {
 	service *ServerService
 }
 
-// @Summary Creates a new server
-// @Tags 	Server
-// @Produce json
-// @Param   server body    	AddServerRequest true "Server JSON"
-// @Success 201 {object} 	AddServerResponse
-// @Router /servers [post]
-func (c *serverController) add(ctx *gin.Context) {
-	var req AddServerRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	id, err := c.service.Create(req)
-	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	ctx.JSON(http.StatusCreated, AddServerResponse{
-		Id: id,
-	})
-}
-
 // @Summary Get server by id
 // @Tags 	Server
 // @Produce json

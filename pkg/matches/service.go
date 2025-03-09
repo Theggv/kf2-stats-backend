@@ -353,8 +353,9 @@ func (s *MatchesService) getUserProfiles(userId []int) (
 
 	for _, player := range users {
 		profile := models.UserProfile{
-			Id:   player.Id,
-			Name: player.Name,
+			Id:     player.Id,
+			AuthId: player.AuthId,
+			Name:   player.Name,
 		}
 
 		if data, exists := steamDataSet[player.AuthId]; exists {
