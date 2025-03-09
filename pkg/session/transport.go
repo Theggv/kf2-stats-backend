@@ -5,8 +5,9 @@ import (
 )
 
 type CreateSessionRequest struct {
-	ServerId int `json:"server_id" binding:"required"`
-	MapId    int `json:"map_id" binding:"required"`
+	ServerName    string `json:"server_name" binding:"required"`
+	ServerAddress string `json:"server_address" binding:"required"`
+	MapName       string `json:"map_name" binding:"required"`
 
 	Mode       models.GameMode       `json:"mode" binding:"required"`
 	Length     int                   `json:"length" binding:"required"`

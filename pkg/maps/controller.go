@@ -12,32 +12,6 @@ type mapsController struct {
 	service *MapsService
 }
 
-// @Summary Creates a new map
-// @Tags 	Maps
-// @Produce json
-// @Param   map body    AddMapRequest true "Map JSON"
-// @Success 201 {object} AddMapResponse
-// @Router /maps [post]
-func (c *mapsController) add(ctx *gin.Context) {
-	var req AddMapRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	id, err := c.service.Create(req)
-	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
-		return
-	}
-
-	ctx.JSON(http.StatusCreated, AddMapResponse{
-		Id: id,
-	})
-}
-
 // @Summary Get map by id
 // @Tags 	Maps
 // @Produce json

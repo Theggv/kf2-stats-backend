@@ -12,7 +12,6 @@ func RegisterRoutes(r *gin.RouterGroup, serverService *ServerService) {
 
 	routes := r.Group("/servers")
 
-	routes.POST("/", middleware.AuthMiddleware, controller.add)
 	routes.GET("/", controller.getByPattern)
 	routes.GET("/:id", controller.getById)
 	routes.GET("/:id/last-session", controller.getLastSession)

@@ -56,6 +56,12 @@ func (s *LeaderBoardsService) getLeaderBoard(
 		return nil, err
 	}
 
+	if len(userIds) == 0 {
+		return &LeaderBoardsResponse{
+			Items: []*LeaderBoardsResponseItem{},
+		}, nil
+	}
+
 	conds := make([]string, 0)
 	args := make([]interface{}, 0)
 
