@@ -144,8 +144,6 @@ func (c *sessionController) getDemo(ctx *gin.Context) {
 	writer.Write(marshal)
 	writer.Close()
 
-	fmt.Printf("orig: %vb compressed: %vb\n", len(marshal), len(b.Bytes()))
-
 	ctx.Header("Content-Encoding", "gzip")
 	ctx.Writer.Header().Add("Vary", "Accept-Encoding")
 
