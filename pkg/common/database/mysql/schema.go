@@ -68,6 +68,16 @@ func initSchema(db *sql.DB) error {
 		)
 	`)
 	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS session_demo (
+			session_id INTEGER PRIMARY KEY NOT NULL,
+
+			data LONGBLOB NOT NULL,
+			processed BOOLEAN NOT NULL DEFAULT 0,
+
+			FOREIGN KEY (session_id) REFERENCES session(id) ON UPDATE CASCADE ON DELETE CASCADE
+		)
+	`)
+	tx.Exec(`
 		CREATE TABLE IF NOT EXISTS session_game_data (
 			session_id INTEGER PRIMARY KEY NOT NULL,
 

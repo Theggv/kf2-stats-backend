@@ -1,9 +1,13 @@
 package session
 
 import (
+	"bytes"
+	"compress/gzip"
 	"database/sql"
 	"fmt"
+	"io"
 
+	"github.com/theggv/kf2-stats-backend/pkg/common/demorecord"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
@@ -180,6 +184,49 @@ func (s *SessionService) UpdateStatus(data UpdateStatusRequest) error {
 	}
 
 	return err
+}
+
+func (s *SessionService) UploadDemo(raw []byte) error {
+	demo, err := demorecord.Parse(raw)
+	if err != nil {
+		return err
+	}
+
+	var b bytes.Buffer
+	writer := gzip.NewWriter(&b)
+	writer.Write(raw)
+	writer.Close()
+
+	_, err = s.db.Exec(`
+		INSERT INTO session_demo (session_id, data) VALUES 
+		(?, ?)`,
+		demo.Header.SessionId, b.Bytes(),
+	)
+
+	return err
+}
+
+func (s *SessionService) GetDemo(id int) (*demorecord.DemoRecord, error) {
+	row := s.db.QueryRow(`SELECT data FROM session_demo WHERE session_id = ?`, id)
+
+	var compressed []byte
+	err := row.Scan(&compressed)
+
+	if err != nil {
+		return nil, err
+	}
+
+	reader, err := gzip.NewReader(bytes.NewReader(compressed))
+	if err != nil {
+		return nil, err
+	}
+
+	raw, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	return demorecord.Parse(raw)
 }
 
 func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {

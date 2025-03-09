@@ -1,10 +1,15 @@
 package session
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/theggv/kf2-stats-backend/pkg/common/demorecord"
 )
 
 type sessionController struct {
@@ -83,4 +88,66 @@ func (c *sessionController) updateGameData(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{})
+}
+
+// @Summary Upload demo
+// @Tags 	Session
+// @Produce json
+// @Param   body body 		UpdateStatusRequest true "Body"
+// @Success 201
+// @Router /sessions/demo [post]
+func (c *sessionController) uploadDemo(ctx *gin.Context) {
+	raw, _ := ctx.GetRawData()
+
+	err := c.service.UploadDemo(raw)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{})
+}
+
+// @Summary Get demo by session id
+// @Tags 	Session
+// @Produce json
+// @Param   id path   	 	int true "Session id"
+// @Success 200
+// @Router /sessions/demo/{id} [get]
+func (c *sessionController) getDemo(ctx *gin.Context) {
+	id, err := strconv.Atoi(ctx.Params.ByName("id"))
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	item, err := c.service.GetDemo(id)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	transform, err := demorecord.Transform(item)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	marshal, err := json.Marshal(transform)
+
+	var b bytes.Buffer
+	writer := gzip.NewWriter(&b)
+	writer.Write(marshal)
+	writer.Close()
+
+	fmt.Printf("orig: %vb compressed: %vb\n", len(marshal), len(b.Bytes()))
+
+	ctx.Header("Content-Encoding", "gzip")
+	ctx.Writer.Header().Add("Vary", "Accept-Encoding")
+
+	ctx.Data(http.StatusOK, "application/json", b.Bytes())
 }
