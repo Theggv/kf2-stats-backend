@@ -99,6 +99,13 @@ type DemoRecordAnalysisWave struct {
 	Difficulty  *DemoRecordAnalysisWaveDifficulty    `json:"difficulty"`
 }
 
+type DemoRecordAnalysisConnection struct {
+	Tick int `json:"tick"`
+
+	UserId int `json:"user_id"`
+	Type   int `json:"type"`
+}
+
 type DemoRecordAnalysis struct {
 	Header *DemoRecordHeader `json:"header"`
 
@@ -107,6 +114,8 @@ type DemoRecordAnalysis struct {
 
 	Players []*DemoRecordAnalysisPlayer `json:"players"`
 	Waves   []*DemoRecordAnalysisWave   `json:"waves"`
+
+	Connections []*DemoRecordAnalysisConnection `json:"connection"`
 }
 
 func Transform(demo *DemoRecord) (*DemoRecordAnalysis, error) {
@@ -138,6 +147,20 @@ func Transform(demo *DemoRecord) (*DemoRecordAnalysis, error) {
 
 		for _, item := range unique {
 			analysis.Players = append(analysis.Players, item)
+		}
+	}
+
+	{
+		connectionEvents := filterEventsByType(demo.Events, byte(PlayerJoin), byte(PlayerDisconnect))
+
+		for i := range connectionEvents {
+			event := connectionEvents[i]
+
+			analysis.Connections = append(analysis.Connections, &DemoRecordAnalysisConnection{
+				Tick:   event.Tick,
+				UserId: int(event.Data["user_id"].(byte)),
+				Type:   int(event.Type),
+			})
 		}
 	}
 
