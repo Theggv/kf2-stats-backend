@@ -7,7 +7,7 @@ Backend part of Better Stats for Killing Floor 2.
 ### Requirements
 
 - MySQL 8.0+
-- Go 1.21+
+- Go 1.24.1+
 
 ### Env
 
