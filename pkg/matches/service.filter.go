@@ -231,7 +231,7 @@ func (s *MatchesService) getPlayerData(matchId []int) ([]*filterPlayerData, erro
 			userId = append(userId, key)
 		}
 
-		profiles, err := s.getUserProfiles(userId)
+		profiles, err := s.userService.GetUserProfiles(userId)
 		if err != nil {
 			return nil, err
 		}

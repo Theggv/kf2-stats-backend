@@ -1,59 +1,7 @@
 package demorecord
 
-import (
-	"errors"
-	"fmt"
-)
-
-type DemoRecordAnalysisPlayer struct {
-	UserId   int    `json:"user_id"`
-	UserType int    `json:"user_type"`
-	UniqueId string `json:"unique_id"`
-}
-
-type DemoRecordAnalysisWavePerk struct {
-	UserId int `json:"user_id"`
-	Perk   int `json:"perk"`
-}
-
-type DemoRecordAnalysisWaveZedtime struct {
-	StartTick int   `json:"start_tick"`
-	EndTick   int   `json:"end_tick"`
-	Ticks     []int `json:"ticks"`
-
-	Duration     float32 `json:"duration"`
-	ExtendsCount int     `json:"extends_count"`
-
-	TotalKills int `json:"total_kills"`
-	LargeKills int `json:"large_kills"`
-	HuskKills  int `json:"husk_kills"`
-	SirenKills int `json:"siren_kills"`
-}
-
-type DemoRecordAnalysisWaveKill struct {
-	Tick int `json:"tick"`
-
-	UserId int `json:"user_id"`
-	Zed    int `json:"zed"`
-}
-
-type DemoRecordAnalysisWaveBuff struct {
-	Tick int `json:"tick"`
-
-	UserId   int `json:"user_id"`
-	MaxBuffs int `json:"max_buffs"`
-}
-
-type DemoRecordAnalysisWaveHpChange struct {
-	Tick int `json:"tick"`
-
-	UserId int `json:"user_id"`
-	Health int `json:"health"`
-	Armor  int `json:"armor"`
-}
-
 type DemoRecordAnalysisWaveBuffsUptime struct {
-	UserId     int     `json:"user_id"`
+	UserId     int     `json:"user_index"`
 	TotalTicks int     `json:"total_ticks"`
 	Percent    float64 `json:"percent"`
 }
@@ -61,388 +9,472 @@ type DemoRecordAnalysisWaveBuffsUptime struct {
 type DemoRecordAnalysisWaveDifficultyItem struct {
 	Tick int `json:"tick"`
 
-	TrashKills  int `json:"trash_kills"`
-	MediumKills int `json:"medium_kills"`
-	LargeKills  int `json:"large_kills"`
+	Value float64 `json:"value"`
 }
 
-type DemoRecordAnalysisWaveZedsLeft struct {
-	Tick int `json:"tick"`
+type DemoRecordAnalysisZedtime struct {
+	MetaData *DemoRecordParsedZedtime `json:"meta_data"`
 
-	ZedsLeft int `json:"zeds_left"`
+	TicksSinceLast int `json:"ticks_since_last"`
+
+	TotalKills int `json:"total_kills"`
+	LargeKills int `json:"large_kills"`
+	HuskKills  int `json:"husk_kills"`
+	SirenKills int `json:"siren_kills"`
 }
 
-type DemoRecordAnalysisWaveDifficulty struct {
-	Step        int `json:"step"`
-	PeriodTicks int `json:"period"`
+type Metric struct {
+	Min float64 `json:"min"`
+	Max float64 `json:"max"`
+	Avg float64 `json:"avg"`
+}
 
-	Ticks []*DemoRecordAnalysisWaveDifficultyItem `json:"ticks"`
+type ZedCounter struct {
+	Total  float64 `json:"total"`
+	Trash  float64 `json:"trash"`
+	Medium float64 `json:"medium"`
+	Large  float64 `json:"large"`
+	Boss   float64 `json:"boss"`
+}
+
+type ZedtimeAnalytics struct {
+	TotalZedtimes int `json:"total_zt_count"`
+
+	FirstZedtimeTick    Metric `json:"first_zt_tick"`
+	ZedtimeDuration     Metric `json:"zt_duration_seconds"`
+	TimeBetweenZedtimes Metric `json:"time_between_zt_seconds"`
+
+	NonNullZedtimesCount       int `json:"-"`
+	NonNullTimeBetweenZedtimes int `json:"-"`
+
+	AvgExtendsCount   float64 `json:"avg_extends_count"`
+	AvgExtendDuration float64 `json:"avg_extend_duration"`
+}
+
+type Summary struct {
+	WaveSize          int     `json:"wave_size"`
+	ZedsLeft          int     `json:"zeds_left"`
+	CompletionPercent float64 `json:"completion_percent"`
+
+	Duration          float64 `json:"duration"`
+	AvgKillsPerSecond float64 `json:"avg_kills_per_second"`
+
+	ZedsKilled *ZedCounter `json:"zeds_killed"`
+
+	TrashPercent  float64 `json:"trash_percent"`
+	MediumPercent float64 `json:"medium_percent"`
+	LargePercent  float64 `json:"large_percent"`
+}
+
+type DemoRecordAnalysisWaveAnalytics struct {
+	Summary    *Summary             `json:"summary"`
+	Difficulty *DifficultyAnalytics `json:"difficulty"`
+	Zedtime    *ZedtimeAnalytics    `json:"zedtime"`
+
+	BuffsUptime []*DemoRecordAnalysisWaveBuffsUptime `json:"buffs_uptime"`
 }
 
 type DemoRecordAnalysisWave struct {
-	Wave int `json:"wave"`
+	MetaData *DemoRecordParsedWave `json:"meta_data"`
 
-	StartTick int `json:"start_tick"`
-	EndTick   int `json:"end_tick"`
+	Analytics *DemoRecordAnalysisWaveAnalytics `json:"analytics"`
 
-	RawEvents []*DemoRecordRawEvent            `json:"raw_events"`
-	Perks     []*DemoRecordAnalysisWavePerk    `json:"perks"`
-	ZedTimes  []*DemoRecordAnalysisWaveZedtime `json:"zed_times,omitempty"`
-	Kills     []*DemoRecordAnalysisWaveKill    `json:"kills"`
-	Buffs     []*DemoRecordAnalysisWaveBuff    `json:"buffs"`
+	Zedtimes []*DemoRecordAnalysisZedtime     `json:"zedtimes"`
+	ZedsLeft []*DemoRecordParsedEventZedsLeft `json:"zeds_left"`
 
-	ZedsLeft []*DemoRecordAnalysisWaveZedsLeft `json:"zeds_left"`
-
-	HealthChanges []*DemoRecordAnalysisWaveHpChange `json:"hp_changes"`
-
-	BuffsUptime []*DemoRecordAnalysisWaveBuffsUptime `json:"buffs_uptime"`
-	Difficulty  *DemoRecordAnalysisWaveDifficulty    `json:"difficulty"`
+	PlayerEvents *DemoRecordParsedPlayerEvents `json:"player_events"`
 }
 
-type DemoRecordAnalysisConnection struct {
-	Tick int `json:"tick"`
-
-	UserId int `json:"user_id"`
-	Type   int `json:"type"`
+type DemoRecordAnalysisAnalytics struct {
+	Summary    *Summary             `json:"summary"`
+	Difficulty *DifficultyAnalytics `json:"difficulty"`
+	Zedtime    *ZedtimeAnalytics    `json:"zedtime"`
 }
 
 type DemoRecordAnalysis struct {
-	Header *DemoRecordHeader `json:"header"`
+	Version   byte `json:"protocol_version"`
+	SessionId int  `json:"session_id"`
 
 	StartTick int `json:"start_tick"`
 	EndTick   int `json:"end_tick"`
 
-	Players []*DemoRecordAnalysisPlayer `json:"players"`
-	Waves   []*DemoRecordAnalysisWave   `json:"waves"`
+	Analytics *DemoRecordAnalysisAnalytics `json:"analytics"`
 
-	Connections []*DemoRecordAnalysisConnection `json:"connection"`
+	Players []*DemoRecordParsedPlayer `json:"players"`
+	Waves   []*DemoRecordAnalysisWave `json:"waves"`
 }
 
-func Transform(demo *DemoRecord) (*DemoRecordAnalysis, error) {
-	analysis := DemoRecordAnalysis{
-		Header: demo.Header,
+func (demo *DemoRecordParsed) Analyze() *DemoRecordAnalysis {
+	res := DemoRecordAnalysis{
+		Version:   demo.Version,
+		SessionId: demo.SessionId,
+		StartTick: demo.StartTick,
+		EndTick:   demo.EndTick,
+		Players:   demo.Players,
+		Analytics: &DemoRecordAnalysisAnalytics{
+			Summary: &Summary{},
+			Zedtime: &ZedtimeAnalytics{},
+		},
 	}
 
-	if len(demo.Events) > 0 {
-		analysis.StartTick = demo.Events[0].Tick
-		analysis.EndTick = demo.Events[len(demo.Events)-1].Tick
+	for i := range demo.WaveEvents.Waves {
+		wave := demo.WaveEvents.Waves[i]
+
+		res.Waves = append(res.Waves, demo.analyzeWave(wave))
 	}
+
+	// diff := []float64{}
+	// for _, wave := range res.Waves {
+	// 	for _, tick := range wave.Analytics.Difficulty.Buckets {
+	// 		diff = append(diff, tick.Score)
+	// 	}
+	// }
+
+	// mean, stddev := stat.MeanStdDev(diff, nil)
+	// fmt.Printf("mean: %v stddev: %v\n", mean, stddev)
 
 	{
-		joinEvents := filterEventsByType(demo.Events, byte(PlayerJoin))
+		// Zedtime analytics
+		analytics := res.Analytics.Zedtime
 
-		unique := map[int]*DemoRecordAnalysisPlayer{}
+		for i := range res.Waves {
+			item := res.Waves[i].Analytics.Zedtime
 
-		for i := range joinEvents {
-			event := joinEvents[i]
+			analytics.TotalZedtimes += item.TotalZedtimes
 
-			player := DemoRecordAnalysisPlayer{
-				UserId:   int(event.Data["user_id"].(byte)),
-				UserType: int(event.Data["user_type"].(byte)),
-				UniqueId: event.Data["unique_id"].(string),
+			analytics.AvgExtendsCount += item.AvgExtendsCount
+
+			if item.TimeBetweenZedtimes.Avg > 0 {
+				analytics.NonNullTimeBetweenZedtimes += 1
+				analytics.TimeBetweenZedtimes.Avg += item.TimeBetweenZedtimes.Avg
 			}
 
-			unique[player.UserId] = &player
-		}
+			if item.FirstZedtimeTick.Avg > 0 {
+				analytics.NonNullZedtimesCount += 1
+				analytics.FirstZedtimeTick.Avg += item.FirstZedtimeTick.Avg
+				analytics.ZedtimeDuration.Avg += item.ZedtimeDuration.Avg
+			}
 
-		for _, item := range unique {
-			analysis.Players = append(analysis.Players, item)
-		}
-	}
+			if item.FirstZedtimeTick.Max > analytics.FirstZedtimeTick.Max {
+				analytics.FirstZedtimeTick.Max = item.FirstZedtimeTick.Max
+			}
 
-	{
-		connectionEvents := filterEventsByType(demo.Events, byte(PlayerJoin), byte(PlayerDisconnect))
+			if item.FirstZedtimeTick.Min > 0 &&
+				(item.FirstZedtimeTick.Min < analytics.FirstZedtimeTick.Min ||
+					analytics.FirstZedtimeTick.Min == 0) {
+				analytics.FirstZedtimeTick.Min = item.FirstZedtimeTick.Min
+			}
 
-		for i := range connectionEvents {
-			event := connectionEvents[i]
+			if item.ZedtimeDuration.Max > analytics.ZedtimeDuration.Max {
+				analytics.ZedtimeDuration.Max = item.ZedtimeDuration.Max
+			}
 
-			analysis.Connections = append(analysis.Connections, &DemoRecordAnalysisConnection{
-				Tick:   event.Tick,
-				UserId: int(event.Data["user_id"].(byte)),
-				Type:   int(event.Type),
-			})
-		}
-	}
+			if item.ZedtimeDuration.Min > 0 &&
+				(item.ZedtimeDuration.Min < analytics.ZedtimeDuration.Min ||
+					analytics.ZedtimeDuration.Min == 0) {
+				analytics.ZedtimeDuration.Min = item.ZedtimeDuration.Min
+			}
 
-	{
-		waveStart := 0
-		waveEnd := 0
-		for i := range demo.Events {
-			event := demo.Events[i]
+			if item.TimeBetweenZedtimes.Max > analytics.TimeBetweenZedtimes.Max {
+				analytics.TimeBetweenZedtimes.Max = item.TimeBetweenZedtimes.Max
+			}
 
-			if event.Type == byte(GlobalWaveStart) {
-				waveStart = i
-			} else if event.Type == byte(GlobalWaveEnd) {
-				waveEnd = i
-
-				wave, err := transformWave(demo.Events[waveStart : waveEnd+1])
-				if err != nil {
-					return nil, err
-				}
-
-				analysis.Waves = append(analysis.Waves, wave)
-
-				if waveEnd < waveStart {
-					return nil, errors.New(fmt.Sprintf("waveEnd < waveStart at pos %v", waveEnd))
-				}
+			if item.TimeBetweenZedtimes.Min > 0 &&
+				(item.TimeBetweenZedtimes.Min < analytics.TimeBetweenZedtimes.Min ||
+					analytics.TimeBetweenZedtimes.Min == 0) {
+				analytics.TimeBetweenZedtimes.Min = item.TimeBetweenZedtimes.Min
 			}
 		}
 
-		// Detect if last wave is not finished
-		if waveEnd < waveStart {
-			wave, err := transformWave(demo.Events[waveStart:])
-			if err != nil {
-				return nil, err
+		if analytics.TotalZedtimes > 0 {
+			if analytics.NonNullZedtimesCount > 0 {
+				analytics.AvgExtendsCount /= float64(analytics.NonNullZedtimesCount)
+				analytics.FirstZedtimeTick.Avg /= float64(analytics.NonNullZedtimesCount)
+				analytics.ZedtimeDuration.Avg /= float64(analytics.NonNullZedtimesCount)
 			}
 
-			analysis.Waves = append(analysis.Waves, wave)
+			if analytics.NonNullTimeBetweenZedtimes > 0 {
+				analytics.TimeBetweenZedtimes.Avg /= float64(analytics.NonNullTimeBetweenZedtimes)
+			}
+
+			if analytics.AvgExtendsCount > 0 {
+				analytics.AvgExtendDuration = (analytics.ZedtimeDuration.Avg - 3) / analytics.AvgExtendsCount
+			}
 		}
 	}
 
-	for i := range analysis.Waves {
-		wave := analysis.Waves[i]
-
-		calcWaveBuffsUptime(wave)
-	}
-
-	return &analysis, nil
+	return &res
 }
 
-func transformWave(events []*DemoRecordRawEvent) (*DemoRecordAnalysisWave, error) {
-	wave := DemoRecordAnalysisWave{
-		Wave:      int(events[0].Data["wave"].(byte)),
-		RawEvents: events,
-		StartTick: events[0].Tick,
-		EndTick:   events[len(events)-1].Tick,
+func (demo *DemoRecordParsed) analyzeWave(wave *DemoRecordParsedWave) *DemoRecordAnalysisWave {
+	res := DemoRecordAnalysisWave{
+		MetaData: wave,
+		Analytics: &DemoRecordAnalysisWaveAnalytics{
+			Summary:     &Summary{},
+			Difficulty:  &DifficultyAnalytics{},
+			Zedtime:     &ZedtimeAnalytics{},
+			BuffsUptime: []*DemoRecordAnalysisWaveBuffsUptime{},
+		},
+		Zedtimes:     []*DemoRecordAnalysisZedtime{},
+		ZedsLeft:     []*DemoRecordParsedEventZedsLeft{},
+		PlayerEvents: demo.analyzePlayerEvents(wave),
 	}
 
+	zedTimes := filterByRange(
+		demo.WaveEvents.ZedTimes,
+		func(item *DemoRecordParsedZedtime) int {
+			return item.StartTick
+		}, wave.StartTick, wave.EndTick,
+	)
+
+	res.Zedtimes = append(res.Zedtimes, demo.analyzeWaveZedtimes(zedTimes)...)
+
+	zedsLeft := filterByRange(
+		demo.WaveEvents.ZedsLeft,
+		func(item *DemoRecordParsedEventZedsLeft) int {
+			return item.Tick
+		}, wave.StartTick, wave.EndTick,
+	)
+
+	res.ZedsLeft = append(res.ZedsLeft, zedsLeft...)
+
 	{
-		perkEvents := filterEventsByType(events, byte(PlayerPerk))
+		// Zedtime wave analytics
+		analytics := res.Analytics.Zedtime
 
-		for i := range perkEvents {
-			event := perkEvents[i]
-
-			wave.Perks = append(wave.Perks, &DemoRecordAnalysisWavePerk{
-				UserId: int(event.Data["user_id"].(byte)),
-				Perk:   int(event.Data["perk"].(byte)),
-			})
+		if len(res.Zedtimes) > 0 {
+			analytics.ZedtimeDuration.Min = res.Zedtimes[0].MetaData.Duration
+			analytics.ZedtimeDuration.Max = res.Zedtimes[0].MetaData.Duration
 		}
-	}
 
-	{
-		zedtimeEvents := filterEventsByType(events, byte(GlobalZedTime))
-		zedtimeDividers := []int{}
+		if len(res.Zedtimes) > 1 {
+			analytics.TimeBetweenZedtimes.Min = float64(res.Zedtimes[1].TicksSinceLast) / 100
+			analytics.TimeBetweenZedtimes.Max = float64(res.Zedtimes[1].TicksSinceLast) / 100
+		}
 
-		for i := range zedtimeEvents {
+		for i := range res.Zedtimes {
+			item := res.Zedtimes[i]
+
+			analytics.AvgExtendsCount += float64(item.MetaData.ExtendsCount)
+			analytics.ZedtimeDuration.Avg += item.MetaData.Duration
+			analytics.TimeBetweenZedtimes.Avg += float64(item.TicksSinceLast)
+
+			if item.MetaData.Duration > analytics.ZedtimeDuration.Max {
+				analytics.ZedtimeDuration.Max = item.MetaData.Duration
+			}
+
+			if item.MetaData.Duration < analytics.ZedtimeDuration.Min {
+				analytics.ZedtimeDuration.Min = item.MetaData.Duration
+			}
+
 			if i == 0 {
 				continue
 			}
 
-			if zedtimeEvents[i].Tick-zedtimeEvents[i-1].Tick > 300 {
-				zedtimeDividers = append(zedtimeDividers, i-1)
+			if float64(item.TicksSinceLast)/100 > analytics.TimeBetweenZedtimes.Max {
+				analytics.TimeBetweenZedtimes.Max = float64(item.TicksSinceLast) / 100
+			}
+
+			if float64(item.TicksSinceLast)/100 < analytics.TimeBetweenZedtimes.Min {
+				analytics.TimeBetweenZedtimes.Min = float64(item.TicksSinceLast) / 100
 			}
 		}
 
-		if len(zedtimeEvents) > 0 {
-			zedtimeDividers = append(zedtimeDividers, len(zedtimeEvents)-1)
-		}
+		if len(res.Zedtimes) > 0 {
+			analytics.TotalZedtimes = len(res.Zedtimes)
 
-		for i, rangeEndIndex := range zedtimeDividers {
-			rangeStartIndex := 0
-			if i > 0 {
-				rangeStartIndex = zedtimeDividers[i-1] + 1
-			}
+			analytics.FirstZedtimeTick.Min = float64(res.Zedtimes[0].MetaData.StartTick - res.MetaData.StartTick)
+			analytics.FirstZedtimeTick.Max = analytics.FirstZedtimeTick.Min
+			analytics.FirstZedtimeTick.Avg = analytics.FirstZedtimeTick.Min
 
-			item := DemoRecordAnalysisWaveZedtime{
-				Duration:     float32(zedtimeEvents[rangeEndIndex].Tick+300-zedtimeEvents[rangeStartIndex].Tick) / 100,
-				ExtendsCount: rangeEndIndex - rangeStartIndex,
-			}
+			analytics.AvgExtendsCount /= float64(len(res.Zedtimes))
+			analytics.ZedtimeDuration.Avg /= float64(len(res.Zedtimes))
 
-			for j := rangeStartIndex; j <= rangeEndIndex; j++ {
-				item.Ticks = append(item.Ticks, zedtimeEvents[j].Tick)
-			}
-
-			item.Ticks = append(item.Ticks, zedtimeEvents[rangeEndIndex].Tick+300)
-			item.StartTick = item.Ticks[0]
-			item.EndTick = item.Ticks[len(item.Ticks)-1]
-
-			wave.ZedTimes = append(wave.ZedTimes, &item)
-		}
-	}
-
-	{
-		killEvents := filterEventsByType(events, byte(EventKill))
-
-		for i := range killEvents {
-			event := killEvents[i]
-
-			wave.Kills = append(wave.Kills, &DemoRecordAnalysisWaveKill{
-				Tick:   event.Tick,
-				UserId: int(event.Data["user_id"].(byte)),
-				Zed:    int(event.Data["zed"].(byte)),
-			})
-		}
-	}
-
-	{
-		buffEvents := filterEventsByType(events, byte(EventBuffs), byte(PlayerDied))
-
-		for i := range buffEvents {
-			event := buffEvents[i]
-
-			if event.Type == byte(EventBuffs) {
-				wave.Buffs = append(wave.Buffs, &DemoRecordAnalysisWaveBuff{
-					Tick:     event.Tick,
-					UserId:   int(event.Data["user_id"].(byte)),
-					MaxBuffs: int(event.Data["max_buffs"].(byte)),
-				})
+			if len(res.Zedtimes) > 1 {
+				analytics.TimeBetweenZedtimes.Avg /= float64(len(res.Zedtimes)-1) * 100
 			} else {
-				wave.Buffs = append(wave.Buffs, &DemoRecordAnalysisWaveBuff{
-					Tick:     event.Tick,
-					UserId:   int(event.Data["user_id"].(byte)),
-					MaxBuffs: 0,
-				})
+				analytics.TimeBetweenZedtimes.Avg = 0
+			}
+
+			if analytics.AvgExtendsCount > 0 {
+				analytics.AvgExtendDuration = (analytics.ZedtimeDuration.Avg - 3) / analytics.AvgExtendsCount
 			}
 		}
 	}
 
-	{
-		hpChangeEvents := filterEventsByType(events, byte(EventHpChange), byte(PlayerDied))
+	res.Analytics.BuffsUptime = calcWaveBuffsUptime(&res)
 
-		for i := range hpChangeEvents {
-			event := hpChangeEvents[i]
+	res.generateSummary()
+	res.calcDifficulty(100, 500)
 
-			if event.Type == byte(EventHpChange) {
-				wave.HealthChanges = append(wave.HealthChanges, &DemoRecordAnalysisWaveHpChange{
-					Tick:   event.Tick,
-					UserId: int(event.Data["user_id"].(byte)),
-					Health: event.Data["health"].(int),
-					Armor:  int(event.Data["armor"].(byte)),
-				})
-			} else {
-				wave.HealthChanges = append(wave.HealthChanges, &DemoRecordAnalysisWaveHpChange{
-					Tick:   event.Tick,
-					UserId: int(event.Data["user_id"].(byte)),
-					Health: 0,
-					Armor:  0,
-				})
-			}
-		}
-	}
-
-	{
-		zedsLeftEvents := filterEventsByType(events, byte(GlobalZedsLeft))
-
-		for i := range zedsLeftEvents {
-			event := zedsLeftEvents[i]
-
-			wave.ZedsLeft = append(wave.ZedsLeft, &DemoRecordAnalysisWaveZedsLeft{
-				Tick:     event.Tick,
-				ZedsLeft: event.Data["zeds_left"].(int),
-			})
-		}
-	}
-
-	analyzeWaveZedtimes(&wave)
-	wave.Difficulty = analyzeWaveDifficulty(&wave)
-
-	return &wave, nil
+	return &res
 }
 
-func analyzeWaveZedtimes(wave *DemoRecordAnalysisWave) {
-	lastIdx := 0
-
-	for i := range wave.ZedTimes {
-		zedtime := wave.ZedTimes[i]
-
-		for j := lastIdx; j < len(wave.Kills); j++ {
-			kill := wave.Kills[j]
-
-			if kill.Tick < zedtime.Ticks[0] {
-				continue
-			} else if kill.Tick > zedtime.Ticks[len(zedtime.Ticks)-1]+300 {
-				lastIdx = j
-				break
-			} else {
-				if kill.Zed == 7 || kill.Zed == 8 || kill.Zed == 9 {
-					zedtime.LargeKills += 1
-				} else {
-					if kill.Tick > zedtime.Ticks[len(zedtime.Ticks)-1] {
-						continue
-					}
-
-					if kill.Zed == 11 {
-						zedtime.SirenKills += 1
-					} else if kill.Zed == 12 {
-						zedtime.HuskKills += 1
-					}
-
-					zedtime.TotalKills += 1
-				}
-			}
-		}
-	}
-}
-
-func analyzeWaveDifficulty(wave *DemoRecordAnalysisWave) *DemoRecordAnalysisWaveDifficulty {
-	difficulty := DemoRecordAnalysisWaveDifficulty{
-		Step:        100,
-		PeriodTicks: 3000,
+func (demo *DemoRecordParsed) analyzePlayerEvents(
+	wave *DemoRecordParsedWave,
+) *DemoRecordParsedPlayerEvents {
+	res := DemoRecordParsedPlayerEvents{
+		ConnectionLog: []*DemoRecordParsedEventConnection{},
+		Perks:         []*DemoRecordParsedEventPerkChange{},
+		Kills:         []*DemoRecordParsedEventKill{},
+		Buffs:         []*DemoRecordParsedEventBuff{},
+		Deaths:        []*DemoRecordParsedEventDeath{},
+		HuskRages:     []*DemoRecordParsedEventHuskRage{},
+		HealthChanges: []*DemoRecordParsedEventHpChange{},
 	}
 
-	startIdx := 0
-	endIdx := -1
-	tick := DemoRecordAnalysisWaveDifficultyItem{}
+	for i := range demo.PlayerEvents.Perks {
+		userId := demo.PlayerEvents.Perks[i].UserId
 
-	updateKills := func(kill *DemoRecordAnalysisWaveKill, value int) {
-		if kill.Zed == 7 || kill.Zed == 8 || kill.Zed == 9 {
-			tick.LargeKills += value
-		} else if kill.Zed == 10 || kill.Zed == 11 || kill.Zed == 12 {
-			tick.MediumKills += value
-		} else {
-			tick.TrashKills += value
-		}
-	}
-
-	for tickOffset := 0; tickOffset < wave.EndTick-wave.StartTick+difficulty.Step; tickOffset += difficulty.Step {
-		if tickOffset >= difficulty.PeriodTicks {
-			for i := startIdx; i < len(wave.Kills); i++ {
-				kill := wave.Kills[i]
-
-				if kill.Tick > wave.StartTick+tickOffset-difficulty.PeriodTicks {
-					break
-				}
-
-				startIdx = i + 1
-				updateKills(kill, -1)
-			}
+		if lastHpChange := findLastLower(
+			filter(
+				demo.PlayerEvents.HealthChanges,
+				func(item *DemoRecordParsedEventHpChange) int {
+					return item.UserId
+				}, userId,
+			),
+			func(item *DemoRecordParsedEventHpChange) int {
+				return item.Tick
+			},
+			wave.StartTick,
+		); lastHpChange != nil {
+			res.HealthChanges = append(res.HealthChanges, *lastHpChange)
 		}
 
-		for i := endIdx + 1; i < len(wave.Kills); i++ {
-			kill := wave.Kills[i]
-
-			if kill.Tick > wave.StartTick+tickOffset {
-				break
-			}
-
-			endIdx = i
-			updateKills(kill, 1)
-		}
-
-		difficulty.Ticks = append(difficulty.Ticks, &DemoRecordAnalysisWaveDifficultyItem{
-			Tick:        tickOffset,
-			TrashKills:  tick.TrashKills,
-			MediumKills: tick.MediumKills,
-			LargeKills:  tick.LargeKills,
+		res.Buffs = append(res.Buffs, &DemoRecordParsedEventBuff{
+			Tick:     wave.StartTick,
+			UserId:   userId,
+			MaxBuffs: 0,
 		})
 	}
 
-	return &difficulty
+	res.Perks = append(res.Perks,
+		filterByRange(demo.PlayerEvents.Perks, func(item *DemoRecordParsedEventPerkChange) int {
+			return item.Tick
+		}, wave.StartTick, wave.EndTick)...,
+	)
+
+	res.ConnectionLog = append(res.ConnectionLog,
+		filterByRange(demo.PlayerEvents.ConnectionLog, func(item *DemoRecordParsedEventConnection) int {
+			return item.Tick
+		}, wave.StartTick, wave.EndTick)...,
+	)
+
+	res.Deaths = append(res.Deaths,
+		filterByRange(demo.PlayerEvents.Deaths, func(item *DemoRecordParsedEventDeath) int {
+			return item.Tick
+		}, wave.StartTick, wave.EndTick)...,
+	)
+
+	res.Kills = append(res.Kills,
+		filterByRange(demo.PlayerEvents.Kills, func(item *DemoRecordParsedEventKill) int {
+			return item.Tick
+		}, wave.StartTick, wave.EndTick)...,
+	)
+
+	res.HuskRages = append(res.HuskRages,
+		filterByRange(demo.PlayerEvents.HuskRages, func(item *DemoRecordParsedEventHuskRage) int {
+			return item.Tick
+		}, wave.StartTick, wave.EndTick)...,
+	)
+
+	res.HealthChanges = append(res.HealthChanges,
+		filterByRange(demo.PlayerEvents.HealthChanges, func(item *DemoRecordParsedEventHpChange) int {
+			return item.Tick
+		}, wave.StartTick, wave.EndTick)...,
+	)
+
+	res.Buffs = append(res.Buffs,
+		filterByRange(demo.PlayerEvents.Buffs, func(item *DemoRecordParsedEventBuff) int {
+			return item.Tick
+		}, wave.StartTick, wave.EndTick)...,
+	)
+
+	return &res
 }
 
-func calcWaveBuffsUptime(wave *DemoRecordAnalysisWave) {
+func (demo *DemoRecordParsed) analyzeWaveZedtimes(
+	zedTimes []*DemoRecordParsedZedtime,
+) []*DemoRecordAnalysisZedtime {
+	items := []*DemoRecordAnalysisZedtime{}
+
+	for i := range zedTimes {
+		item := DemoRecordAnalysisZedtime{
+			MetaData: zedTimes[i],
+		}
+
+		if i > 0 {
+			item.TicksSinceLast = zedTimes[i].StartTick - zedTimes[i-1].EndTick
+		}
+
+		kills := filterByRange(demo.PlayerEvents.Kills, func(item *DemoRecordParsedEventKill) int {
+			return item.Tick
+		}, item.MetaData.StartTick, item.MetaData.EndTick)
+
+		for killIdx := range kills {
+			kill := kills[killIdx]
+
+			if kill.IsLarge() {
+				item.LargeKills += 1
+			} else if kill.IsHusk() {
+				item.HuskKills += 1
+			} else if kill.IsSiren() {
+				item.SirenKills += 1
+			}
+
+			item.TotalKills += 1
+		}
+
+		items = append(items, &item)
+	}
+
+	return items
+}
+
+func (wave *DemoRecordAnalysisWave) generateSummary() {
+	res := Summary{
+		ZedsKilled: &ZedCounter{},
+	}
+
+	if len(wave.ZedsLeft) > 0 {
+		res.WaveSize = wave.ZedsLeft[0].ZedsLeft
+		res.ZedsLeft = wave.ZedsLeft[len(wave.ZedsLeft)-1].ZedsLeft
+		res.CompletionPercent = 1 - float64(res.ZedsLeft)/float64(res.WaveSize)
+	}
+
+	res.Duration = float64(wave.MetaData.EndTick-wave.MetaData.StartTick) / 100
+
+	for i := range wave.PlayerEvents.Kills {
+		kill := wave.PlayerEvents.Kills[i]
+
+		if kill.IsLarge() {
+			res.ZedsKilled.Large += 1
+		} else if kill.IsMedium() {
+			res.ZedsKilled.Medium += 1
+		} else if kill.IsTrash() {
+			res.ZedsKilled.Trash += 1
+		} else if kill.IsBoss() {
+			res.ZedsKilled.Boss += 1
+		}
+
+		res.ZedsKilled.Total += 1
+	}
+
+	if res.ZedsKilled.Total > 0 {
+		res.TrashPercent = float64(res.ZedsKilled.Trash) / float64(res.ZedsKilled.Total)
+		res.MediumPercent = float64(res.ZedsKilled.Medium) / float64(res.ZedsKilled.Total)
+		res.LargePercent = float64(res.ZedsKilled.Large) / float64(res.ZedsKilled.Total)
+		res.AvgKillsPerSecond = float64(res.ZedsKilled.Total) / res.Duration
+	}
+
+	wave.Analytics.Summary = &res
+}
+
+func calcWaveBuffsUptime(wave *DemoRecordAnalysisWave) []*DemoRecordAnalysisWaveBuffsUptime {
+	res := []*DemoRecordAnalysisWaveBuffsUptime{}
+
 	type PlayerBuffs struct {
-		Buffs []*DemoRecordAnalysisWaveBuff
+		Buffs []*DemoRecordParsedEventBuff
 
 		TotalTicks int
 	}
@@ -450,14 +482,14 @@ func calcWaveBuffsUptime(wave *DemoRecordAnalysisWave) {
 	playerBuffs := map[int]*PlayerBuffs{}
 	maxBuffDurationInTicks := 500
 
-	for i := range wave.Perks {
-		item := wave.Perks[i]
+	for i := range wave.PlayerEvents.Perks {
+		item := wave.PlayerEvents.Perks[i]
 
 		playerBuffs[item.UserId] = &PlayerBuffs{}
 	}
 
-	for i := range wave.Buffs {
-		item := wave.Buffs[i]
+	for i := range wave.PlayerEvents.Buffs {
+		item := wave.PlayerEvents.Buffs[i]
 
 		if data, ok := playerBuffs[item.UserId]; ok {
 			data.Buffs = append(data.Buffs, item)
@@ -486,28 +518,16 @@ func calcWaveBuffsUptime(wave *DemoRecordAnalysisWave) {
 			lastBuff := data.Buffs[len(data.Buffs)-1]
 			if lastBuff.MaxBuffs > 0 {
 				// Last buff is still active
-				data.TotalTicks += min(maxBuffDurationInTicks, wave.EndTick-lastBuff.Tick)
+				data.TotalTicks += min(maxBuffDurationInTicks, wave.MetaData.EndTick-lastBuff.Tick)
 			}
 		}
 
-		wave.BuffsUptime = append(wave.BuffsUptime, &DemoRecordAnalysisWaveBuffsUptime{
+		res = append(res, &DemoRecordAnalysisWaveBuffsUptime{
 			UserId:     userId,
 			TotalTicks: data.TotalTicks,
-			Percent:    float64(data.TotalTicks) / float64(wave.EndTick-wave.StartTick),
+			Percent:    float64(data.TotalTicks) / float64(wave.MetaData.EndTick-wave.MetaData.StartTick),
 		})
 	}
-}
 
-func filterEventsByType(events []*DemoRecordRawEvent, eventTypes ...byte) []*DemoRecordRawEvent {
-	filtered := []*DemoRecordRawEvent{}
-
-	for i := range events {
-		for j := range eventTypes {
-			if events[i].Type == eventTypes[j] {
-				filtered = append(filtered, events[i])
-			}
-		}
-	}
-
-	return filtered
+	return res
 }
