@@ -77,6 +77,28 @@ func initSchema(db *sql.DB) error {
 			FOREIGN KEY (session_id) REFERENCES session(id) ON UPDATE CASCADE ON DELETE CASCADE
 		)
 	`)
+	// tx.Exec(`
+	// 	CREATE TABLE IF NOT EXISTS session_demo_analytics (
+	// 		session_id INTEGER PRIMARY KEY NOT NULL,
+
+	// 		wave INTEGER NOT NULL,
+	// 		attempt INTEGER NOT NULL,
+
+	// 		duration REAL NOT NULL,
+	// 		wave_size INTEGER NOT NULL,
+	// 		zeds_left INTEGER NOT NULL,
+
+	// 		players_count REAL NOT NULL,
+	// 		avg_kills_per_second REAL NOT NULL,
+
+	// 		total_killed INTEGER NOT NULL,
+	// 		trash_killed INTEGER NOT NULL,
+	// 		medium_killed INTEGER NOT NULL,
+	// 		large_killed INTEGER NOT NULL,
+
+	// 		FOREIGN KEY (session_id) REFERENCES session(id) ON UPDATE CASCADE ON DELETE CASCADE
+	// 	)
+	// `)
 	tx.Exec(`
 		CREATE TABLE IF NOT EXISTS session_game_data (
 			session_id INTEGER PRIMARY KEY NOT NULL,
@@ -297,6 +319,52 @@ func initSchema(db *sql.DB) error {
 			total INTEGER NOT NULL,
 
 			FOREIGN KEY (id) REFERENCES session_aggregated(id) ON UPDATE CASCADE ON DELETE CASCADE
+		)
+	`)
+	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS daily_user_stats (
+			id INTEGER PRIMARY KEY AUTO_INCREMENT,
+
+			period DATE NOT NULL,
+			user_id INTEGER NOT NULL,
+			perk INTEGER NOT NULL,
+
+			playtime_seconds INTEGER NOT NULL,
+			games_played INTEGER NOT NULL,
+			waves_played INTEGER NOT NULL, 
+			deaths INTEGER NOT NULL,
+
+			shots_fired INTEGER NOT NULL,
+			shots_hit INTEGER NOT NULL,
+			shots_hs INTEGER NOT NULL,
+
+			dosh_earned INTEGER NOT NULL,
+
+			heals_given INTEGER NOT NULL,
+			heals_recv INTEGER NOT NULL,
+
+			damage_dealt INTEGER NOT NULL,
+			damage_taken INTEGER NOT NULL,
+
+			zedtime_count INTEGER NOT NULL,
+			zedtime_length REAL NOT NULL,
+
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+
+			UNIQUE INDEX daily_user_stats_uniq (period, perk, user_id),
+			INDEX daily_user_stats_perk_idx (perk)
+		)
+	`)
+	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS daily_user_kills (
+			id INTEGER PRIMARY KEY NOT NULL,
+
+			trash INTEGER NOT NULL,
+			medium INTEGER NOT NULL,
+			large INTEGER NOT NULL,
+			total INTEGER NOT NULL,
+
+			FOREIGN KEY (id) REFERENCES daily_user_stats(id) ON UPDATE CASCADE ON DELETE CASCADE
 		)
 	`)
 

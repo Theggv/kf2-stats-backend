@@ -75,7 +75,7 @@ func (s *LeaderBoardsService) getLeaderBoard(
 	// where args
 	conds = append(conds, fmt.Sprintf("user_id IN (%v)", util.IntArrayToString(userIds, ",")))
 
-	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
+	conds = append(conds, "period BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	if req.Perk != 0 {
@@ -102,16 +102,15 @@ func (s *LeaderBoardsService) getLeaderBoard(
 		FROM (
 			SELECT
 				user_id,
-				count(distinct session.id) as total_games,
+				coalesce(sum(games_played), 0) as total_games,
 				coalesce(sum(deaths), 0) as total_deaths,
 				coalesce(sum(damage_dealt), 0) as total_damage,
 				coalesce(sum(kills.total), 0) as total_kills,
 				coalesce(sum(kills.large), 0) as total_large_kills,
 				coalesce(sum(heals_given), 0) as total_heals,
 				floor(coalesce(sum(playtime_seconds), 0) / 3600) as total_playtime
-			FROM session
-			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-			INNER JOIN session_aggregated_kills kills ON aggr.id = kills.id
+			FROM daily_user_stats
+			INNER JOIN daily_user_kills kills on kills.id = daily_user_stats.id
 			WHERE %v
 			GROUP BY user_id
 		) t
@@ -458,7 +457,7 @@ func (s *LeaderBoardsService) getLeaderboardIds(
 	var metric string
 	switch req.Type {
 	case TotalGames:
-		metric = "count(distinct session.id) as metric"
+		metric = "coalesce(sum(games_played), 0) as metric"
 	case TotalDeaths:
 		metric = "coalesce(sum(deaths), 0) as metric"
 	case TotalDamage:
@@ -473,7 +472,7 @@ func (s *LeaderBoardsService) getLeaderboardIds(
 		metric = "floor(coalesce(sum(playtime_seconds), 0) / 3600) as metric"
 	}
 
-	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
+	conds = append(conds, "period BETWEEN ? AND ?")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	if req.Perk != 0 {
@@ -488,11 +487,10 @@ func (s *LeaderBoardsService) getLeaderboardIds(
 		FROM (
 			SELECT
 				user_id,
-				count(distinct session.id) as total_games,
+				coalesce(sum(games_played), 0) as total_games,
 				%v
-			FROM session
-			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-			INNER JOIN session_aggregated_kills kills ON aggr.id = kills.id
+			FROM daily_user_stats
+			INNER JOIN daily_user_kills kills ON kills.id = daily_user_stats.id
 			WHERE %v
 			GROUP BY user_id
 			HAVING total_games >= 10

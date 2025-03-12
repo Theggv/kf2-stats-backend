@@ -1,6 +1,8 @@
 module github.com/theggv/kf2-stats-backend
 
-go 1.21.1
+go 1.22
+
+toolchain go1.23.7
 
 require (
 	github.com/chenyahui/gin-cache v1.8.1
@@ -17,7 +19,8 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/jellydator/ttlcache/v2 v2.11.1 // indirect
 	github.com/swaggo/swag v1.16.2 // indirect
-	golang.org/x/sync v0.4.0 // indirect
+	golang.org/x/sync v0.5.0 // indirect
+	gonum.org/v1/gonum v0.15.1 // indirect
 )
 
 require (
@@ -36,7 +39,7 @@ require (
 	github.com/go-playground/validator/v10 v10.19.0 // indirect
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/goccy/go-json v0.10.2 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.7 // indirect
@@ -54,7 +57,7 @@ require (
 	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/tools v0.14.0 // indirect
+	golang.org/x/tools v0.15.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
