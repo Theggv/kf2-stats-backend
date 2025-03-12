@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/theggv/kf2-stats-backend/pkg/common/demorecord"
 )
 
 type sessionController struct {
