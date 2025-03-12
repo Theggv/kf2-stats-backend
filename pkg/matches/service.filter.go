@@ -332,7 +332,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 	}
 
 	// Order
-	if req.ReverseOrder != nil && *req.ReverseOrder == true {
+	if req.ReverseOrder != nil && *req.ReverseOrder {
 		order = "desc"
 	}
 
@@ -380,7 +380,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		items = append(items, &item)
 	}
 
-	if req.IncludeServer != nil && *req.IncludeServer == true {
+	if req.IncludeServer != nil && *req.IncludeServer {
 		serverData, err := s.getServerData(matchId)
 		if err != nil {
 			return nil, err
@@ -395,7 +395,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		}
 	}
 
-	if req.IncludeMap != nil && *req.IncludeMap == true {
+	if req.IncludeMap != nil && *req.IncludeMap {
 		mapData, err := s.getMapData(matchId)
 		if err != nil {
 			return nil, err
@@ -410,7 +410,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		}
 	}
 
-	if req.IncludeGameData != nil && *req.IncludeGameData == true {
+	if req.IncludeGameData != nil && *req.IncludeGameData {
 		gameData, err := s.getGameData(matchId)
 		if err != nil {
 			return nil, err
@@ -425,7 +425,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		}
 	}
 
-	if req.IncludeCDData != nil && *req.IncludeCDData == true {
+	if req.IncludeCDData != nil && *req.IncludeCDData {
 		cdData, err := s.getCDGameData(matchId)
 		if err != nil {
 			return nil, err
@@ -440,7 +440,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		}
 	}
 
-	if req.IncludePlayers != nil && *req.IncludePlayers == true {
+	if req.IncludePlayers != nil && *req.IncludePlayers {
 		playerData, err := s.getPlayerData(matchId)
 		if err != nil {
 			return nil, err

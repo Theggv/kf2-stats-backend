@@ -141,6 +141,11 @@ func (c *sessionController) getDemo(ctx *gin.Context) {
 	analysis := parsedDemo.Analyze()
 
 	marshal, err := json.Marshal(analysis)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
 
 	var b bytes.Buffer
 	writer := gzip.NewWriter(&b)

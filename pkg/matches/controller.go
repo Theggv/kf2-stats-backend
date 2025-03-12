@@ -141,6 +141,12 @@ func (c *matchesController) getMatchWaves(ctx *gin.Context) {
 // @Router /matches/{id}/user/{userId}/stats [get]
 func (c *matchesController) getMatchPlayerStats(ctx *gin.Context) {
 	sessionId, err := strconv.Atoi(ctx.Params.ByName("id"))
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
 	userId, err := strconv.Atoi(ctx.Params.ByName("userId"))
 
 	if err != nil {

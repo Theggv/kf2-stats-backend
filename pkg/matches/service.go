@@ -410,6 +410,10 @@ func (s *MatchesService) GetMatchAggregatedStats(sessionId int) (*GetMatchAggreg
 			&stats.Kills, &stats.LargeKills, &stats.HuskRages,
 		)
 
+		if err != nil {
+			return nil, err
+		}
+
 		players = append(players, stats)
 	}
 
@@ -448,6 +452,9 @@ func (s *MatchesService) GetMatchLiveData(sessionId int) (*GetMatchLiveDataRespo
 
 	var status models.GameStatus
 	err = s.db.QueryRow(`SELECT status FROM session WHERE id = ?`, sessionId).Scan(&status)
+	if err != nil {
+		return nil, err
+	}
 
 	res := GetMatchLiveDataResponse{
 		Status:     status,
@@ -476,6 +483,9 @@ func (s *MatchesService) GetMatchLiveData(sessionId int) (*GetMatchLiveDataRespo
 		where current_session_id = ?
 		`, sessionId,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	steamIdSet := make(map[string]bool)
 	for rows.Next() {
@@ -487,6 +497,9 @@ func (s *MatchesService) GetMatchLiveData(sessionId int) (*GetMatchLiveDataRespo
 			&item.Health, &item.Armor,
 			&item.IsSpectator,
 		)
+		if err != nil {
+			return nil, err
+		}
 
 		if item.AuthType == models.Steam {
 			steamIdSet[item.AuthId] = true

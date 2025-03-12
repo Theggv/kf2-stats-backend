@@ -61,7 +61,7 @@ func calcDifficultyZedsBonus(counter *ZedCounter) float64 {
 	return max(0, (bonus-1.0)/4.0)
 }
 
-func calcZtBonus(zedTimes []*DemoRecordAnalysisZedtime, tick, step, period int) float64 {
+func calcZtBonus(zedTimes []*DemoRecordAnalysisZedtime, tick, period int) float64 {
 	startTick := tick - period
 	endTick := tick - 1
 	duration := float64(endTick-startTick) / 100
@@ -153,7 +153,7 @@ func (wave *DemoRecordAnalysisWave) calcDifficulty(step, period int) {
 			avgZedsPerSecond = float64(len(kills)) / duration
 		}
 
-		ztBonus := calcZtBonus(wave.Zedtimes, offset, step, period)
+		ztBonus := calcZtBonus(wave.Zedtimes, offset, period)
 		zedsBonus := calcDifficultyZedsBonus(&counter) * waveSizeBonus
 		speedBonus := avgZedsPerSecond * playersBonus * lerp(0.1, 1, zedsBonus)
 
