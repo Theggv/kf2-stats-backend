@@ -150,8 +150,8 @@ func (s *MatchesService) GetMatchWaves(sessionId int) (*GetMatchWavesResponse, e
 	}
 
 	// Join players with waves
-	for i := 0; i < len(waves); i++ {
-		for j := 0; j < len(players); j++ {
+	for i := range waves {
+		for j := range players {
 			if waves[i].WaveId == players[j].WaveId {
 				waves[i].Players = append(waves[i].Players, players[j].Player)
 			}
@@ -170,7 +170,7 @@ func (s *MatchesService) GetMatchWaves(sessionId int) (*GetMatchWavesResponse, e
 		userId = append(userId, key)
 	}
 
-	users, err := s.getUserProfiles(userId)
+	users, err := s.userService.GetUserProfiles(userId)
 	if err != nil {
 		return nil, err
 	}
@@ -315,58 +315,6 @@ func (s *MatchesService) getMatchWavesPlayersStats(sessionId int) (
 	}
 
 	return players, nil
-}
-
-func (s *MatchesService) getUserProfiles(userId []int) (
-	[]*models.UserProfile, error,
-) {
-	users, err := s.userService.GetManyById(userId)
-	if err != nil {
-		return nil, err
-	}
-
-	set := make(map[string]bool)
-	steamIds := []string{}
-
-	for _, player := range users {
-		if player.Type != models.Steam {
-			continue
-		}
-		set[player.AuthId] = true
-	}
-
-	for key := range set {
-		steamIds = append(steamIds, key)
-	}
-
-	steamData, err := s.steamApiService.GetUserSummary(steamIds)
-	if err != nil {
-		return nil, err
-	}
-
-	steamDataSet := make(map[string]steamapi.GetUserSummaryPlayer)
-	for _, data := range steamData {
-		steamDataSet[data.SteamId] = data
-	}
-
-	profiles := []*models.UserProfile{}
-
-	for _, player := range users {
-		profile := models.UserProfile{
-			Id:     player.Id,
-			AuthId: player.AuthId,
-			Name:   player.Name,
-		}
-
-		if data, exists := steamDataSet[player.AuthId]; exists {
-			profile.ProfileUrl = &data.ProfileUrl
-			profile.Avatar = &data.Avatar
-		}
-
-		profiles = append(profiles, &profile)
-	}
-
-	return profiles, nil
 }
 
 func (s *MatchesService) GetMatchPlayerStats(sessionId, userId int) (*GetMatchPlayerStatsResponse, error) {

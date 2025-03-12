@@ -12,6 +12,7 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
+	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
 type SessionService struct {
@@ -19,6 +20,7 @@ type SessionService struct {
 
 	mapsService   *maps.MapsService
 	serverService *server.ServerService
+	usersService  *users.UserService
 }
 
 func NewSessionService(db *sql.DB) *SessionService {
@@ -32,9 +34,11 @@ func NewSessionService(db *sql.DB) *SessionService {
 func (s *SessionService) Inject(
 	mapsService *maps.MapsService,
 	serverService *server.ServerService,
+	usersService *users.UserService,
 ) {
 	s.mapsService = mapsService
 	s.serverService = serverService
+	s.usersService = usersService
 }
 
 func (s *SessionService) Create(req CreateSessionRequest) (int, error) {
@@ -206,7 +210,7 @@ func (s *SessionService) UploadDemo(raw []byte) error {
 	return err
 }
 
-func (s *SessionService) GetDemo(id int) (*demorecord.DemoRecord, error) {
+func (s *SessionService) GetDemo(id int) (*demorecord.DemoRecordRaw, error) {
 	row := s.db.QueryRow(`SELECT data FROM session_demo WHERE session_id = ?`, id)
 
 	var compressed []byte
@@ -227,6 +231,29 @@ func (s *SessionService) GetDemo(id int) (*demorecord.DemoRecord, error) {
 	}
 
 	return demorecord.Parse(raw)
+}
+
+func (s *SessionService) GetDemoPlayers(demo *demorecord.DemoRecordParsed) {
+	userIds := []int{}
+
+	lookup := map[int]*demorecord.DemoRecordParsedPlayer{}
+
+	for i := range demo.Players {
+		item := demo.Players[i]
+
+		if user, _ := s.usersService.GetByAuth(item.UniqueId, models.AuthType(item.UserType)); user != nil {
+			userIds = append(userIds, user.Id)
+			lookup[user.Id] = item
+		}
+	}
+
+	if profiles, _ := s.usersService.GetUserProfiles(userIds); profiles != nil {
+		for i := range profiles {
+			profile := profiles[i]
+
+			lookup[profile.Id].Profile = profile
+		}
+	}
 }
 
 func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {

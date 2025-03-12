@@ -11,3 +11,11 @@ func readInt(data []byte, pos int) int {
 func readString(data []byte, pos, size int) string {
 	return string(data[pos : pos+size])
 }
+
+func lerp(start, end, t float64) float64 {
+	return start*(1-t) + end*t
+}
+
+func standardize(value, mean, stddev float64) float64 {
+	return (value - mean) / stddev
+}

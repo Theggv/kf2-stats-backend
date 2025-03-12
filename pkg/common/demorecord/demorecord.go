@@ -36,7 +36,7 @@ type DemoRecordRawEvent struct {
 	Data map[string]any `json:"payload,omitempty"`
 }
 
-type DemoRecord struct {
+type DemoRecordRaw struct {
 	Header *DemoRecordHeader     `json:"header"`
 	Events []*DemoRecordRawEvent `json:"events"`
 }
@@ -60,8 +60,8 @@ func (e *unexpectedEventSizeError) Error() string {
 	return fmt.Sprintf("unexpected event size, expected at least %v, got %v", e.Expected, e.Actual)
 }
 
-func Parse(raw []byte) (*DemoRecord, error) {
-	demo := DemoRecord{}
+func Parse(raw []byte) (*DemoRecordRaw, error) {
+	demo := DemoRecordRaw{}
 
 	header, err := parseHeader(raw)
 	if err != nil {

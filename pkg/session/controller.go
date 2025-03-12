@@ -123,21 +123,25 @@ func (c *sessionController) getDemo(ctx *gin.Context) {
 		return
 	}
 
-	item, err := c.service.GetDemo(id)
+	rawDemo, err := c.service.GetDemo(id)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
-	transform, err := demorecord.Transform(item)
+	parsedDemo, err := rawDemo.ToParsed()
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, err.Error())
 		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
-	marshal, err := json.Marshal(transform)
+	c.service.GetDemoPlayers(parsedDemo)
+
+	analysis := parsedDemo.Analyze()
+
+	marshal, err := json.Marshal(analysis)
 
 	var b bytes.Buffer
 	writer := gzip.NewWriter(&b)

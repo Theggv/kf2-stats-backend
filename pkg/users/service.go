@@ -31,7 +31,7 @@ func (s *UserService) Inject(
 }
 
 func (s *UserService) FindCreateFind(req CreateUserRequest) (int, error) {
-	if data, err := s.getByAuth(req.AuthId, req.AuthType); err == nil {
+	if data, err := s.GetByAuth(req.AuthId, req.AuthType); err == nil {
 		_, err = s.db.Exec(`
 			UPDATE users SET name = ? WHERE id = ?`,
 			req.Name, data.Id,
@@ -53,7 +53,7 @@ func (s *UserService) FindCreateFind(req CreateUserRequest) (int, error) {
 		return 0, err
 	}
 
-	data, err := s.getByAuth(req.AuthId, req.AuthType)
+	data, err := s.GetByAuth(req.AuthId, req.AuthType)
 	if err != nil {
 		return 0, err
 	}
@@ -112,7 +112,7 @@ func (s *UserService) GetManyById(userId []int) ([]*User, error) {
 	return items, nil
 }
 
-func (s *UserService) getByAuth(authId string, authType models.AuthType) (*User, error) {
+func (s *UserService) GetByAuth(authId string, authType models.AuthType) (*User, error) {
 	row := s.db.QueryRow(`
 		SELECT id, auth_id, auth_type, name FROM users WHERE auth_id = ? AND auth_type = ?`,
 		authId, authType,
@@ -555,4 +555,56 @@ func (s *UserService) getUserSessions(req RecentSessionsRequest) (*RecentSession
 			TotalResults:   total,
 		},
 	}, nil
+}
+
+func (s *UserService) GetUserProfiles(
+	userId []int,
+) ([]*models.UserProfile, error) {
+	users, err := s.GetManyById(userId)
+	if err != nil {
+		return nil, err
+	}
+
+	set := make(map[string]bool)
+	steamIds := []string{}
+
+	for _, player := range users {
+		if player.Type != models.Steam {
+			continue
+		}
+		set[player.AuthId] = true
+	}
+
+	for key := range set {
+		steamIds = append(steamIds, key)
+	}
+
+	steamData, err := s.steamApiService.GetUserSummary(steamIds)
+	if err != nil {
+		return nil, err
+	}
+
+	steamDataSet := make(map[string]steamapi.GetUserSummaryPlayer)
+	for _, data := range steamData {
+		steamDataSet[data.SteamId] = data
+	}
+
+	profiles := []*models.UserProfile{}
+
+	for _, player := range users {
+		profile := models.UserProfile{
+			Id:     player.Id,
+			AuthId: player.AuthId,
+			Name:   player.Name,
+		}
+
+		if data, exists := steamDataSet[player.AuthId]; exists {
+			profile.ProfileUrl = &data.ProfileUrl
+			profile.Avatar = &data.Avatar
+		}
+
+		profiles = append(profiles, &profile)
+	}
+
+	return profiles, nil
 }
