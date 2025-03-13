@@ -1,6 +1,8 @@
 package demorecord
 
-import "math"
+import (
+	"math"
+)
 
 type DifficultyScore struct {
 	Score float64 `json:"score"`
@@ -19,10 +21,16 @@ type DifficultyAnalyticsDetails struct {
 	Buckets []*DifficultyScore `json:"buckets"`
 }
 
+type ZedsSnapshot struct {
+	Tick  int `json:"tick"`
+	Score int `json:"score"`
+}
+
 type DifficultyAnalytics struct {
 	OverAll *DifficultyScore `json:"overall"`
 
-	Details *DifficultyAnalyticsDetails `json:"details,omitempty"`
+	Details      *DifficultyAnalyticsDetails `json:"details,omitempty"`
+	Distribution []*ZedsSnapshot             `json:"zeds_distribution"`
 }
 
 func calcWaveSizeBonus(waveSize int) float64 {
@@ -71,29 +79,86 @@ func calcZtBonus(zedTimes []*DemoRecordAnalysisZedtime, tick, period int) float6
 	for i := range zedTimes {
 		item := zedTimes[i]
 
-		if startTick >= item.MetaData.StartTick && startTick <= item.MetaData.EndTick ||
-			endTick >= item.MetaData.StartTick && endTick <= item.MetaData.EndTick {
+		ztStartTick := item.MetaData.StartTick
+		ztEndTick := item.MetaData.EndTick + 2000
+
+		if startTick >= ztStartTick && startTick <= ztEndTick ||
+			endTick >= ztStartTick && endTick <= ztEndTick {
 
 			// period intersects with zedtime
-			if startTick >= item.MetaData.StartTick && endTick <= item.MetaData.EndTick {
+			if startTick >= ztStartTick && endTick <= ztEndTick {
 				// period inside zedtime
 				return maxMultiplier
-			} else if startTick >= item.MetaData.StartTick {
+			} else if startTick >= ztStartTick {
 				// zedtime started before period
-				return lerp(1, maxMultiplier, float64(item.MetaData.EndTick-startTick)/100/duration)
+				return lerp(1, maxMultiplier, float64(ztEndTick-startTick)/100/duration)
 			} else {
 				// zedtime started after period
-				return lerp(1, maxMultiplier, float64(endTick-item.MetaData.StartTick)/100/duration)
+				return lerp(1, maxMultiplier, float64(endTick-ztStartTick)/100/duration)
 			}
 		}
 
-		if item.MetaData.StartTick >= startTick && item.MetaData.EndTick <= endTick {
+		if ztStartTick >= startTick && ztEndTick <= endTick {
 			// zedtime inside period
 			return lerp(1, maxMultiplier, item.MetaData.Duration/duration)
 		}
 	}
 
 	return 1.0
+}
+
+func (wave *DemoRecordAnalysisWave) calcZedsDistribution() []*ZedsSnapshot {
+	getZedWeight := func(kill *DemoRecordParsedEventKill) int {
+		if kill.IsLarge() {
+			return 5
+		} else if kill.IsMedium() {
+			return 2
+		} else if kill.IsTrash() {
+			return 1
+		}
+
+		return 1
+	}
+
+	res := []*ZedsSnapshot{}
+
+	waveSize := len(wave.PlayerEvents.Kills)
+	maxMonsters := min(40, waveSize)
+
+	score := 0
+
+	for i := range maxMonsters {
+		kill := wave.PlayerEvents.Kills[i]
+
+		score += getZedWeight(kill)
+	}
+
+	res = append(res, &ZedsSnapshot{
+		Tick:  wave.MetaData.StartTick,
+		Score: score,
+	})
+
+	for i := range waveSize {
+		kill := wave.PlayerEvents.Kills[i]
+
+		res = append(res, &ZedsSnapshot{
+			Tick:  kill.Tick,
+			Score: score,
+		})
+
+		if i+maxMonsters < waveSize {
+			score -= getZedWeight(kill)
+			score += getZedWeight(wave.PlayerEvents.Kills[i+maxMonsters])
+		}
+	}
+
+	res = append(res, &ZedsSnapshot{
+		Tick:  wave.MetaData.EndTick,
+		Score: res[len(res)-1].Score,
+	})
+
+	return res
+
 }
 
 func (wave *DemoRecordAnalysisWave) calcDifficulty(step, period int) {
@@ -104,6 +169,7 @@ func (wave *DemoRecordAnalysisWave) calcDifficulty(step, period int) {
 			Period:  period,
 			Buckets: []*DifficultyScore{},
 		},
+		Distribution: wave.calcZedsDistribution(),
 	}
 
 	summary := wave.Analytics.Summary
@@ -113,6 +179,15 @@ func (wave *DemoRecordAnalysisWave) calcDifficulty(step, period int) {
 
 	waveSizeBonus := calcWaveSizeBonus(summary.WaveSize)
 	playersBonus := calcPlayerBonus(len(wave.PlayerEvents.Perks))
+
+	var meanZedDistr float64 = 1
+	if len(res.Distribution) > 0 {
+		sum := 0
+		for i := range res.Distribution {
+			sum += res.Distribution[i].Score
+		}
+		meanZedDistr = float64(sum) / float64(len(res.Distribution))
+	}
 
 	// offset represents end tick of period
 	// start tick = offset - period
@@ -124,6 +199,13 @@ func (wave *DemoRecordAnalysisWave) calcDifficulty(step, period int) {
 			func(item *DemoRecordParsedEventKill) int {
 				return item.Tick
 			}, offset-period, offset-1,
+		)
+
+		zedsDistrib := findLastLower(
+			res.Distribution,
+			func(item *ZedsSnapshot) int {
+				return item.Tick
+			}, max(offset-period, waveStartTick),
 		)
 
 		for i := range kills {
@@ -153,8 +235,9 @@ func (wave *DemoRecordAnalysisWave) calcDifficulty(step, period int) {
 			avgZedsPerSecond = float64(len(kills)) / duration
 		}
 
+		zedsDistributionBonus := float64((*zedsDistrib).Score) / max(1, meanZedDistr)
 		ztBonus := calcZtBonus(wave.Zedtimes, offset, period)
-		zedsBonus := calcDifficultyZedsBonus(&counter) * waveSizeBonus
+		zedsBonus := calcDifficultyZedsBonus(&counter) * waveSizeBonus * zedsDistributionBonus
 		speedBonus := avgZedsPerSecond * playersBonus * lerp(0.1, 1, zedsBonus)
 
 		bucket := DifficultyScore{

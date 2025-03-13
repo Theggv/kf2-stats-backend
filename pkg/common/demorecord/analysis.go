@@ -305,7 +305,7 @@ func (demo *DemoRecordParsed) analyzeWave(wave *DemoRecordParsedWave) *DemoRecor
 	res.Analytics.BuffsUptime = calcWaveBuffsUptime(&res)
 
 	res.generateSummary()
-	res.calcDifficulty(100, 500)
+	res.calcDifficulty(100, 1000)
 
 	return &res
 }
