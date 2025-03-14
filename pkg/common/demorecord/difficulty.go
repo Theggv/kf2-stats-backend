@@ -161,7 +161,7 @@ func (wave *DemoRecordAnalysisWave) calcZedsDistribution() []*ZedsSnapshot {
 
 }
 
-func (wave *DemoRecordAnalysisWave) calcDifficulty(step, period int) {
+func (wave *DemoRecordAnalysisWave) calcDifficulty(step, period int) *DifficultyAnalytics {
 	res := DifficultyAnalytics{
 		OverAll: &DifficultyScore{},
 		Details: &DifficultyAnalyticsDetails{
@@ -264,5 +264,5 @@ func (wave *DemoRecordAnalysisWave) calcDifficulty(step, period int) {
 		}
 	}
 
-	wave.Analytics.Difficulty = &res
+	return &res
 }
