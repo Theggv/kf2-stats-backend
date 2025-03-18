@@ -299,6 +299,74 @@ func initSchema(db *sql.DB) error {
 			FOREIGN KEY (id) REFERENCES session_aggregated(id) ON UPDATE CASCADE ON DELETE CASCADE
 		)
 	`)
+	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS user_weekly_stats_common (
+			period INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+
+			total_games INTEGER NOT NULL,
+			total_waves INTEGER NOT NULL, 
+			playtime_seconds INTEGER NOT NULL,
+			deaths INTEGER NOT NULL,
+
+			shots_fired INTEGER NOT NULL,
+			shots_hit INTEGER NOT NULL,
+			shots_hs INTEGER NOT NULL,
+
+			dosh_earned INTEGER NOT NULL,
+
+			heals_given INTEGER NOT NULL,
+			heals_recv INTEGER NOT NULL,
+
+			damage_dealt INTEGER NOT NULL,
+			damage_taken INTEGER NOT NULL,
+
+			max_damage_session_id INTEGER NOT NULL,
+			max_damage INTEGER NOT NULL,
+
+			PRIMARY KEY (period, user_id),
+
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
+		)
+	`)
+
+	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS user_weekly_stats_perk (
+			period INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			perk INTEGER NOT NULL,
+
+			total_games INTEGER NOT NULL,
+			total_waves INTEGER NOT NULL,
+			playtime_seconds INTEGER NOT NULL,
+			deaths INTEGER NOT NULL,
+
+			shots_fired INTEGER NOT NULL,
+			shots_hit INTEGER NOT NULL,
+			shots_hs INTEGER NOT NULL,
+
+			dosh_earned INTEGER NOT NULL,
+
+			heals_given INTEGER NOT NULL,
+			heals_recv INTEGER NOT NULL,
+
+			damage_dealt INTEGER NOT NULL,
+			damage_taken INTEGER NOT NULL,
+
+			zedtime_count INTEGER NOT NULL,
+			zedtime_length REAL NOT NULL,
+			
+			buffs_active_length REAL NOT NULL,
+			buffs_total_length REAL NOT NULL,
+
+			max_damage_session_id INTEGER NOT NULL,
+			max_damage INTEGER NOT NULL,
+
+			PRIMARY KEY (period, user_id, perk),
+
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
+		)
+	`)
 
 	return err
 }
