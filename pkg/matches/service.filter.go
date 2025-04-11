@@ -143,7 +143,7 @@ func (s *MatchesService) getCDGameData(matchId []int) ([]*filterCDGameData, erro
 			cd.spawn_cycle, cd.max_monsters,
 			cd.wave_size_fakes, cd.zeds_type
 		FROM session
-		INNER JOIN session_game_data_cd cd ON session.id = cd.session_id
+		INNER JOIN session_game_data_extra cd ON session.id = cd.session_id
 		WHERE %v`,
 		fmt.Sprintf("session.id in (%v)", util.IntArrayToString(matchId, ",")),
 	)

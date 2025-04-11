@@ -127,7 +127,7 @@ func (s *SessionService) GetCDData(id int) (*models.CDGameData, error) {
 		SELECT spawn_cycle, max_monsters, wave_size_fakes, zeds_type
 		FROM session
 		INNER JOIN wave_stats ws on ws.session_id = session.id
-		INNER JOIN wave_stats_cd cd on cd.stats_id = ws.id
+		INNER JOIN wave_stats_extra cd on cd.stats_id = ws.id
 		WHERE session.id = ? and ws.wave <= session.length
 		ORDER BY ws.id DESC
 		LIMIT 1`, id,
@@ -296,7 +296,7 @@ func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
 			cdData := data.CDData
 
 			_, err = s.db.Exec(`
-			INSERT INTO session_game_data_cd 
+			INSERT INTO session_game_data_extra 
 				(session_id, spawn_cycle, max_monsters, wave_size_fakes, zeds_type)
 			VALUES (?, ?, ?, ?, ?)
 				ON DUPLICATE KEY UPDATE

@@ -251,7 +251,7 @@ func (s *ServerService) getSessions(
 		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
 		INNER JOIN maps ON maps.id = session.map_id
 		INNER JOIN session_game_data gd ON gd.session_id = session.id
-		LEFT JOIN session_game_data_cd cd ON cd.session_id = session.id
+		LEFT JOIN session_game_data_extra cd ON cd.session_id = session.id
 		WHERE wsp.id IN (%v)
 		`, util.IntArrayToString(wspIds, ","),
 	)

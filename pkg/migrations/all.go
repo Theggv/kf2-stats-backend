@@ -47,4 +47,6 @@ func writeMigration(db *sql.DB, name string) {
 func ExecuteAll(db *sql.DB) {
 	initTables(db)
 
+	migration_2025_04_11_rename_tables(db)
+	migration_2025_04_11_update_fields(db)
 }

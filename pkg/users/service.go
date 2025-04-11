@@ -337,7 +337,7 @@ func (s *UserService) getSessions(sessionIds []int) (map[int]FilterUsersResponse
 		INNER JOIN server ON server.id = session.server_id
 		INNER JOIN maps ON maps.id = session.map_id
 		INNER JOIN session_game_data gd ON gd.session_id = session.id
-		LEFT JOIN session_game_data_cd cd ON cd.session_id = session.id
+		LEFT JOIN session_game_data_extra cd ON cd.session_id = session.id
 		WHERE session.id IN (%v)`,
 		util.IntArrayToString(sessionIds, ","),
 	)
@@ -462,7 +462,7 @@ func (s *UserService) getUserSessions(req RecentSessionsRequest) (*RecentSession
 		INNER JOIN maps on maps.id = session.map_id
 		INNER JOIN server on server.id = session.server_id
 		INNER JOIN session_game_data gd on gd.session_id = session.id
-		LEFT JOIN session_game_data_cd cd on cd.session_id = session.id
+		LEFT JOIN session_game_data_extra cd on cd.session_id = session.id
 		WHERE %v
 		GROUP BY session.id
 		ORDER BY session.updated_at DESC
@@ -537,7 +537,7 @@ func (s *UserService) getUserSessions(req RecentSessionsRequest) (*RecentSession
 			INNER JOIN maps on maps.id = session.map_id
 			INNER JOIN server on server.id = session.server_id
 			INNER JOIN session_game_data gd on gd.session_id = session.id
-			LEFT JOIN session_game_data_cd cd on cd.session_id = session.id
+			LEFT JOIN session_game_data_extra cd on cd.session_id = session.id
 			WHERE %v`,
 			strings.Join(conds, " AND "),
 		)

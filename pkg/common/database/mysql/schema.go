@@ -95,13 +95,16 @@ func initSchema(db *sql.DB) error {
 		)
 	`)
 	tx.Exec(`
-		CREATE TABLE IF NOT EXISTS session_game_data_cd (
+		CREATE TABLE IF NOT EXISTS session_game_data_extra (
 			session_id INTEGER PRIMARY KEY NOT NULL,
 			
-			spawn_cycle TEXT NOT NULL,
-			max_monsters INTEGER NOT NULL,
-			wave_size_fakes INTEGER NOT NULL,
-			zeds_type TEXT NOT NULL,
+			spawn_cycle TEXT,
+			max_monsters INTEGER,
+			wave_size_fakes INTEGER,
+			zeds_type TEXT,
+
+			percentage INTEGER,
+			extra_percentage INTEGER,
 
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -124,13 +127,16 @@ func initSchema(db *sql.DB) error {
 		)
 	`)
 	tx.Exec(`
-		CREATE TABLE IF NOT EXISTS wave_stats_cd (
+		CREATE TABLE IF NOT EXISTS wave_stats_extra (
 			stats_id INTEGER PRIMARY KEY NOT NULL,
 
-			spawn_cycle TEXT NOT NULL,
-			max_monsters INTEGER NOT NULL,
-			wave_size_fakes INTEGER NOT NULL,
-			zeds_type TEXT NOT NULL,
+			spawn_cycle TEXT,
+			max_monsters INTEGER,
+			wave_size_fakes INTEGER,
+			zeds_type TEXT,
+
+			percentage INTEGER,
+			extra_percentage INTEGER,
 
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
