@@ -7,6 +7,8 @@ import (
 )
 
 type LeaderBoardsRequest struct {
+	ServerIds []int `json:"server_id"`
+
 	Type LeaderBoardType `json:"type" binding:"required"`
 	Perk int             `json:"perk"`
 

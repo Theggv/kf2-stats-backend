@@ -2,7 +2,6 @@ package leaderboards
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -63,7 +62,7 @@ func (s *LeaderBoardsService) getLeaderBoard(
 	}
 
 	conds := make([]string, 0)
-	args := make([]interface{}, 0)
+	args := make([]any, 0)
 
 	// field args
 	args = append(args,
@@ -231,6 +230,7 @@ func (s *LeaderBoardsService) getLeaderBoard(
 			}
 		}
 	}
+
 	return &res, nil
 }
 
@@ -238,10 +238,10 @@ func (s *LeaderBoardsService) getAccuracyTop(
 	req LeaderBoardsRequest,
 ) ([]int, error) {
 	conds := make([]string, 0)
-	args := make([]interface{}, 0)
+	args := make([]any, 0)
 
 	if req.Perk == 0 {
-		return nil, errors.New(fmt.Sprintf("perk cannot be null with selected type"))
+		return nil, fmt.Errorf("perk cannot be null with selected type")
 	}
 
 	args = append(args, req.Perk, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
@@ -294,10 +294,10 @@ func (s *LeaderBoardsService) getHSAccuracyTop(
 	req LeaderBoardsRequest,
 ) ([]int, error) {
 	conds := make([]string, 0)
-	args := make([]interface{}, 0)
+	args := make([]any, 0)
 
 	if req.Perk == 0 {
-		return nil, errors.New(fmt.Sprintf("perk cannot be null with selected type"))
+		return nil, fmt.Errorf("perk cannot be null with selected type")
 	}
 
 	args = append(args, req.Perk, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
@@ -453,7 +453,7 @@ func (s *LeaderBoardsService) getLeaderboardIds(
 	req LeaderBoardsRequest,
 ) ([]int, error) {
 	conds := make([]string, 0)
-	args := make([]interface{}, 0)
+	args := make([]any, 0)
 
 	var metric string
 	switch req.Type {
