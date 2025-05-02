@@ -47,4 +47,5 @@ func writeMigration(db *sql.DB, name string) {
 func ExecuteAll(db *sql.DB) {
 	initTables(db)
 
+	migration_2025_05_02_idx_session_status(db)
 }
