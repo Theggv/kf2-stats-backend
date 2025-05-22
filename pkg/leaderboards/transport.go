@@ -9,11 +9,13 @@ import (
 type LeaderBoardsRequest struct {
 	ServerIds []int `json:"server_id"`
 
-	Type LeaderBoardType `json:"type" binding:"required"`
-	Perk int             `json:"perk"`
+	Perk int `json:"perk"`
 
 	From time.Time `json:"date_from" binding:"required"`
 	To   time.Time `json:"date_to" binding:"required"`
+
+	OrderBy LeaderBoardOrderBy `json:"type" binding:"required"`
+	Page    int                `json:"page"`
 }
 
 type MostDamageMatch struct {
@@ -52,4 +54,5 @@ type LeaderBoardsResponseItem struct {
 
 type LeaderBoardsResponse struct {
 	Items []*LeaderBoardsResponseItem `json:"items"`
+	Total int                         `json:"total"`
 }

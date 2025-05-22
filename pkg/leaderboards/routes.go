@@ -24,8 +24,8 @@ func RegisterRoutes(
 	routes.POST("/",
 		cache.Cache(memoryStore, 5*time.Minute,
 			strategy.CacheByRequestBody(func(req LeaderBoardsRequest) string {
-				return fmt.Sprintf("%v/%v/%v/%v",
-					req.Type, req.Perk, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+				return fmt.Sprintf("%v/%v/%v/%v/%v",
+					req.OrderBy, req.Perk, req.Page, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 			}),
 		),
 		controller.getLeaderBoard)

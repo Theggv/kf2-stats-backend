@@ -290,7 +290,80 @@ func initStored(db *sql.DB) error {
 		DROP PROCEDURE IF EXISTS update_user_stats_weekly;
 		CREATE PROCEDURE update_user_stats_weekly(session_id INT)
 		BEGIN
-			INSERT IGNORE INTO user_weekly_stats SELECT * FROM (
+			INSERT IGNORE INTO user_weekly_stats_total SELECT * FROM (
+				SELECT
+					YEARWEEK(session.started_at) as period, 
+
+					session.server_id as server_id,
+					wsp.player_id as user_id, 
+
+					1 as total_games,
+					count(*) as total_waves,
+					sum(timestampdiff(SECOND, ws.started_at, ws.completed_at)) as playtime_seconds,
+					sum(is_dead = 1) as deaths, 
+
+					sum(shots_fired) as shots_fired, 
+					sum(shots_hit) as shots_hit, 
+					sum(shots_hs) as shots_hs, 
+
+					sum(dosh_earned) as dosh_earned, 
+					sum(heals_given) as heals_given, 
+					sum(heals_recv) as heals_recv, 
+					sum(damage_dealt) as damage_dealt, 
+					sum(damage_taken) as damage_taken, 
+
+					sum(zedtime_count) as zedtime_count, 
+					sum(zedtime_length) as zedtime_length,
+
+					sum(k.scrake) + sum(k.fp) + sum(k.qp) as large_kills, 
+					sum(k.cyst) + sum(k.alpha_clot) + sum(k.slasher) + 
+					sum(k.stalker) + sum(k.crawler) + sum(k.gorefast) + 
+					sum(k.rioter) + sum(k.elite_crawler) + sum(k.gorefiend) + 
+					sum(k.siren) + sum(k.bloat) + sum(k.edar) + sum(k.husk_n) + sum(k.husk_b) + 
+					sum(k.scrake) + sum(k.fp) + sum(k.qp) + sum(k.boss) + sum(k.custom) as total_kills,
+
+					0 as buffs_active_length, 
+					0 as buffs_total_length,
+
+					session.id as max_damage_session_id,
+					sum(damage_dealt) as max_damage
+				FROM session
+				INNER JOIN wave_stats ws ON ws.session_id = session.id
+				INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+				INNER JOIN wave_stats_player_kills k ON k.player_stats_id = wsp.id
+				WHERE session.id = session_id
+				GROUP BY session.id, wsp.player_id
+			) as new
+			ON DUPLICATE KEY UPDATE 
+				total_games = new.total_games,
+				total_waves = new.total_waves,
+				playtime_seconds = new.playtime_seconds,
+				deaths = new.deaths,
+
+				shots_fired = new.shots_fired,
+				shots_hit = new.shots_hit,
+				shots_hs = new.shots_hs,
+
+				dosh_earned = new.dosh_earned,
+				heals_given = new.heals_given,
+				heals_recv = new.heals_recv,
+
+				damage_dealt = new.damage_dealt,
+				damage_taken = new.damage_taken,
+
+				zedtime_count = new.zedtime_count,
+				zedtime_length = new.zedtime_length,
+
+				large_kills = new.large_kills,
+				total_kills = new.total_kills,
+
+				buffs_active_length = new.buffs_active_length,
+				buffs_total_length = new.buffs_total_length,
+
+				max_damage_session_id = new.max_damage_session_id,
+				max_damage = new.max_damage;
+
+			INSERT IGNORE INTO user_weekly_stats_perk SELECT * FROM (
 				SELECT
 					YEARWEEK(session.started_at) as period, 
 
@@ -316,6 +389,13 @@ func initStored(db *sql.DB) error {
 					sum(zedtime_count) as zedtime_count, 
 					sum(zedtime_length) as zedtime_length,
 
+					sum(k.scrake) + sum(k.fp) + sum(k.qp) as large_kills, 
+					sum(k.cyst) + sum(k.alpha_clot) + sum(k.slasher) + 
+					sum(k.stalker) + sum(k.crawler) + sum(k.gorefast) + 
+					sum(k.rioter) + sum(k.elite_crawler) + sum(k.gorefiend) + 
+					sum(k.siren) + sum(k.bloat) + sum(k.edar) + sum(k.husk_n) + sum(k.husk_b) + 
+					sum(k.scrake) + sum(k.fp) + sum(k.qp) + sum(k.boss) + sum(k.custom) as total_kills,
+
 					0 as buffs_active_length, 
 					0 as buffs_total_length,
 
@@ -324,6 +404,7 @@ func initStored(db *sql.DB) error {
 				FROM session
 				INNER JOIN wave_stats ws ON ws.session_id = session.id
 				INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+				INNER JOIN wave_stats_player_kills k ON k.player_stats_id = wsp.id
 				WHERE session.id = session_id
 				GROUP BY session.id, wsp.player_id, wsp.perk
 			) as new
@@ -346,6 +427,9 @@ func initStored(db *sql.DB) error {
 
 				zedtime_count = new.zedtime_count,
 				zedtime_length = new.zedtime_length,
+
+				large_kills = new.large_kills,
+				total_kills = new.total_kills,
 
 				buffs_active_length = new.buffs_active_length,
 				buffs_total_length = new.buffs_total_length,
