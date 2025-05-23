@@ -1,5 +1,7 @@
 package demorecord
 
+import "github.com/theggv/kf2-stats-backend/pkg/common/models"
+
 type DemoRecordAnalysisWaveBuffsUptime struct {
 	UserId int `json:"user_index"`
 
@@ -101,6 +103,18 @@ type DemoRecordAnalysisAnalytics struct {
 	BuffsUptime *BuffsUptimeAnalytics `json:"buffs_uptime"`
 }
 
+type DemoRecordPlayers []*DemoRecordParsedPlayer
+
+func (p DemoRecordPlayers) GetByIndex(userIndex int) *models.UserProfile {
+	for _, item := range p {
+		if item.UserId == userIndex {
+			return item.Profile
+		}
+	}
+
+	return nil
+}
+
 type DemoRecordAnalysis struct {
 	Version   byte `json:"protocol_version"`
 	SessionId int  `json:"session_id"`
@@ -110,7 +124,7 @@ type DemoRecordAnalysis struct {
 
 	Analytics *DemoRecordAnalysisAnalytics `json:"analytics"`
 
-	Players []*DemoRecordParsedPlayer `json:"players"`
+	Players DemoRecordPlayers         `json:"players"`
 	Waves   []*DemoRecordAnalysisWave `json:"waves"`
 }
 
