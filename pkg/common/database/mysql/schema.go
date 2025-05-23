@@ -51,6 +51,7 @@ func initSchema(db *sql.DB) error {
 			mode INTEGER NOT NULL,
 			length INTEGER NOT NULL,
 			diff INTEGER NOT NULL,
+			calc_diff REAL NOT NULL DEFAULT 0,
 
 			status INTEGER NOT NULL DEFAULT 0,
 
@@ -286,6 +287,9 @@ func initSchema(db *sql.DB) error {
 
 			zedtime_count INTEGER NOT NULL,
 			zedtime_length REAL NOT NULL,
+
+			buffs_active_length REAL NOT NULL DEFAULT 0,
+			buffs_total_length REAL NOT NULL DEFAULT 0,
 
 			FOREIGN KEY (session_id) REFERENCES session(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,

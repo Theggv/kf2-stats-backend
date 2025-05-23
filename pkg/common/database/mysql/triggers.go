@@ -51,29 +51,76 @@ func initTriggers(db *sql.DB) error {
 		END;
 	`)
 	tx.Exec(`
+		DROP TRIGGER IF EXISTS update_session_aggregated_post;
+		CREATE TRIGGER update_session_aggregated_post
+		AFTER UPDATE ON session_aggregated
+		FOR EACH ROW
+		BEGIN
+			IF new.buffs_active_length <> old.buffs_active_length && new.buffs_active_length > 0 THEN
+				UPDATE user_weekly_stats_perk weekly
+				INNER JOIN session ON 
+					weekly.period = yearweek(session.started_at) AND
+					weekly.server_id = session.server_id AND
+					weekly.perk = old.perk AND
+					weekly.user_id = old.user_id
+				SET buffs_active_length = new.buffs_active_length, 
+					buffs_total_length = new.buffs_total_length
+				WHERE session.id = old.session_id;
+			END IF;
+		END;
+	`)
+	tx.Exec(`
 		DROP TRIGGER IF EXISTS update_user_weekly_stats_total_max_damage;
 		CREATE TRIGGER update_user_weekly_stats_total_max_damage
 		BEFORE UPDATE ON user_weekly_stats_total
 		FOR EACH ROW
 		BEGIN
-			SET new.total_games = old.total_games + new.total_games; 
-			SET new.total_waves = old.total_waves + new.total_waves; 
-			SET new.playtime_seconds = old.playtime_seconds + new.playtime_seconds; 
-			SET new.deaths = old.deaths + new.deaths; 
+			IF new.total_games > 0 THEN
+				SET new.total_games = old.total_games + new.total_games;
+			END IF;
+			IF new.total_waves > 0 THEN
+				SET new.total_waves = old.total_waves + new.total_waves; 
+			END IF;
+			IF new.playtime_seconds > 0 THEN
+				SET new.playtime_seconds = old.playtime_seconds + new.playtime_seconds; 
+			END IF;
+			IF new.deaths > 0 THEN
+				SET new.deaths = old.deaths + new.deaths; 
+			END IF;
 
-			SET new.shots_fired = old.shots_fired + new.shots_fired; 
-			SET new.shots_hit = old.shots_hit + new.shots_hit; 
-			SET new.shots_hs = old.shots_hs + new.shots_hs; 
+			IF new.shots_fired > 0 THEN
+				SET new.shots_fired = old.shots_fired + new.shots_fired; 
+			END IF;
+			IF new.shots_hit > 0 THEN
+				SET new.shots_hit = old.shots_hit + new.shots_hit; 
+			END IF;
+			IF new.shots_hs > 0 THEN
+				SET new.shots_hs = old.shots_hs + new.shots_hs; 
+			END IF;
 
-			SET new.dosh_earned = old.dosh_earned + new.dosh_earned; 
-			SET new.heals_given = old.heals_given + new.heals_given; 
-			SET new.heals_recv = old.heals_recv + new.heals_recv; 
+			IF new.dosh_earned > 0 THEN
+				SET new.dosh_earned = old.dosh_earned + new.dosh_earned; 
+			END IF;	
+			IF new.heals_given > 0 THEN
+				SET new.heals_given = old.heals_given + new.heals_given; 
+			END IF;	
+			IF new.heals_recv > 0 THEN
+				SET new.heals_recv = old.heals_recv + new.heals_recv; 
+			END IF;	
 
-			SET new.damage_dealt = old.damage_dealt + new.damage_dealt; 
-			SET new.damage_taken = old.damage_taken + new.damage_taken;
+			IF new.damage_dealt > 0 THEN
+				SET new.damage_dealt = old.damage_dealt + new.damage_dealt; 
+			END IF;	
+			IF new.damage_taken > 0 THEN
+				SET new.damage_taken = old.damage_taken + new.damage_taken;
+			END IF;	
 
-			SET new.large_kills = old.large_kills + new.large_kills;
-			SET new.total_kills = old.total_kills + new.total_kills;
+			IF new.large_kills > 0 THEN
+				SET new.large_kills = old.large_kills + new.large_kills; 
+			END IF;	
+			IF new.total_kills > 0 THEN
+				SET new.total_kills = old.total_kills + new.total_kills;
+			END IF;	
 
 			IF new.max_damage < old.max_damage THEN
 				SET new.max_damage = old.max_damage;
@@ -87,31 +134,67 @@ func initTriggers(db *sql.DB) error {
 		BEFORE UPDATE ON user_weekly_stats_perk
 		FOR EACH ROW
 		BEGIN
-			SET new.total_games = old.total_games + new.total_games; 
-			SET new.total_waves = old.total_waves + new.total_waves; 
-			SET new.playtime_seconds = old.playtime_seconds + new.playtime_seconds; 
-			SET new.deaths = old.deaths + new.deaths; 
+			IF new.total_games > 0 THEN
+				SET new.total_games = old.total_games + new.total_games;
+			END IF;
+			IF new.total_waves > 0 THEN
+				SET new.total_waves = old.total_waves + new.total_waves; 
+			END IF;
+			IF new.playtime_seconds > 0 THEN
+				SET new.playtime_seconds = old.playtime_seconds + new.playtime_seconds; 
+			END IF;
+			IF new.deaths > 0 THEN
+				SET new.deaths = old.deaths + new.deaths; 
+			END IF;
 
-			SET new.shots_fired = old.shots_fired + new.shots_fired; 
-			SET new.shots_hit = old.shots_hit + new.shots_hit; 
-			SET new.shots_hs = old.shots_hs + new.shots_hs; 
+			IF new.shots_fired > 0 THEN
+				SET new.shots_fired = old.shots_fired + new.shots_fired; 
+			END IF;
+			IF new.shots_hit > 0 THEN
+				SET new.shots_hit = old.shots_hit + new.shots_hit; 
+			END IF;
+			IF new.shots_hs > 0 THEN
+				SET new.shots_hs = old.shots_hs + new.shots_hs; 
+			END IF;
 
-			SET new.dosh_earned = old.dosh_earned + new.dosh_earned; 
-			SET new.heals_given = old.heals_given + new.heals_given; 
-			SET new.heals_recv = old.heals_recv + new.heals_recv; 
+			IF new.dosh_earned > 0 THEN
+				SET new.dosh_earned = old.dosh_earned + new.dosh_earned; 
+			END IF;	
+			IF new.heals_given > 0 THEN
+				SET new.heals_given = old.heals_given + new.heals_given; 
+			END IF;	
+			IF new.heals_recv > 0 THEN
+				SET new.heals_recv = old.heals_recv + new.heals_recv; 
+			END IF;	
 
-			SET new.damage_dealt = old.damage_dealt + new.damage_dealt; 
-			SET new.damage_taken = old.damage_taken + new.damage_taken; 
+			IF new.damage_dealt > 0 THEN
+				SET new.damage_dealt = old.damage_dealt + new.damage_dealt; 
+			END IF;	
+			IF new.damage_taken > 0 THEN
+				SET new.damage_taken = old.damage_taken + new.damage_taken;
+			END IF;	
 
-			SET new.zedtime_count = old.zedtime_count + new.zedtime_count; 
-			SET new.zedtime_length = old.zedtime_length + new.zedtime_length;
+			IF new.large_kills > 0 THEN
+				SET new.large_kills = old.large_kills + new.large_kills; 
+			END IF;	
+			IF new.total_kills > 0 THEN
+				SET new.total_kills = old.total_kills + new.total_kills;
+			END IF;
 
-			SET new.buffs_active_length = old.buffs_active_length + new.buffs_active_length; 
-			SET new.buffs_total_length = old.buffs_total_length + new.buffs_total_length;
+			IF new.zedtime_count > 0 THEN
+				SET new.zedtime_count = old.zedtime_count + new.zedtime_count; 
+			END IF;	
+			IF new.zedtime_length > 0 THEN
+				SET new.zedtime_length = old.zedtime_length + new.zedtime_length;
+			END IF;	
 
-			SET new.large_kills = old.large_kills + new.large_kills;
-			SET new.total_kills = old.total_kills + new.total_kills;
-			
+			IF new.buffs_active_length > 0 THEN
+				SET new.buffs_active_length = old.buffs_active_length + new.buffs_active_length; 
+			END IF;	
+			IF new.buffs_total_length > 0 THEN
+				SET new.buffs_total_length = old.buffs_total_length + new.buffs_total_length;
+			END IF;	
+
 			IF new.max_damage < old.max_damage THEN
 				SET new.max_damage = old.max_damage;
 				SET new.max_damage_session_id = old.max_damage_session_id;
