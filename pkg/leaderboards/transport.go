@@ -43,8 +43,9 @@ type LeaderBoardsResponseItem struct {
 	TotalLargeKills int `json:"total_large_kills"`
 	TotalHuskRages  int `json:"total_husk_rages"`
 
-	TotalHeals     int     `json:"total_heals"`
-	AverageZedtime float64 `json:"avg_zt"`
+	TotalHeals         int     `json:"total_heals"`
+	AverageZedtime     float64 `json:"avg_zt"`
+	AverageBuffsUptime float64 `json:"avg_buffs_uptime"`
 
 	TotalPlaytime int `json:"total_playtime"`
 

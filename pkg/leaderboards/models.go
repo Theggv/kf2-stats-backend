@@ -19,5 +19,7 @@ const (
 	TotalHeals
 
 	AverageZedtime
+	AverageBuffsUptime
+
 	TotalPlaytime
 )

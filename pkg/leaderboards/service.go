@@ -96,7 +96,8 @@ func (s *LeaderBoardsService) getLeaderBoard(
 			t.total_playtime,
 			greatest(0, least(coalesce(sum(shots_hs) / sum(shots_hit), 0), 1)) as avg_hs_acc,
 			greatest(0, least(coalesce(sum(shots_hit) / sum(shots_fired), 0), 1)) as avg_acc,
-			coalesce(sum(zedtime_length) / sum(zedtime_count), 0) as avg_zt
+			coalesce(sum(zedtime_length) / sum(zedtime_count), 0) as avg_zt,
+			coalesce(sum(buffs_active_length) / sum(buffs_total_length), 0) as avg_buffs_uptime
 		FROM (
 			SELECT
 				user_id,
@@ -153,8 +154,9 @@ func (s *LeaderBoardsService) getLeaderBoard(
 			&item.TotalGames, &item.TotalDeaths,
 			&item.TotalDamage, &item.TotalKills,
 			&item.TotalLargeKills, &item.TotalHeals,
-			&item.TotalPlaytime, &item.HSAccuracy,
-			&item.Accuracy, &item.AverageZedtime,
+			&item.TotalPlaytime,
+			&item.HSAccuracy, &item.Accuracy,
+			&item.AverageZedtime, &item.AverageBuffsUptime,
 		)
 		if err != nil {
 			return nil, err
@@ -334,6 +336,8 @@ func (s *LeaderBoardsService) getLeaderboardIds(
 		metric = "floor(coalesce(sum(playtime_seconds), 0) / 3600) as metric"
 	case AverageZedtime:
 		metric = "coalesce(sum(zedtime_length) / sum(zedtime_count), 0) as metric"
+	case AverageBuffsUptime:
+		metric = "coalesce(sum(buffs_active_length) / sum(buffs_total_length), 0) as metric"
 	case Accuracy:
 		metric = "greatest(0, least(coalesce(sum(shots_hit) / sum(shots_fired), 0), 1)) as metric"
 	case HsAccuracy:
