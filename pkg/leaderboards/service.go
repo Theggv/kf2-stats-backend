@@ -43,6 +43,11 @@ func (s *LeaderBoardsService) getLeaderBoard(
 		err      error
 	)
 
+	err = s.validateRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
 	switch req.OrderBy {
 	case MostDamage:
 		userData, err = s.getMostDamageTop(req)
@@ -65,69 +70,83 @@ func (s *LeaderBoardsService) getLeaderBoard(
 		}, nil
 	}
 
+	fields := []string{
+		"users.id as user_id",
+		"users.name as user_name",
+		"users.auth_type as auth_type",
+		"users.auth_id as auth_id",
+		"t.total_games as total_games",
+		"t.total_deaths as total_deaths",
+		"t.total_damage as total_damage",
+		"t.total_kills as total_kills",
+		"t.large_kills as large_kills",
+		"t.total_heals as total_heals",
+		"t.total_playtime as total_playtime",
+	}
+
 	conds := make([]string, 0)
 	args := make([]any, 0)
-
-	// where args
-	conds = append(conds, fmt.Sprintf("user_id IN (%v)", util.IntArrayToString(userData.Ids, ",")))
-
-	conds = append(conds, "period BETWEEN yearweek(?) AND yearweek(?)")
-	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 	tableName := "user_weekly_stats_total"
 	if req.Perk != 0 {
 		tableName = "user_weekly_stats_perk"
-		conds = append(conds, "perk = ?")
-		args = append(args, req.Perk)
+
+		fields = append(fields,
+			"greatest(0, least(coalesce(sum(shots_hs) / sum(shots_hit), 0), 1)) as avg_hs_acc",
+			"greatest(0, least(coalesce(sum(shots_hit) / sum(shots_fired), 0), 1)) as avg_acc",
+			"coalesce(sum(zedtime_length) / sum(zedtime_count), 0) as avg_zt",
+			"coalesce(sum(buffs_active_length) / sum(buffs_total_length), 0) as avg_buffs_uptime",
+		)
 	}
 
-	stmt := fmt.Sprintf(`
-		SELECT
-			users.id,
-			users.name,
-			users.auth_type,
-			users.auth_id,
-			t.total_games,
-			t.total_deaths,
-			t.total_damage,
-			t.total_kills,
-			t.large_kills,
-			t.total_heals,
-			t.total_playtime,
-			greatest(0, least(coalesce(sum(shots_hs) / sum(shots_hit), 0), 1)) as avg_hs_acc,
-			greatest(0, least(coalesce(sum(shots_hit) / sum(shots_fired), 0), 1)) as avg_acc,
-			coalesce(sum(zedtime_length) / sum(zedtime_count), 0) as avg_zt,
-			coalesce(sum(buffs_active_length) / sum(buffs_total_length), 0) as avg_buffs_uptime
-		FROM (
-			SELECT
-				user_id,
-				coalesce(sum(total_games), 0) as total_games,
-				coalesce(sum(deaths), 0) as total_deaths,
-				coalesce(sum(damage_dealt), 0) as total_damage,
-				coalesce(sum(heals_given), 0) as total_heals,
+	// prepare subquery
+	var sq string
+	{
+		fields := []string{
+			"coalesce(sum(total_games), 0) as total_games",
+			"coalesce(sum(deaths), 0) as total_deaths",
+			"coalesce(sum(damage_dealt), 0) as total_damage",
+			"coalesce(sum(heals_given), 0) as total_heals",
+			"coalesce(sum(total_kills), 0) as total_kills",
+			"coalesce(sum(large_kills), 0) as large_kills",
+			"coalesce(sum(shots_hs), 0) as shots_hs",
+			"coalesce(sum(shots_hit), 0) as shots_hit",
+			"coalesce(sum(shots_fired), 0) as shots_fired",
+			"floor(coalesce(sum(playtime_seconds), 0) / 3600) as total_playtime",
+		}
 
-				coalesce(sum(total_kills), 0) as total_kills,
-				coalesce(sum(large_kills), 0) as large_kills,
+		conds = append(conds, fmt.Sprintf("user_id IN (%v)", util.IntArrayToString(userData.Ids, ",")))
 
-				coalesce(sum(shots_hs), 0) as shots_hs,
-				coalesce(sum(shots_hit), 0) as shots_hit,
-				coalesce(sum(shots_fired), 0) as shots_fired,
+		conds = append(conds, "period BETWEEN yearweek(?) AND yearweek(?)")
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
-				coalesce(sum(zedtime_length), 0) as zedtime_length,
-				coalesce(sum(zedtime_count), 0) as zedtime_count,
+		if req.Perk != 0 {
+			conds = append(conds, "perk = ?")
+			args = append(args, req.Perk)
 
-				coalesce(sum(buffs_active_length), 0) as buffs_active_length,
-				coalesce(sum(buffs_total_length), 0) as buffs_total_length,
+			fields = append(fields,
+				"coalesce(sum(zedtime_length), 0) as zedtime_length",
+				"coalesce(sum(zedtime_count), 0) as zedtime_count",
+				"coalesce(sum(buffs_active_length), 0) as buffs_active_length",
+				"coalesce(sum(buffs_total_length), 0) as buffs_total_length",
+			)
+		}
 
-				floor(coalesce(sum(playtime_seconds), 0) / 3600) as total_playtime
+		sq = fmt.Sprintf(`
+			SELECT user_id, %v
 			FROM %v
 			WHERE %v
 			GROUP BY user_id
-		) t
+		`, strings.Join(fields, ", "), tableName, strings.Join(conds, " AND "))
+	}
+
+	stmt := fmt.Sprintf(`
+		SELECT %v
+		FROM (%v) t
 		INNER JOIN users ON users.id = t.user_id
 		GROUP BY user_id
 		ORDER BY FIELD(users.id, %v)
-		`, tableName, strings.Join(conds, " AND "), util.IntArrayToString(userData.Ids, ","),
+		`, strings.Join(fields, ", "), sq, util.IntArrayToString(userData.Ids, ","),
 	)
 
 	rows, err := s.db.Query(stmt, args...)
@@ -148,16 +167,23 @@ func (s *LeaderBoardsService) getLeaderBoard(
 	for rows.Next() {
 		item := LeaderBoardsResponseItem{}
 
-		err := rows.Scan(
+		bindings := []any{
 			&item.Id, &item.Name,
 			&item.Type, &item.AuthId,
 			&item.TotalGames, &item.TotalDeaths,
 			&item.TotalDamage, &item.TotalKills,
 			&item.TotalLargeKills, &item.TotalHeals,
 			&item.TotalPlaytime,
-			&item.HSAccuracy, &item.Accuracy,
-			&item.AverageZedtime, &item.AverageBuffsUptime,
-		)
+		}
+
+		if req.Perk != 0 {
+			bindings = append(bindings,
+				&item.HSAccuracy, &item.Accuracy,
+				&item.AverageZedtime, &item.AverageBuffsUptime,
+			)
+		}
+
+		err := rows.Scan(bindings...)
 		if err != nil {
 			return nil, err
 		}
@@ -405,6 +431,18 @@ func (s *LeaderBoardsService) getLeaderboardIds(
 		Ids:   items,
 		Total: totalRows,
 	}, nil
+}
+
+func (s *LeaderBoardsService) validateRequest(req LeaderBoardsRequest) error {
+	if req.Perk == 0 {
+		switch req.OrderBy {
+		case AverageZedtime:
+		case AverageBuffsUptime:
+			return fmt.Errorf("selected type requires selected perk")
+		}
+	}
+
+	return nil
 }
 
 func (s *LeaderBoardsService) getTotalRows(
