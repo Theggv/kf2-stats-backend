@@ -53,6 +53,6 @@ type LeaderBoardsResponseItem struct {
 }
 
 type LeaderBoardsResponse struct {
-	Items []*LeaderBoardsResponseItem `json:"items"`
-	Total int                         `json:"total"`
+	Items    []*LeaderBoardsResponseItem `json:"items"`
+	Metadata *models.PaginationResponse  `json:"metadata"`
 }

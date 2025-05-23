@@ -57,7 +57,11 @@ func (s *LeaderBoardsService) getLeaderBoard(
 	if len(userData.Ids) == 0 {
 		return &LeaderBoardsResponse{
 			Items: []*LeaderBoardsResponseItem{},
-			Total: 0,
+			Metadata: &models.PaginationResponse{
+				Page:           req.Page,
+				ResultsPerPage: 50,
+				TotalResults:   0,
+			},
 		}, nil
 	}
 
@@ -132,7 +136,11 @@ func (s *LeaderBoardsService) getLeaderBoard(
 
 	res := LeaderBoardsResponse{
 		Items: []*LeaderBoardsResponseItem{},
-		Total: userData.Total,
+		Metadata: &models.PaginationResponse{
+			Page:           req.Page,
+			ResultsPerPage: 50,
+			TotalResults:   userData.Total,
+		},
 	}
 	steamIdSet := make(map[string]bool)
 
