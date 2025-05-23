@@ -312,18 +312,12 @@ func initStored(db *sql.DB) error {
 					sum(damage_dealt) as damage_dealt, 
 					sum(damage_taken) as damage_taken, 
 
-					sum(zedtime_count) as zedtime_count, 
-					sum(zedtime_length) as zedtime_length,
-
 					sum(k.scrake) + sum(k.fp) + sum(k.qp) as large_kills, 
 					sum(k.cyst) + sum(k.alpha_clot) + sum(k.slasher) + 
 					sum(k.stalker) + sum(k.crawler) + sum(k.gorefast) + 
 					sum(k.rioter) + sum(k.elite_crawler) + sum(k.gorefiend) + 
 					sum(k.siren) + sum(k.bloat) + sum(k.edar) + sum(k.husk_n) + sum(k.husk_b) + 
 					sum(k.scrake) + sum(k.fp) + sum(k.qp) + sum(k.boss) + sum(k.custom) as total_kills,
-
-					0 as buffs_active_length, 
-					0 as buffs_total_length,
 
 					session.id as max_damage_session_id,
 					sum(damage_dealt) as max_damage
@@ -350,15 +344,9 @@ func initStored(db *sql.DB) error {
 
 				damage_dealt = new.damage_dealt,
 				damage_taken = new.damage_taken,
-
-				zedtime_count = new.zedtime_count,
-				zedtime_length = new.zedtime_length,
-
+				
 				large_kills = new.large_kills,
 				total_kills = new.total_kills,
-
-				buffs_active_length = new.buffs_active_length,
-				buffs_total_length = new.buffs_total_length,
 
 				max_damage_session_id = new.max_damage_session_id,
 				max_damage = new.max_damage;
@@ -389,15 +377,15 @@ func initStored(db *sql.DB) error {
 					sum(zedtime_count) as zedtime_count, 
 					sum(zedtime_length) as zedtime_length,
 
+					0 as buffs_active_length, 
+					0 as buffs_total_length,
+
 					sum(k.scrake) + sum(k.fp) + sum(k.qp) as large_kills, 
 					sum(k.cyst) + sum(k.alpha_clot) + sum(k.slasher) + 
 					sum(k.stalker) + sum(k.crawler) + sum(k.gorefast) + 
 					sum(k.rioter) + sum(k.elite_crawler) + sum(k.gorefiend) + 
 					sum(k.siren) + sum(k.bloat) + sum(k.edar) + sum(k.husk_n) + sum(k.husk_b) + 
 					sum(k.scrake) + sum(k.fp) + sum(k.qp) + sum(k.boss) + sum(k.custom) as total_kills,
-
-					0 as buffs_active_length, 
-					0 as buffs_total_length,
 
 					session.id as max_damage_session_id,
 					sum(damage_dealt) as max_damage
@@ -428,11 +416,11 @@ func initStored(db *sql.DB) error {
 				zedtime_count = new.zedtime_count,
 				zedtime_length = new.zedtime_length,
 
-				large_kills = new.large_kills,
-				total_kills = new.total_kills,
-
 				buffs_active_length = new.buffs_active_length,
 				buffs_total_length = new.buffs_total_length,
+
+				large_kills = new.large_kills,
+				total_kills = new.total_kills,
 
 				max_damage_session_id = new.max_damage_session_id,
 				max_damage = new.max_damage;

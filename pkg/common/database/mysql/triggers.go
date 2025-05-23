@@ -70,14 +70,11 @@ func initTriggers(db *sql.DB) error {
 			SET new.heals_recv = old.heals_recv + new.heals_recv; 
 
 			SET new.damage_dealt = old.damage_dealt + new.damage_dealt; 
-			SET new.damage_taken = old.damage_taken + new.damage_taken; 
+			SET new.damage_taken = old.damage_taken + new.damage_taken;
 
-			SET new.zedtime_count = old.zedtime_count + new.zedtime_count; 
-			SET new.zedtime_length = old.zedtime_length + new.zedtime_length;
+			SET new.large_kills = old.large_kills + new.large_kills;
+			SET new.total_kills = old.total_kills + new.total_kills;
 
-			SET new.buffs_active_length = old.buffs_active_length + new.buffs_active_length; 
-			SET new.buffs_total_length = old.buffs_total_length + new.buffs_total_length;
-			
 			IF new.max_damage < old.max_damage THEN
 				SET new.max_damage = old.max_damage;
 				SET new.max_damage_session_id = old.max_damage_session_id;
@@ -111,6 +108,9 @@ func initTriggers(db *sql.DB) error {
 
 			SET new.buffs_active_length = old.buffs_active_length + new.buffs_active_length; 
 			SET new.buffs_total_length = old.buffs_total_length + new.buffs_total_length;
+
+			SET new.large_kills = old.large_kills + new.large_kills;
+			SET new.total_kills = old.total_kills + new.total_kills;
 			
 			IF new.max_damage < old.max_damage THEN
 				SET new.max_damage = old.max_damage;

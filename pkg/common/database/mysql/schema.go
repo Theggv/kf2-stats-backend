@@ -330,12 +330,6 @@ func initSchema(db *sql.DB) error {
 			damage_dealt INTEGER NOT NULL,
 			damage_taken INTEGER NOT NULL,
 
-			zedtime_count INTEGER NOT NULL,
-			zedtime_length REAL NOT NULL,
-			
-			buffs_active_length REAL NOT NULL,
-			buffs_total_length REAL NOT NULL,
-
 			large_kills INTEGER NOT NULL,
 			total_kills INTEGER NOT NULL,
 
