@@ -70,7 +70,6 @@ func (s *SteamApiUserService) GetUserSummary(steamIds []string) ([]GetUserSummar
 		}
 
 		summaries = append(summaries, data...)
-		chunk = chunk[:0]
 	}
 
 	for _, item := range summaries {
@@ -91,13 +90,17 @@ func (s *SteamApiUserService) getUsersSummaryInternal(steamIds []string) ([]GetU
 	}
 	defer res.Body.Close()
 
+	if res.StatusCode >= 400 {
+		return nil, fmt.Errorf("getUsersSummaryInternal: %v", res.Status)
+	}
+
 	var resJson GetUserSummaryResponse
 	if err := json.NewDecoder(res.Body).Decode(&resJson); err != nil {
 		return nil, err
 	}
 
 	if resJson.Response == nil {
-		return nil, errors.New("response is null")
+		return nil, errors.New("getUsersSummaryInternal: no response")
 	}
 
 	return resJson.Response.Players, nil
