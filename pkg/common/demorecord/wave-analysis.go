@@ -1,6 +1,8 @@
 package demorecord
 
-import "github.com/theggv/kf2-stats-backend/pkg/common/models"
+import (
+	"github.com/theggv/kf2-stats-backend/pkg/common/models"
+)
 
 func (wave *DemoRecordAnalysisWave) calcZedtimeAnalytics() *ZedtimeAnalytics {
 	res := ZedtimeAnalytics{}
@@ -150,10 +152,6 @@ func (wave *DemoRecordAnalysisWave) calcBuffsUptime() *BuffsUptimeAnalytics {
 
 		if data, ok := playerBuffs[item.UserId]; ok {
 			data.Buffs = append(data.Buffs, item)
-		} else {
-			playerBuffs[item.UserId] = &PlayerBuffs{}
-			data := playerBuffs[item.UserId]
-			data.Buffs = append(data.Buffs, item)
 		}
 	}
 
@@ -165,10 +163,6 @@ func (wave *DemoRecordAnalysisWave) calcBuffsUptime() *BuffsUptimeAnalytics {
 		}
 
 		if data, ok := playerBuffs[userId]; ok {
-			data.Buffs = append(data.Buffs, &item)
-		} else {
-			playerBuffs[userId] = &PlayerBuffs{}
-			data := playerBuffs[userId]
 			data.Buffs = append(data.Buffs, &item)
 		}
 	}
