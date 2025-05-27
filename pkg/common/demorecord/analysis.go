@@ -224,13 +224,38 @@ func (demo *DemoRecordParsed) analyzePlayerEvents(
 			wave.StartTick,
 		); lastHpChange != nil {
 			res.HealthChanges = append(res.HealthChanges, *lastHpChange)
+		} else {
+			res.HealthChanges = append(res.HealthChanges, &DemoRecordParsedEventHpChange{
+				Tick:   wave.StartTick,
+				UserId: userId,
+				Health: 100,
+			})
 		}
 
-		res.Buffs = append(res.Buffs, &DemoRecordParsedEventBuff{
-			Tick:     wave.StartTick,
-			UserId:   userId,
-			MaxBuffs: 0,
-		})
+		if buff := findLastLower(
+			filter(
+				demo.PlayerEvents.Buffs,
+				func(item *DemoRecordParsedEventBuff) int {
+					return item.UserId
+				}, userId,
+			),
+			func(item *DemoRecordParsedEventBuff) int {
+				return item.Tick
+			},
+			wave.StartTick,
+		); buff != nil {
+			res.Buffs = append(res.Buffs, &DemoRecordParsedEventBuff{
+				Tick:     wave.StartTick,
+				UserId:   userId,
+				MaxBuffs: (*buff).MaxBuffs,
+			})
+		} else {
+			res.Buffs = append(res.Buffs, &DemoRecordParsedEventBuff{
+				Tick:     wave.StartTick,
+				UserId:   userId,
+				MaxBuffs: 0,
+			})
+		}
 	}
 
 	res.Perks = append(res.Perks,
@@ -409,16 +434,20 @@ func (demo *DemoRecordAnalysis) calcBuffsUptime() *BuffsUptimeAnalytics {
 				data.BuffedTicks += item.BuffedTicks
 				data.TotalTicks += item.TotalTicks
 			} else {
-				playerBuffs[item.UserId] = item
+				playerBuffs[item.UserId] = &DemoRecordAnalysisWaveBuffsUptime{
+					UserId:      item.UserId,
+					BuffedTicks: item.BuffedTicks,
+					TotalTicks:  item.TotalTicks,
+				}
 			}
 		}
+
+		res.BuffedTicks += data.BuffedTicks
+		res.TotalTicks += data.TotalTicks
 	}
 
 	for _, data := range playerBuffs {
 		res.Detailed = append(res.Detailed, data)
-
-		res.BuffedTicks += data.BuffedTicks
-		res.TotalTicks += data.TotalTicks
 	}
 
 	return &res

@@ -122,6 +122,7 @@ func (wave *DemoRecordAnalysisWave) calcBuffsUptime() *BuffsUptimeAnalytics {
 	}
 
 	playerBuffs := map[int]*PlayerBuffs{}
+	playerDeathTicks := map[int]int{}
 	maxBuffDurationInTicks := 500
 
 	for i := range wave.PlayerEvents.Perks {
@@ -132,8 +133,20 @@ func (wave *DemoRecordAnalysisWave) calcBuffsUptime() *BuffsUptimeAnalytics {
 		}
 	}
 
+	for i := range wave.PlayerEvents.Deaths {
+		item := wave.PlayerEvents.Deaths[i]
+
+		playerDeathTicks[item.UserId] = item.Tick
+	}
+
 	for i := range wave.PlayerEvents.Buffs {
 		item := wave.PlayerEvents.Buffs[i]
+
+		deathTick := playerDeathTicks[item.UserId]
+
+		if deathTick > 0 && item.Tick >= deathTick {
+			continue
+		}
 
 		if data, ok := playerBuffs[item.UserId]; ok {
 			data.Buffs = append(data.Buffs, item)
@@ -144,21 +157,19 @@ func (wave *DemoRecordAnalysisWave) calcBuffsUptime() *BuffsUptimeAnalytics {
 		}
 	}
 
-	for i := range wave.PlayerEvents.Deaths {
-		item := wave.PlayerEvents.Deaths[i]
-
-		ev := DemoRecordParsedEventBuff{
-			Tick:     item.Tick,
-			UserId:   item.UserId,
+	for userId, deathTick := range playerDeathTicks {
+		item := DemoRecordParsedEventBuff{
+			UserId:   userId,
+			Tick:     deathTick,
 			MaxBuffs: -1,
 		}
 
-		if data, ok := playerBuffs[item.UserId]; ok {
-			data.Buffs = append(data.Buffs, &ev)
+		if data, ok := playerBuffs[userId]; ok {
+			data.Buffs = append(data.Buffs, &item)
 		} else {
-			playerBuffs[item.UserId] = &PlayerBuffs{}
-			data := playerBuffs[item.UserId]
-			data.Buffs = append(data.Buffs, &ev)
+			playerBuffs[userId] = &PlayerBuffs{}
+			data := playerBuffs[userId]
+			data.Buffs = append(data.Buffs, &item)
 		}
 	}
 
