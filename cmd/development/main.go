@@ -7,6 +7,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/theggv/kf2-stats-backend/pkg/common/config"
+	"github.com/theggv/kf2-stats-backend/pkg/common/cron"
 	"github.com/theggv/kf2-stats-backend/pkg/common/database/mysql"
 	"github.com/theggv/kf2-stats-backend/pkg/common/store"
 	"github.com/theggv/kf2-stats-backend/pkg/migrations"
@@ -38,6 +39,8 @@ func main() {
 
 	// Run migrations
 	migrations.ExecuteAll(db.Conn)
+
+	cron.SetupTasks(rootStore)
 
 	r := gin.Default()
 

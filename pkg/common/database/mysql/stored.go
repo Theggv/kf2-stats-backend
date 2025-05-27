@@ -284,6 +284,8 @@ func initStored(db *sql.DB) error {
 					GROUP BY session.id, wsp.player_id, wsp.perk
 				) t ON aggr.session_id = t.session_id AND aggr.user_id = t.user_id AND aggr.perk = t.perk
 			);
+
+			CALL update_user_stats_weekly(session_id);
 		END;
 	`)
 	tx.Exec(`
@@ -329,24 +331,24 @@ func initStored(db *sql.DB) error {
 				GROUP BY session.id, wsp.player_id
 			) as new
 			ON DUPLICATE KEY UPDATE 
-				total_games = new.total_games,
-				total_waves = new.total_waves,
-				playtime_seconds = new.playtime_seconds,
-				deaths = new.deaths,
+				user_weekly_stats_total.total_games = user_weekly_stats_total.total_games + new.total_games,
+				user_weekly_stats_total.total_waves = user_weekly_stats_total.total_waves + new.total_waves,
+				user_weekly_stats_total.playtime_seconds = user_weekly_stats_total.playtime_seconds + new.playtime_seconds,
+				user_weekly_stats_total.deaths = user_weekly_stats_total.deaths + new.deaths,
 
-				shots_fired = new.shots_fired,
-				shots_hit = new.shots_hit,
-				shots_hs = new.shots_hs,
+				user_weekly_stats_total.shots_fired = user_weekly_stats_total.shots_fired + new.shots_fired,
+				user_weekly_stats_total.shots_hit = user_weekly_stats_total.shots_hit + new.shots_hit,
+				user_weekly_stats_total.shots_hs = user_weekly_stats_total.shots_hs + new.shots_hs,
 
-				dosh_earned = new.dosh_earned,
-				heals_given = new.heals_given,
-				heals_recv = new.heals_recv,
+				user_weekly_stats_total.dosh_earned = user_weekly_stats_total.dosh_earned + new.dosh_earned,
+				user_weekly_stats_total.heals_given = user_weekly_stats_total.heals_given + new.heals_given,
+				user_weekly_stats_total.heals_recv = user_weekly_stats_total.heals_recv + new.heals_recv,
 
-				damage_dealt = new.damage_dealt,
-				damage_taken = new.damage_taken,
+				user_weekly_stats_total.damage_dealt = user_weekly_stats_total.damage_dealt + new.damage_dealt,
+				user_weekly_stats_total.damage_taken = user_weekly_stats_total.damage_taken + new.damage_taken,
 				
-				large_kills = new.large_kills,
-				total_kills = new.total_kills,
+				user_weekly_stats_total.large_kills = user_weekly_stats_total.large_kills + new.large_kills,
+				user_weekly_stats_total.total_kills = user_weekly_stats_total.total_kills + new.total_kills,
 
 				max_damage_session_id = new.max_damage_session_id,
 				max_damage = new.max_damage;
@@ -396,31 +398,34 @@ func initStored(db *sql.DB) error {
 				WHERE session.id = session_id
 				GROUP BY session.id, wsp.player_id, wsp.perk
 			) as new
-			ON DUPLICATE KEY UPDATE 
-				total_games = new.total_games,
-				total_waves = new.total_waves,
-				playtime_seconds = new.playtime_seconds,
-				deaths = new.deaths,
+			ON DUPLICATE KEY UPDATE
+				user_weekly_stats_perk.total_games = user_weekly_stats_perk.total_games + new.total_games,
+				user_weekly_stats_perk.total_waves = user_weekly_stats_perk.total_waves + new.total_waves,
+				user_weekly_stats_perk.playtime_seconds = user_weekly_stats_perk.playtime_seconds + new.playtime_seconds,
+				user_weekly_stats_perk.deaths = user_weekly_stats_perk.deaths + new.deaths,
 
-				shots_fired = new.shots_fired,
-				shots_hit = new.shots_hit,
-				shots_hs = new.shots_hs,
+				user_weekly_stats_perk.shots_fired = user_weekly_stats_perk.shots_fired + new.shots_fired,
+				user_weekly_stats_perk.shots_hit = user_weekly_stats_perk.shots_hit + new.shots_hit,
+				user_weekly_stats_perk.shots_hs = user_weekly_stats_perk.shots_hs + new.shots_hs,
 
-				dosh_earned = new.dosh_earned,
-				heals_given = new.heals_given,
-				heals_recv = new.heals_recv,
+				user_weekly_stats_perk.dosh_earned = user_weekly_stats_perk.dosh_earned + new.dosh_earned,
+				user_weekly_stats_perk.heals_given = user_weekly_stats_perk.heals_given + new.heals_given,
+				user_weekly_stats_perk.heals_recv = user_weekly_stats_perk.heals_recv + new.heals_recv,
 
-				damage_dealt = new.damage_dealt,
-				damage_taken = new.damage_taken,
+				user_weekly_stats_perk.damage_dealt = user_weekly_stats_perk.damage_dealt + new.damage_dealt,
+				user_weekly_stats_perk.damage_taken = user_weekly_stats_perk.damage_taken + new.damage_taken,
+				
+				user_weekly_stats_perk.large_kills = user_weekly_stats_perk.large_kills + new.large_kills,
+				user_weekly_stats_perk.total_kills = user_weekly_stats_perk.total_kills + new.total_kills,
 
-				zedtime_count = new.zedtime_count,
-				zedtime_length = new.zedtime_length,
+				user_weekly_stats_perk.zedtime_count = user_weekly_stats_perk.zedtime_count + new.zedtime_count,
+				user_weekly_stats_perk.zedtime_length = user_weekly_stats_perk.zedtime_length + new.zedtime_length,
 
-				buffs_active_length = new.buffs_active_length,
-				buffs_total_length = new.buffs_total_length,
+				user_weekly_stats_perk.buffs_active_length = user_weekly_stats_perk.buffs_active_length + new.buffs_active_length,
+				user_weekly_stats_perk.buffs_total_length = user_weekly_stats_perk.buffs_total_length + new.buffs_total_length,
 
-				large_kills = new.large_kills,
-				total_kills = new.total_kills,
+				user_weekly_stats_perk.large_kills = user_weekly_stats_perk.large_kills + new.large_kills,
+				user_weekly_stats_perk.total_kills = user_weekly_stats_perk.total_kills + new.total_kills,
 
 				max_damage_session_id = new.max_damage_session_id,
 				max_damage = new.max_damage;
@@ -456,6 +461,21 @@ func initStored(db *sql.DB) error {
 			CLOSE sessions_cursor;
 
 			COMMIT;
+		END;
+	`)
+	tx.Exec(`
+		DROP PROCEDURE IF EXISTS debug_clear_buffs_data;
+		CREATE PROCEDURE debug_clear_buffs_data()
+		BEGIN
+			UPDATE session_demo SET processed = false;
+
+			UPDATE session_aggregated 
+			SET buffs_active_length = 0, buffs_total_length = 0
+			WHERE buffs_active_length > 0 OR buffs_total_length > 0;
+			
+			UPDATE user_weekly_stats_perk 
+			SET buffs_active_length = 0, buffs_total_length = 0
+			WHERE buffs_active_length > 0 OR buffs_total_length > 0;
 		END;
 	`)
 
