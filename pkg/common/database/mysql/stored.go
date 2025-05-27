@@ -463,21 +463,6 @@ func initStored(db *sql.DB) error {
 			COMMIT;
 		END;
 	`)
-	tx.Exec(`
-		DROP PROCEDURE IF EXISTS debug_clear_buffs_data;
-		CREATE PROCEDURE debug_clear_buffs_data()
-		BEGIN
-			UPDATE session_demo SET processed = false;
-
-			UPDATE session_aggregated 
-			SET buffs_active_length = 0, buffs_total_length = 0
-			WHERE buffs_active_length > 0 OR buffs_total_length > 0;
-			
-			UPDATE user_weekly_stats_perk 
-			SET buffs_active_length = 0, buffs_total_length = 0
-			WHERE buffs_active_length > 0 OR buffs_total_length > 0;
-		END;
-	`)
 
 	return err
 }
