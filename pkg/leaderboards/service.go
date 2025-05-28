@@ -391,6 +391,8 @@ func (s *LeaderBoardsService) getLeaderboardIds(
 	} else if req.To.Sub(req.From).Hours()/24 >= 28 {
 		// Month leaderboard requires at least 10 recent games
 		restrictByGamesCond = "HAVING sum(total_games) >= 10"
+	} else {
+		restrictByGamesCond = "HAVING sum(total_games) >= 3"
 	}
 
 	stmt := fmt.Sprintf(`
@@ -473,6 +475,8 @@ func (s *LeaderBoardsService) getTotalRows(
 		} else if req.To.Sub(req.From).Hours()/24 >= 28 {
 			// Month leaderboard requires at least 10 recent games
 			restrictByGamesCond = "HAVING sum(total_games) >= 10"
+		} else {
+			restrictByGamesCond = "HAVING sum(total_games) >= 3"
 		}
 	}
 
