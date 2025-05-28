@@ -19,6 +19,8 @@ import (
 )
 
 type Store struct {
+	Db *sql.DB
+
 	Servers  *server.ServerService
 	Maps     *maps.MapsService
 	Sessions *session.SessionService
@@ -37,6 +39,8 @@ type Store struct {
 
 func New(db *sql.DB, config *config.AppConfig) *Store {
 	store := Store{
+		Db: db,
+
 		Servers:  server.NewServerService(db),
 		Maps:     maps.NewMapsService(db),
 		Sessions: session.NewSessionService(db),

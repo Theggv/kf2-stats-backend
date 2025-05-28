@@ -51,8 +51,6 @@ func NewMatchesService(db *sql.DB) *MatchesService {
 		db: db,
 	}
 
-	service.setupTasks()
-
 	return &service
 }
 
@@ -430,7 +428,7 @@ func (s *MatchesService) GetMatchLiveData(sessionId int) (*GetMatchLiveDataRespo
 			wave, is_trader_time, zeds_left,
 			spawn_cycle, max_monsters, wave_size_fakes, zeds_type
 		FROM session_game_data gd
-		LEFT JOIN session_game_data_cd cd ON cd.session_id = gd.session_id
+		LEFT JOIN session_game_data_extra cd ON cd.session_id = gd.session_id
 		WHERE gd.session_id = ?`
 
 	gameData := models.GameData{}

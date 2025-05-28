@@ -127,7 +127,7 @@ func (s *SessionService) GetCDData(id int) (*models.CDGameData, error) {
 		SELECT spawn_cycle, max_monsters, wave_size_fakes, zeds_type
 		FROM session
 		INNER JOIN wave_stats ws on ws.session_id = session.id
-		INNER JOIN wave_stats_cd cd on cd.stats_id = ws.id
+		INNER JOIN wave_stats_extra cd on cd.stats_id = ws.id
 		WHERE session.id = ? and ws.wave <= session.length
 		ORDER BY ws.id DESC
 		LIMIT 1`, id,
@@ -164,7 +164,7 @@ func (s *SessionService) UpdateStatus(data UpdateStatusRequest) error {
 	if data.Status == models.Win ||
 		data.Status == models.Lose ||
 		data.Status == models.Aborted {
-		_, err = s.db.Exec(`
+		s.db.Exec(`
 			UPDATE session 
 			SET completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
 			WHERE id = ?`, data.Id)
@@ -183,7 +183,7 @@ func (s *SessionService) UpdateStatus(data UpdateStatusRequest) error {
 		}
 
 		if count == 0 {
-			_, err = s.db.Exec(`DELETE FROM session WHERE id = ?`, data.Id)
+			s.db.Exec(`DELETE FROM session WHERE id = ?`, data.Id)
 		}
 	}
 
@@ -256,6 +256,20 @@ func (s *SessionService) GetDemoPlayers(demo *demorecord.DemoRecordParsed) {
 	}
 }
 
+func (s *SessionService) LoadDemoUsers(demo *demorecord.DemoRecordParsed) {
+	for i := range demo.Players {
+		item := demo.Players[i]
+
+		if user, _ := s.usersService.GetByAuth(item.UniqueId, models.AuthType(item.UserType)); user != nil {
+			item.Profile = &models.UserProfile{
+				Id:     user.Id,
+				Name:   user.Name,
+				AuthId: user.AuthId,
+			}
+		}
+	}
+}
+
 func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
 	status, err := s.getStatus(data.SessionId)
 	if err != nil || (*status != models.InProgress && *status != models.Lobby) {
@@ -275,7 +289,7 @@ func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
 		return err
 	}
 
-	_, err = s.db.Exec(`
+	s.db.Exec(`
 		UPDATE session_game_data
 		SET max_players = ?, players_online = ?, players_alive = ?,
 			wave = ?, is_trader_time = ?, zeds_left = ?,
@@ -295,8 +309,8 @@ func (s *SessionService) UpdateGameData(data UpdateGameDataRequest) error {
 		if data.GameData.Wave <= *length {
 			cdData := data.CDData
 
-			_, err = s.db.Exec(`
-			INSERT INTO session_game_data_cd 
+			s.db.Exec(`
+			INSERT INTO session_game_data_extra 
 				(session_id, spawn_cycle, max_monsters, wave_size_fakes, zeds_type)
 			VALUES (?, ?, ?, ?, ?)
 				ON DUPLICATE KEY UPDATE

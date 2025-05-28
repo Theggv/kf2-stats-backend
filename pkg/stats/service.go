@@ -136,7 +136,7 @@ func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRe
 
 func (s *StatsService) createWaveStatsCD(statsId int, req *models.CDGameData) error {
 	_, err := s.db.Exec(`
-		INSERT INTO wave_stats_cd (
+		INSERT INTO wave_stats_extra (
 			stats_id, spawn_cycle, max_monsters, wave_size_fakes, zeds_type) 
 		VALUES (?, ?, ?, ?, ?)`,
 		statsId,
