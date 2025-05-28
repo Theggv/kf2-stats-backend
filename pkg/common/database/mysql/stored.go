@@ -22,7 +22,7 @@ func initStored(db *sql.DB) error {
 			) as tbl on session.server_id = tbl.server_id
 			SET status = -1
 			WHERE 
-				session.id <> 0 AND session.id NOT IN (tbl.max_id) AND 
+				session.id NOT IN (tbl.max_id) AND 
 				status IN (0, 1);
 		END;
 	`)
@@ -35,8 +35,8 @@ func initStored(db *sql.DB) error {
 			INNER JOIN session_game_data gd ON gd.session_id = session.id
 			SET session.status = -1
 			WHERE 
-				session.id <> 0 AND 
 				session.status IN (0, 1) AND 
+				session.started_at >= CURRENT_TIMESTAMP - INTERVAL 30 DAY AND
 				timestampdiff(MINUTE, gd.updated_at, CURRENT_TIMESTAMP) > minutes;
 		END;
 	`)
@@ -44,16 +44,16 @@ func initStored(db *sql.DB) error {
 		DROP PROCEDURE IF EXISTS delete_empty_sessions;
 		CREATE PROCEDURE delete_empty_sessions()
 		BEGIN
-			DELETE FROM session WHERE id IN (
-				SELECT id FROM (
-					SELECT distinct session.id, session.status
-					FROM session
-						LEFT JOIN wave_stats ws ON ws.session_id = session.id
-						LEFT JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
-					WHERE session.status IN (-1, 2, 3)
-					GROUP BY session.id
-					HAVING count(wsp.id) = 0
-				) t
+			DELETE FROM session 
+			WHERE
+				session.status IN (-1, 2, 3) AND
+				session.started_at >= CURRENT_TIMESTAMP - INTERVAL 30 DAY AND
+				NOT EXISTS (
+					SELECT 1
+					FROM wave_stats ws
+					INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+					WHERE ws.session_id = session.id
+				)
 			);
 		END;
 	`)
