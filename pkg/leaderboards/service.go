@@ -43,6 +43,10 @@ func (s *LeaderBoardsService) getLeaderBoard(
 		err      error
 	)
 
+	if req.Page < 0 {
+		req.Page = 0
+	}
+
 	err = s.validateRequest(req)
 	if err != nil {
 		return nil, err
