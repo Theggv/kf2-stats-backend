@@ -124,6 +124,10 @@ func (s *LeaderBoardsService) getLeaderBoard(
 		conds = append(conds, "period BETWEEN yearweek(?) AND yearweek(?)")
 		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
+		if len(req.ServerIds) > 0 {
+			conds = append(conds, fmt.Sprintf("server_id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
+		}
+
 		if req.Perk != 0 {
 			conds = append(conds, "perk = ?")
 			args = append(args, req.Perk)
@@ -212,6 +216,10 @@ func (s *LeaderBoardsService) getLeaderBoard(
 			args = append(args, req.Perk)
 		}
 
+		if len(req.ServerIds) > 0 {
+			conds = append(conds, fmt.Sprintf("server_id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
+		}
+
 		conds = append(conds, fmt.Sprintf("user_id IN (%v)", util.IntArrayToString(userData.Ids, ",")))
 
 		stmt := fmt.Sprintf(`
@@ -287,6 +295,10 @@ func (s *LeaderBoardsService) getMostDamageTop(
 
 	conds = append(conds, "period BETWEEN yearweek(?) AND yearweek(?)")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+
+	if len(req.ServerIds) > 0 {
+		conds = append(conds, fmt.Sprintf("server_id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
+	}
 
 	tableName := "user_weekly_stats_total"
 	if req.Perk != 0 {
@@ -377,6 +389,10 @@ func (s *LeaderBoardsService) getLeaderboardIds(
 	conds = append(conds, "period BETWEEN yearweek(?) AND yearweek(?)")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
+	if len(req.ServerIds) > 0 {
+		conds = append(conds, fmt.Sprintf("server_id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
+	}
+
 	tableName := "user_weekly_stats_total"
 	if req.Perk != 0 {
 		tableName = "user_weekly_stats_perk"
@@ -465,6 +481,10 @@ func (s *LeaderBoardsService) getTotalRows(
 		tableName = "user_weekly_stats_perk"
 		conds = append(conds, "perk = ?")
 		args = append(args, req.Perk)
+	}
+
+	if len(req.ServerIds) > 0 {
+		conds = append(conds, fmt.Sprintf("server_id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
 	}
 
 	restrictByGamesCond := ""
