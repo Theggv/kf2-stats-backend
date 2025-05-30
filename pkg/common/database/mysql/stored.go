@@ -225,7 +225,6 @@ func initStored(db *sql.DB) error {
 		DROP PROCEDURE IF EXISTS insert_session_aggregated;
 		CREATE PROCEDURE insert_session_aggregated(session_id INT)
 		BEGIN
-			DO SLEEP(3);
 			INSERT IGNORE INTO session_aggregated (
 				session_id, user_id, perk, 
 				playtime_seconds, waves_played, deaths, 
