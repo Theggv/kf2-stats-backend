@@ -118,21 +118,31 @@ func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResp
 	conds = append(conds, fmt.Sprintf("session.server_id = %v", req.ServerId))
 
 	sql := fmt.Sprintf(`
+		WITH ranking AS (
+			SELECT 
+				wsp.player_id user_id,
+				wsp.id wsp_id,
+				DENSE_RANK() OVER w as rating
+			FROM session
+			INNER JOIN wave_stats ws ON ws.session_id = session.id
+			INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+			WHERE %v
+			WINDOW w AS (PARTITION BY wsp.player_id ORDER BY wsp.id DESC)
+			ORDER BY wsp.id DESC
+		)
 		SELECT 
 			users.id,
 			users.name,
 			users.auth_id,
 			users.auth_type,
-			max(session.id),
-			max(wsp.id),
-			max(wsp.created_at)
-		FROM session
-		INNER JOIN wave_stats ws ON ws.session_id = session.id
-		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
-		INNER JOIN users ON wsp.player_id = users.id
-		WHERE %v
-		GROUP BY users.id
-		ORDER BY max(wsp.id) DESC
+			ws.session_id,
+			wsp.id wsp_id,
+			wsp.created_at
+		FROM ranking
+		INNER JOIN wave_stats_player wsp ON wsp.id = ranking.wsp_id
+		INNER JOIN wave_stats ws ON ws.id = wsp.stats_id
+		INNER JOIN users ON users.id = wsp.player_id
+		WHERE rating = 1
 		LIMIT %v, %v
 		`, strings.Join(conds, " AND "), page*limit, limit,
 	)
@@ -200,10 +210,9 @@ func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResp
 
 	// Prepare count query
 	sql = fmt.Sprintf(`
-		SELECT count(distinct users.id) FROM session
+		SELECT count(distinct wsp.player_id) FROM session
 		INNER JOIN wave_stats ws ON ws.session_id = session.id
 		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
-		INNER JOIN users ON wsp.player_id = users.id
 		WHERE %v`,
 		strings.Join(conds, " AND "),
 	)
