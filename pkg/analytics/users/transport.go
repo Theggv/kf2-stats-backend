@@ -133,3 +133,49 @@ type GetPlayedMapsResponseItem struct {
 type GetPlayedMapsResponse struct {
 	Items []*GetPlayedMapsResponseItem `json:"items"`
 }
+
+type GetLastSeenUsersRequest struct {
+	UserId int `json:"user_id" binding:"required"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+
+	From *time.Time `json:"date_from"`
+	To   *time.Time `json:"date_to"`
+
+	Pager models.PaginationRequest `json:"pager"`
+}
+
+type ServerData struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type MapData struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type GetLastSeenUsersResponseItem struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+
+	ProfileUrl *string `json:"profile_url"`
+	Avatar     *string `json:"avatar"`
+
+	SessionId int        `json:"session_id"`
+	Server    ServerData `json:"server"`
+	Map       MapData    `json:"map"`
+
+	Perks []int `json:"perks"`
+
+	LastSeen *time.Time `json:"last_seen"`
+
+	AuthId string          `json:"-"`
+	Type   models.AuthType `json:"-"`
+}
+
+type GetLastSeenUsersResponse struct {
+	Items    []*GetLastSeenUsersResponseItem `json:"items"`
+	Metadata *models.PaginationResponse      `json:"metadata"`
+}

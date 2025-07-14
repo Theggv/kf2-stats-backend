@@ -155,3 +155,27 @@ func (c *controller) getPlayedMaps(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, res)
 }
+
+// @Summary Get last seen users
+// @Tags 	Analytics
+// @Produce json
+// @Param   body body 		GetLastSeenUsersRequest true "Body"
+// @Success 200 {object} 	GetLastSeenUsersResponse
+// @Router /analytics/users/lastseen [post]
+func (c *controller) getLastSeenUsers(ctx *gin.Context) {
+	var req GetLastSeenUsersRequest
+	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	res, err := c.service.getLastSeenUsers(req)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
+}
