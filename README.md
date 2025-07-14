@@ -28,7 +28,7 @@ go build -o ./main.exe -a -ldflags '-linkmode external -extldflags "-static"' ./
 - Install air for live reload and swag to generate docs
 
 ```
-go install github.com/cosmtrek/air@latest
+go install github.com/air-verse/air@latest
 go install github.com/swaggo/swag/cmd/swag@latest
 swag init -g .\cmd\development\main.go
 ```
