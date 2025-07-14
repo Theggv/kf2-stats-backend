@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
+	"github.com/theggv/kf2-stats-backend/pkg/common/util"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
@@ -178,7 +179,7 @@ func (s *UserAnalyticsService) GetPerksAnalytics(
 func (s *UserAnalyticsService) getAverageZedtime(
 	req UserPerksAnalyticsRequest) (float64, error) {
 
-	args := []interface{}{}
+	args := []any{}
 	args = append(args, req.UserId)
 
 	if req.From != nil && req.To != nil {
@@ -187,12 +188,10 @@ func (s *UserAnalyticsService) getAverageZedtime(
 		args = append(args, "2000-01-01", "3000-01-01")
 	}
 
-	sql := fmt.Sprintf(`
-		SELECT get_avg_zt(?, ?, ?)`,
-	)
+	stmt := `SELECT get_avg_zt(?, ?, ?)`
 
 	var averageZt float64
-	err := s.db.QueryRow(sql, args...).Scan(&averageZt)
+	err := s.db.QueryRow(stmt, args...).Scan(&averageZt)
 
 	return averageZt, err
 }
@@ -401,6 +400,82 @@ func (s *UserAnalyticsService) getTeammates(
 				item.ProfileUrl = &data.ProfileUrl
 			}
 		}
+	}
+
+	return &res, nil
+}
+
+func (s *UserAnalyticsService) getPlayedMaps(
+	req GetPlayedMapsRequest,
+) (*GetPlayedMapsResponse, error) {
+	conds := []string{}
+	args := []any{}
+
+	conds = append(conds,
+		"player_id = ?",
+		"DATE(session.started_at) BETWEEN ? AND ?",
+	)
+
+	args = append(args, req.UserId)
+
+	if req.From != nil && req.To != nil {
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	} else {
+		args = append(args, "2000-01-01", "3000-01-01")
+	}
+
+	if len(req.Perks) > 0 {
+		conds = append(conds, fmt.Sprintf("perk IN (%v)",
+			util.IntArrayToString(req.Perks, ",")),
+		)
+	}
+
+	if len(req.ServerIds) > 0 {
+		conds = append(conds, fmt.Sprintf("server_id IN (%v)",
+			util.IntArrayToString(req.ServerIds, ",")),
+		)
+	}
+
+	stmt := fmt.Sprintf(`
+		WITH cte AS (
+			SELECT DISTINCT session.id AS session_id
+			FROM session
+			INNER JOIN wave_stats ws ON ws.session_id = session.id
+			INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+			WHERE %v
+		)
+		SELECT DISTINCT
+			maps.name AS map_name,
+			COUNT(session.id) over w AS total_games,
+			COUNT(CASE WHEN session.status = 2 THEN 1 END) over w AS total_wins,
+			MAX(session.completed_at) over w AS last_played
+		FROM cte
+		INNER JOIN session ON cte.session_id = session.id
+		INNER JOIN maps ON maps.id = session.map_id
+		WINDOW w AS (PARTITION BY maps.id)
+		ORDER BY total_games DESC
+		`, strings.Join(conds, " AND "),
+	)
+
+	rows, err := s.db.Query(stmt, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	res := GetPlayedMapsResponse{
+		Items: []*GetPlayedMapsResponseItem{},
+	}
+	for rows.Next() {
+		item := GetPlayedMapsResponseItem{}
+
+		err := rows.Scan(
+			&item.Name, &item.TotalGames, &item.TotalWins, &item.LastPlayed,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		res.Items = append(res.Items, &item)
 	}
 
 	return &res, nil

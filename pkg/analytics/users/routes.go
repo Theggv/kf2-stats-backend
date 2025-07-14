@@ -21,5 +21,5 @@ func RegisterRoutes(
 	routes.POST("/users/perks/playtime", controller.getPlaytimeHist)
 	routes.POST("/users/perks/accuracy", controller.getAccuracyHist)
 	routes.POST("/users/teammates", controller.getTeammates)
-
+	routes.POST("/users/maps", controller.getPlayedMaps)
 }

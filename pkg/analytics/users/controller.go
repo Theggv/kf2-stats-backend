@@ -131,3 +131,27 @@ func (c *controller) getTeammates(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, res)
 }
+
+// @Summary Get user played maps
+// @Tags 	Analytics
+// @Produce json
+// @Param   body body 		GetPlayedMapsRequest true "Body"
+// @Success 200 {object} 	GetPlayedMapsResponse
+// @Router /analytics/users/maps [post]
+func (c *controller) getPlayedMaps(ctx *gin.Context) {
+	var req GetPlayedMapsRequest
+	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	res, err := c.service.getPlayedMaps(req)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
+}

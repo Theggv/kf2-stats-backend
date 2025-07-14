@@ -110,3 +110,26 @@ type GetTeammatesResponseItem struct {
 type GetTeammatesResponse struct {
 	Items []*GetTeammatesResponseItem `json:"items"`
 }
+
+type GetPlayedMapsRequest struct {
+	UserId int `json:"user_id" binding:"required"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+
+	From *time.Time `json:"date_from"`
+	To   *time.Time `json:"date_to"`
+}
+
+type GetPlayedMapsResponseItem struct {
+	Name string `json:"name"`
+
+	TotalGames int `json:"total_games"`
+	TotalWins  int `json:"total_wins"`
+
+	LastPlayed *time.Time `json:"last_played"`
+}
+
+type GetPlayedMapsResponse struct {
+	Items []*GetPlayedMapsResponseItem `json:"items"`
+}
