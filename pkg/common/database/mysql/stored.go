@@ -53,8 +53,7 @@ func initStored(db *sql.DB) error {
 					FROM wave_stats ws
 					INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
 					WHERE ws.session_id = session.id
-				)
-			);
+				);
 		END;
 	`)
 	tx.Exec(`
