@@ -414,6 +414,7 @@ func (s *UserAnalyticsService) getPlayedMaps(
 	conds = append(conds,
 		"player_id = ?",
 		"DATE(session.started_at) BETWEEN ? AND ?",
+		"session.completed_at IS NOT NULL",
 	)
 
 	args = append(args, req.UserId)
@@ -575,8 +576,8 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 	res := GetLastSeenUsersResponse{
 		Items: []*GetLastSeenUsersResponseItem{},
 		Metadata: &models.PaginationResponse{
-			Page:           req.Pager.Page,
-			ResultsPerPage: req.Pager.ResultsPerPage,
+			Page:           page,
+			ResultsPerPage: limit,
 		},
 	}
 	steamIdSet := make(map[string]bool)
@@ -659,6 +660,149 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 			FROM user_rating cte
 			WHERE rating = 1
 			`, strings.Join(conds, " AND "), req.UserId,
+		)
+
+		row := s.db.QueryRow(stmt, args...)
+
+		var count int
+		row.Scan(&count)
+		res.Metadata.TotalResults = count
+	}
+
+	return &res, nil
+}
+
+func (s *UserAnalyticsService) getLastGamesWithUser(
+	req GetLastSessionsWithUserRequest,
+) (*GetLastSessionsWithUserResponse, error) {
+	page, limit := util.ParsePagination(req.Pager)
+
+	conds := []string{}
+	args := []any{}
+
+	conds = append(conds,
+		"player_id = ?",
+		"DATE(session.started_at) BETWEEN ? AND ?",
+	)
+
+	args = append(args, req.UserId)
+
+	if req.From != nil && req.To != nil {
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	} else {
+		args = append(args, "2000-01-01", "3000-01-01")
+	}
+
+	if len(req.Perks) > 0 {
+		conds = append(conds, fmt.Sprintf("perk IN (%v)",
+			util.IntArrayToString(req.Perks, ",")),
+		)
+	}
+
+	if len(req.ServerIds) > 0 {
+		conds = append(conds, fmt.Sprintf("server_id IN (%v)",
+			util.IntArrayToString(req.ServerIds, ",")),
+		)
+	}
+
+	stmt := fmt.Sprintf(`
+		WITH user_sessions AS (
+			SELECT DISTINCT session.id as session_id
+			FROM session
+			INNER JOIN wave_stats ws ON ws.session_id = session.id
+			INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+			WHERE %v
+		), other_user_sessions AS (
+			SELECT DISTINCT session.id as session_id
+			FROM session
+			INNER JOIN wave_stats ws ON ws.session_id = session.id
+			INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+			WHERE wsp.player_id = %v
+		), user_played_with AS (
+			SELECT t1.session_id as session_id 
+			FROM user_sessions t1
+			INNER JOIN other_user_sessions t2 ON t1.session_id = t2.session_id
+			ORDER BY session_id DESC
+			LIMIT %v, %v
+		)
+		SELECT DISTINCT
+			cte.session_id AS session_id,
+			user_wsp.perk AS user_perk,
+			server.id AS server_id,
+			server.name AS server_name,
+			maps.id AS map_id,
+			maps.name AS map_name,
+			max(user_wsp.created_at) OVER w AS last_seen
+		FROM user_played_with cte
+		INNER JOIN session ON session.id = cte.session_id
+		INNER JOIN server ON server.id = session.server_id
+		INNER JOIN maps ON maps.id = session.map_id
+		INNER JOIN wave_stats ws ON ws.session_id = cte.session_id
+		INNER JOIN wave_stats_player user_wsp ON user_wsp.stats_id = ws.id AND user_wsp.player_id = %v
+		WINDOW w AS (partition by session.id)
+		ORDER BY last_seen DESC, user_perk ASC
+		`, strings.Join(conds, " AND "), req.OtherUserId, page*limit, limit, req.UserId,
+	)
+
+	rows, err := s.db.Query(stmt, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	res := GetLastSessionsWithUserResponse{
+		Items: []*GetLastSessionsWithUserResponseItem{},
+		Metadata: &models.PaginationResponse{
+			Page:           page,
+			ResultsPerPage: limit,
+		},
+	}
+
+	for rows.Next() {
+		var perk int
+		item := GetLastSessionsWithUserResponseItem{
+			Server: ServerData{},
+			Map:    MapData{},
+			Perks:  []int{},
+		}
+
+		err := rows.Scan(
+			&item.SessionId, &perk,
+			&item.Server.Id, &item.Server.Name,
+			&item.Map.Id, &item.Map.Name,
+			&item.LastSeen,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(res.Items) > 0 && res.Items[len(res.Items)-1].SessionId == item.SessionId {
+			last := res.Items[len(res.Items)-1]
+			last.Perks = append(last.Perks, perk)
+		} else {
+			item.Perks = append(item.Perks, perk)
+			res.Items = append(res.Items, &item)
+		}
+	}
+
+	{
+		stmt := fmt.Sprintf(`
+			WITH user_sessions AS (
+				SELECT DISTINCT session.id as session_id
+				FROM session
+				INNER JOIN wave_stats ws ON ws.session_id = session.id
+				INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+				WHERE %v
+			), other_user_sessions AS (
+				SELECT DISTINCT session.id as session_id
+				FROM session
+				INNER JOIN wave_stats ws ON ws.session_id = session.id
+				INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+				WHERE wsp.player_id = %v
+			)
+			SELECT count(*) 
+			FROM user_sessions t1
+			INNER JOIN other_user_sessions t2 ON t1.session_id = t2.session_id
+			`, strings.Join(conds, " AND "), req.OtherUserId,
 		)
 
 		row := s.db.QueryRow(stmt, args...)

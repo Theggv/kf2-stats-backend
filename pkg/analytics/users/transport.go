@@ -179,3 +179,31 @@ type GetLastSeenUsersResponse struct {
 	Items    []*GetLastSeenUsersResponseItem `json:"items"`
 	Metadata *models.PaginationResponse      `json:"metadata"`
 }
+
+type GetLastSessionsWithUserRequest struct {
+	UserId      int `json:"user_id" binding:"required"`
+	OtherUserId int `json:"other_user_id" binding:"required"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+
+	From *time.Time `json:"date_from"`
+	To   *time.Time `json:"date_to"`
+
+	Pager models.PaginationRequest `json:"pager"`
+}
+
+type GetLastSessionsWithUserResponseItem struct {
+	SessionId int        `json:"session_id"`
+	Server    ServerData `json:"server"`
+	Map       MapData    `json:"map"`
+
+	Perks []int `json:"perks"`
+
+	LastSeen *time.Time `json:"last_seen"`
+}
+
+type GetLastSessionsWithUserResponse struct {
+	Items    []*GetLastSessionsWithUserResponseItem `json:"items"`
+	Metadata *models.PaginationResponse             `json:"metadata"`
+}

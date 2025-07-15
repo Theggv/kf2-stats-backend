@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
+	"github.com/theggv/kf2-stats-backend/pkg/common/util"
 )
 
 type controller struct {
@@ -163,6 +164,8 @@ func (c *controller) getPlayedMaps(ctx *gin.Context) {
 // @Success 200 {object} 	GetLastSeenUsersResponse
 // @Router /analytics/users/lastseen [post]
 func (c *controller) getLastSeenUsers(ctx *gin.Context) {
+	user := util.GetUserFromCtx(ctx)
+
 	var req GetLastSeenUsersRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
@@ -170,7 +173,43 @@ func (c *controller) getLastSeenUsers(ctx *gin.Context) {
 		return
 	}
 
+	if req.UserId != user.UserId {
+		ctx.String(http.StatusForbidden, "")
+		return
+	}
+
 	res, err := c.service.getLastSeenUsers(req)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
+}
+
+// @Summary Get last games with user
+// @Tags 	Analytics
+// @Produce json
+// @Param   body body 		GetLastSessionsWithUserRequest true "Body"
+// @Success 200 {object} 	GetLastSessionsWithUserResponse
+// @Router /analytics/users/lastgameswithuser [post]
+func (c *controller) getLastGamesWithUser(ctx *gin.Context) {
+	user := util.GetUserFromCtx(ctx)
+
+	var req GetLastSessionsWithUserRequest
+	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
+		return
+	}
+
+	if req.UserId != user.UserId {
+		ctx.String(http.StatusForbidden, "")
+		return
+	}
+
+	res, err := c.service.getLastGamesWithUser(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		fmt.Printf("%v\n", err.Error())

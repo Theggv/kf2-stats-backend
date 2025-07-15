@@ -3,6 +3,7 @@ package users
 import (
 	"github.com/chenyahui/gin-cache/persist"
 	"github.com/gin-gonic/gin"
+	"github.com/theggv/kf2-stats-backend/pkg/common/middleware"
 )
 
 func RegisterRoutes(
@@ -22,5 +23,6 @@ func RegisterRoutes(
 	routes.POST("/users/perks/accuracy", controller.getAccuracyHist)
 	routes.POST("/users/teammates", controller.getTeammates)
 	routes.POST("/users/maps", controller.getPlayedMaps)
-	routes.POST("/users/lastseen", controller.getLastSeenUsers)
+	routes.POST("/users/lastseen", middleware.AuthMiddleWave, controller.getLastSeenUsers)
+	routes.POST("/users/lastgameswithuser", middleware.AuthMiddleWave, controller.getLastGamesWithUser)
 }
