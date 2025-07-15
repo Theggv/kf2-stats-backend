@@ -1,7 +1,6 @@
 package matches
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -22,14 +21,12 @@ func (c *matchesController) getById(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	item, err := c.service.GetById(id)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -46,14 +43,12 @@ func (c *matchesController) getMatchLiveData(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	item, err := c.service.GetMatchLiveData(id)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -70,14 +65,12 @@ func (c *matchesController) getLastServerMatch(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	item, err := c.service.GetLastServerMatch(id)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -94,14 +87,12 @@ func (c *matchesController) filter(ctx *gin.Context) {
 	var req FilterMatchesRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	res, err := c.service.Filter(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -118,14 +109,12 @@ func (c *matchesController) getMatchWaves(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	item, err := c.service.GetMatchWaves(id)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -143,7 +132,6 @@ func (c *matchesController) getMatchPlayerStats(ctx *gin.Context) {
 	sessionId, err := strconv.Atoi(ctx.Params.ByName("id"))
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -151,14 +139,12 @@ func (c *matchesController) getMatchPlayerStats(ctx *gin.Context) {
 
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	item, err := c.service.GetMatchPlayerStats(sessionId, userId)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -176,14 +162,12 @@ func (c *matchesController) getMatchAggregatedStats(ctx *gin.Context) {
 
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	item, err := c.service.GetMatchAggregatedStats(sessionId)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 

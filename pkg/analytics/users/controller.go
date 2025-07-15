@@ -1,7 +1,6 @@
 package users
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -23,14 +22,12 @@ func (c *controller) getUserAnalytics(ctx *gin.Context) {
 	var req UserAnalyticsRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	res, err := c.service.GetUserAnalytics(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -47,14 +44,12 @@ func (c *controller) getPerksAnalytics(ctx *gin.Context) {
 	var req UserPerksAnalyticsRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	res, err := c.service.GetPerksAnalytics(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -71,14 +66,12 @@ func (c *controller) getPlaytimeHist(ctx *gin.Context) {
 	var req UserPerkHistRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	res, err := c.service.getPlaytimeHist(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -95,14 +88,12 @@ func (c *controller) getAccuracyHist(ctx *gin.Context) {
 	var req UserPerkHistRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	res, err := c.service.getAccuracyHist(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -119,14 +110,12 @@ func (c *controller) getTeammates(ctx *gin.Context) {
 	var req GetTeammatesRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	res, err := c.service.getTeammates(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -143,14 +132,12 @@ func (c *controller) getPlayedMaps(ctx *gin.Context) {
 	var req GetPlayedMapsRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	res, err := c.service.getPlayedMaps(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -169,7 +156,6 @@ func (c *controller) getLastSeenUsers(ctx *gin.Context) {
 	var req GetLastSeenUsersRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -181,7 +167,6 @@ func (c *controller) getLastSeenUsers(ctx *gin.Context) {
 	res, err := c.service.getLastSeenUsers(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -200,7 +185,6 @@ func (c *controller) getLastGamesWithUser(ctx *gin.Context) {
 	var req GetLastSessionsWithUserRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -212,7 +196,6 @@ func (c *controller) getLastGamesWithUser(ctx *gin.Context) {
 	res, err := c.service.getLastGamesWithUser(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 

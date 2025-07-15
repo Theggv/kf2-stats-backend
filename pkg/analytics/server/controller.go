@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,14 +21,12 @@ func (c *controller) getSessionCount(ctx *gin.Context) {
 	var req SessionCountRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	items, err := c.service.GetSessionCount(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -48,14 +45,12 @@ func (c *controller) getUsageInMinutes(ctx *gin.Context) {
 	var req UsageInMinutesRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	items, err := c.service.GetUsageInMinutes(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -74,14 +69,12 @@ func (c *controller) getPlayersOnline(ctx *gin.Context) {
 	var req PlayersOnlineRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	items, err := c.service.GetPlayersOnline(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -99,7 +92,6 @@ func (c *controller) getPopularServers(ctx *gin.Context) {
 	res, err := c.service.GetPopularServers()
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -115,7 +107,6 @@ func (c *controller) getCurrentOnline(ctx *gin.Context) {
 	res, err := c.service.GetCurrentOnline()
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 

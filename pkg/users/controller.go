@@ -1,7 +1,6 @@
 package users
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -22,14 +21,12 @@ func (c *userController) create(ctx *gin.Context) {
 	var req CreateUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	id, err := c.service.FindCreateFind(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -48,14 +45,12 @@ func (c *userController) filter(ctx *gin.Context) {
 	var req FilterUsersRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	res, err := c.service.filter(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -72,14 +67,12 @@ func (c *userController) getUserSessions(ctx *gin.Context) {
 	var req RecentSessionsRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	res, err := c.service.getUserSessions(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -96,14 +89,12 @@ func (c *userController) getUserDetailed(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	item, err := c.service.getUserDetailed(id)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 

@@ -1,7 +1,6 @@
 package perks
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,14 +21,12 @@ func (c *controller) getPerksPlayTime(ctx *gin.Context) {
 	var req PerksPlayTimeRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	items, err := c.service.GetPerksPlayTime(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -48,14 +45,12 @@ func (c *controller) getPerksKills(ctx *gin.Context) {
 	var req PerksKillsRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	items, err := c.service.GetPerksKills(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 

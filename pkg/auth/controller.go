@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -24,21 +23,18 @@ func (c *authController) login(ctx *gin.Context) {
 	var req steamapi.ValidateOpenIdRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	res, err := c.service.Login(req)
 	if err != nil {
 		ctx.String(http.StatusUnauthorized, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	err = util.SetCookies(ctx, res.RefreshToken, config.Instance.JwtRefreshExpiresIn)
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -56,21 +52,18 @@ func (c *authController) refresh(ctx *gin.Context) {
 	cookie, err := ctx.Request.Cookie("refreshToken")
 	if err != nil || cookie.Value == "" {
 		ctx.String(http.StatusUnauthorized, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	res, err := c.service.Refresh(cookie.Value)
 	if err != nil {
 		ctx.String(http.StatusUnauthorized, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	err = util.SetCookies(ctx, res.RefreshToken, config.Instance.JwtRefreshExpiresIn)
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -88,14 +81,12 @@ func (c *authController) logout(ctx *gin.Context) {
 	cookie, err := ctx.Request.Cookie("refreshToken")
 	if err != nil || cookie.Value == "" {
 		ctx.String(http.StatusUnauthorized, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	err = c.service.Logout(cookie.Value)
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
