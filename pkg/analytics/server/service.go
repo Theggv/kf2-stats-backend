@@ -226,7 +226,7 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 }
 
 func (s *ServerAnalyticsService) GetPopularServers() (*PopularServersResponse, error) {
-	sql := fmt.Sprintf(`
+	stmt := `
 		SELECT
 			server.id,
 			server.name,
@@ -246,10 +246,9 @@ func (s *ServerAnalyticsService) GetPopularServers() (*PopularServersResponse, e
 			ORDER BY total_users desc
 			LIMIT 5
 		) t
-		INNER JOIN server ON server.id = t.server_id`,
-	)
+		INNER JOIN server ON server.id = t.server_id`
 
-	rows, err := s.db.Query(sql)
+	rows, err := s.db.Query(stmt)
 	if err != nil {
 		return nil, err
 	}
@@ -274,14 +273,13 @@ func (s *ServerAnalyticsService) GetPopularServers() (*PopularServersResponse, e
 }
 
 func (s *ServerAnalyticsService) GetCurrentOnline() (*TotalOnlineResponse, error) {
-	sql := fmt.Sprintf(`
+	stmt := `
 		SELECT count(*) as total_online
 		FROM users_activity
-		WHERE updated_at >= now() - interval 1 minute`,
-	)
+		WHERE updated_at >= now() - interval 1 minute`
 
 	res := TotalOnlineResponse{}
-	err := s.db.QueryRow(sql).Scan(&res.Count)
+	err := s.db.QueryRow(stmt).Scan(&res.Count)
 	if err != nil {
 		return nil, err
 	}
