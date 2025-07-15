@@ -1,9 +1,11 @@
 package steamapi
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -104,4 +106,49 @@ func (s *SteamApiUserService) getUsersSummaryInternal(steamIds []string) ([]GetU
 	}
 
 	return resJson.Response.Players, nil
+}
+
+func (s *SteamApiUserService) ValidateOpenId(req ValidateOpenIdRequest) (*GetUserSummaryPlayer, error) {
+	req.Params = strings.ReplaceAll(req.Params, "id_res", "check_authentication")
+
+	endpoint := "https://steamcommunity.com/openid/login"
+	data := []byte(req.Params)
+
+	r, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
+	}
+
+	r.Header.Add("Accept-Language", "en")
+	r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	r.Header.Add("Content-Length", fmt.Sprintf("%v", len(data)))
+
+	res, err := s.client.Do(r)
+	if err != nil {
+		return nil, err
+	}
+
+	defer res.Body.Close()
+
+	bytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	responseText := string(bytes)
+	if !strings.Contains(responseText, "is_valid:true") {
+		return nil, errors.New("is_valid:false")
+	}
+
+	steamId, ok := tryGetSteamId(req.Params)
+	if !ok {
+		return nil, errors.New("invalid steamid")
+	}
+
+	summary, err := s.GetUserSummary([]string{steamId})
+	if err != nil {
+		return nil, err
+	}
+
+	return &summary[0], nil
 }

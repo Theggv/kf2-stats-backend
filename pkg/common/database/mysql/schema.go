@@ -43,6 +43,33 @@ func initSchema(db *sql.DB) error {
 		)`,
 	)
 	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS users_steam_data (
+			user_id INTEGER PRIMARY KEY NOT NULL,
+
+			steam_id VARCHAR(32) NOT NULL,
+			name VARCHAR(128) NOT NULL,
+			avatar VARCHAR(128) NOT NULL,
+			profile_url VARCHAR(128) NOT NULL,
+
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+		
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			UNIQUE INDEX idx_uniq_users_steam_data (steam_id)
+		)`,
+	)
+	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS users_token (
+			id INTEGER PRIMARY KEY AUTO_INCREMENT,
+			user_id INTEGER NOT NULL,
+			
+			token TEXT NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+		
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
+		)`,
+	)
+	tx.Exec(`
 		CREATE TABLE IF NOT EXISTS session (
 			id INTEGER PRIMARY KEY AUTO_INCREMENT,
 			server_id INTEGER NOT NULL,

@@ -7,6 +7,7 @@ import (
 	analyticsPerks "github.com/theggv/kf2-stats-backend/pkg/analytics/perks"
 	analyticsServer "github.com/theggv/kf2-stats-backend/pkg/analytics/server"
 	analyticsUsers "github.com/theggv/kf2-stats-backend/pkg/analytics/users"
+	"github.com/theggv/kf2-stats-backend/pkg/auth"
 	"github.com/theggv/kf2-stats-backend/pkg/common/config"
 	"github.com/theggv/kf2-stats-backend/pkg/common/steamapi"
 	"github.com/theggv/kf2-stats-backend/pkg/leaderboards"
@@ -21,6 +22,7 @@ import (
 type Store struct {
 	Db *sql.DB
 
+	Auth     *auth.AuthService
 	Servers  *server.ServerService
 	Maps     *maps.MapsService
 	Sessions *session.SessionService
@@ -41,6 +43,7 @@ func New(db *sql.DB, config *config.AppConfig) *Store {
 	store := Store{
 		Db: db,
 
+		Auth:     auth.NewAuthService(db),
 		Servers:  server.NewServerService(db),
 		Maps:     maps.NewMapsService(db),
 		Sessions: session.NewSessionService(db),
@@ -57,6 +60,7 @@ func New(db *sql.DB, config *config.AppConfig) *Store {
 		LeaderBoards: leaderboards.NewLeaderBoardsService(db),
 	}
 
+	store.Auth.Inject(store.Users, store.SteamApi)
 	store.Servers.Inject(store.Users)
 	store.Stats.Inject(store.Users)
 	store.Sessions.Inject(store.Maps, store.Servers, store.Users)
