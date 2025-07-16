@@ -201,7 +201,7 @@ func (s *UserService) getUserDetailed(id int) (*FilterUsersResponseUser, error) 
 func (s *UserService) filter(req FilterUsersRequest) (*FilterUsersResponse, error) {
 	page, limit := util.ParsePagination(req.Pager)
 
-	sql := fmt.Sprintf(`
+	stmt := fmt.Sprintf(`
 		SELECT 
 			users.id,
 			users.name,
@@ -212,13 +212,16 @@ func (s *UserService) filter(req FilterUsersRequest) (*FilterUsersResponse, erro
 			users_activity.updated_at
 		FROM users
 		INNER JOIN users_activity ON users_activity.user_id = users.id
-		WHERE lower(users.name) LIKE '%%%v%%'
+		WHERE LOWER(users.name) LIKE ?
 		ORDER BY users_activity.updated_at DESC
 		LIMIT %v, %v
-		`, req.SearchText, page*limit, limit,
+		`, page*limit, limit,
 	)
+	args := []any{
+		fmt.Sprintf("%%%v%%", req.SearchText),
+	}
 
-	rows, err := s.db.Query(sql)
+	rows, err := s.db.Query(stmt, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -296,14 +299,16 @@ func (s *UserService) filter(req FilterUsersRequest) (*FilterUsersResponse, erro
 	var total int
 	{
 		// Prepare count query
-		sql = fmt.Sprintf(`
+		stmt = `
 			SELECT count(*) FROM users
 			INNER JOIN users_activity ON users_activity.user_id = users.id
-			WHERE lower(users.name) LIKE '%%%v%%'`,
-			req.SearchText,
-		)
+			WHERE lower(users.name) LIKE ?`
 
-		if err := s.db.QueryRow(sql).Scan(&total); err != nil {
+		args := []any{
+			fmt.Sprintf("%%%v%%", req.SearchText),
+		}
+
+		if err := s.db.QueryRow(stmt, args...).Scan(&total); err != nil {
 			return nil, err
 		}
 	}
