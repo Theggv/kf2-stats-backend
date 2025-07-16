@@ -665,6 +665,7 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 				FROM user_sessions cte
 				INNER JOIN wave_stats ws ON ws.session_id = cte.session_id
 				INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+				INNER JOIN users ON users.id = wsp.player_id
 				WHERE %v
 				WINDOW w AS (PARTITION BY wsp.player_id ORDER BY wsp.id DESC)
 				ORDER BY wsp.id DESC
