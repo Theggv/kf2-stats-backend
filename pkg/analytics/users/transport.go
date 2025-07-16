@@ -135,7 +135,8 @@ type GetPlayedMapsResponse struct {
 }
 
 type GetLastSeenUsersRequest struct {
-	UserId int `json:"user_id" binding:"required"`
+	UserId     int    `json:"user_id" binding:"required"`
+	SearchText string `json:"search_text"`
 
 	Perks     []int `json:"perks"`
 	ServerIds []int `json:"server_ids"`

@@ -487,10 +487,10 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 ) (*GetLastSeenUsersResponse, error) {
 	page, limit := util.ParsePagination(req.Pager)
 
-	conds := []string{}
+	userSessionConds := []string{}
 	args := []any{}
 
-	conds = append(conds,
+	userSessionConds = append(userSessionConds,
 		"player_id = ?",
 		"DATE(session.started_at) BETWEEN ? AND ?",
 	)
@@ -504,15 +504,24 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 	}
 
 	if len(req.Perks) > 0 {
-		conds = append(conds, fmt.Sprintf("perk IN (%v)",
+		userSessionConds = append(userSessionConds, fmt.Sprintf("perk IN (%v)",
 			util.IntArrayToString(req.Perks, ",")),
 		)
 	}
 
 	if len(req.ServerIds) > 0 {
-		conds = append(conds, fmt.Sprintf("server_id IN (%v)",
+		userSessionConds = append(userSessionConds, fmt.Sprintf("server_id IN (%v)",
 			util.IntArrayToString(req.ServerIds, ",")),
 		)
+	}
+
+	userRatingConds := []string{"wsp.player_id != ?"}
+	args = append(args, req.UserId)
+
+	req.SearchText = strings.TrimSpace(req.SearchText)
+	if len(req.SearchText) > 0 {
+		userRatingConds = append(userRatingConds, "(LOWER(users.name) LIKE ? OR users.auth_id = ?)")
+		args = append(args, fmt.Sprintf("%%%v%%", req.SearchText), req.SearchText)
 	}
 
 	stmt := fmt.Sprintf(`
@@ -532,7 +541,8 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 			FROM user_sessions cte
 			INNER JOIN wave_stats ws ON ws.session_id = cte.session_id
 			INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
-			WHERE wsp.player_id != %v
+			INNER JOIN users ON users.id = wsp.player_id
+			WHERE %v
 			WINDOW w AS (PARTITION BY wsp.player_id ORDER BY wsp.id DESC)
 			ORDER BY wsp.id DESC
 		), user_played_with AS (
@@ -565,7 +575,10 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 		INNER JOIN wave_stats_player last_seen ON last_seen.id = cte.wsp_id
 		INNER JOIN users ON users.id = cte.user_id
 		ORDER BY last_seen DESC, user_id ASC
-		`, strings.Join(conds, " AND "), req.UserId, page*limit, limit, req.UserId,
+		`,
+		strings.Join(userSessionConds, " AND "),
+		strings.Join(userRatingConds, " AND "),
+		page*limit, limit, req.UserId,
 	)
 
 	rows, err := s.db.Query(stmt, args...)
@@ -659,7 +672,7 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 			SELECT count(*)
 			FROM user_rating cte
 			WHERE rating = 1
-			`, strings.Join(conds, " AND "), req.UserId,
+			`, strings.Join(userSessionConds, " AND "), req.UserId,
 		)
 
 		row := s.db.QueryRow(stmt, args...)
