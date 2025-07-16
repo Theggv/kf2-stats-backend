@@ -665,14 +665,15 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 				FROM user_sessions cte
 				INNER JOIN wave_stats ws ON ws.session_id = cte.session_id
 				INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
-				WHERE wsp.player_id != %v
+				WHERE %v
 				WINDOW w AS (PARTITION BY wsp.player_id ORDER BY wsp.id DESC)
 				ORDER BY wsp.id DESC
 			)
 			SELECT count(*)
 			FROM user_rating cte
 			WHERE rating = 1
-			`, strings.Join(userSessionConds, " AND "), req.UserId,
+			`, strings.Join(userSessionConds, " AND "),
+			strings.Join(userRatingConds, " AND "),
 		)
 
 		row := s.db.QueryRow(stmt, args...)
