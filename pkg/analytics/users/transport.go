@@ -89,8 +89,9 @@ type PlayTimeHist struct {
 }
 
 type GetTeammatesRequest struct {
-	UserId int  `json:"user_id" binding:"required"`
-	Limit  *int `json:"limit"`
+	UserId int `json:"user_id" binding:"required"`
+
+	Pager models.PaginationRequest `json:"pager"`
 }
 
 type GetTeammatesResponseItem struct {
@@ -108,7 +109,8 @@ type GetTeammatesResponseItem struct {
 }
 
 type GetTeammatesResponse struct {
-	Items []*GetTeammatesResponseItem `json:"items"`
+	Items    []*GetTeammatesResponseItem `json:"items"`
+	Metadata *models.PaginationResponse  `json:"metadata"`
 }
 
 type GetPlayedMapsRequest struct {

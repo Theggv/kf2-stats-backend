@@ -317,53 +317,66 @@ func (s *UserAnalyticsService) getAccuracyHist(
 func (s *UserAnalyticsService) getTeammates(
 	req GetTeammatesRequest,
 ) (*GetTeammatesResponse, error) {
-	limit := 5
-	if req.Limit != nil && *req.Limit > 5 {
-		limit = *req.Limit
-	}
+	page, limit := util.ParsePagination(req.Pager)
 
-	sql := fmt.Sprintf(`
-		SELECT
-			users.id as user_id,
-			users.name as name,
-			users.auth_type,
-			users.auth_id,
-			count(*) as games_played,
-			coalesce(sum(status = 2), 0) as wins
-		FROM (
-			SELECT
-				aggr.user_id,
-				t.session_id,
-				t.status
-			FROM (
-				SELECT 
-					session.id as session_id,
-					session.status as status
-				FROM session
-				INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-				WHERE user_id = %v
-				GROUP BY session.id
-			) t
-			INNER JOIN session_aggregated aggr ON aggr.session_id = t.session_id
+	stmt := fmt.Sprintf(`
+		WITH user_sessions AS (
+			SELECT DISTINCT session_id
+			FROM session_aggregated aggr
+			WHERE user_id = %v
+		), user_played_with AS (
+			SELECT DISTINCT 
+				aggr.user_id as user_id,
+				cte.session_id as session_id
+			FROM user_sessions cte
+			INNER JOIN session_aggregated aggr ON aggr.session_id = cte.session_id
 			WHERE user_id != %v
-			GROUP BY aggr.user_id, t.session_id
-		) t
-		INNER JOIN users ON users.id = t.user_id
-		GROUP BY user_id
-		ORDER BY games_played desc, name asc
-		LIMIT %v`, req.UserId, req.UserId, limit,
+		), user_stats AS (
+			SELECT DISTINCT
+				cte.user_id as user_id,
+				count(session.id) OVER w as total_games,
+				count(CASE WHEN session.status = 2 THEN 1 END) OVER w as total_wins
+			FROM user_played_with cte
+			INNER JOIN session ON session.id = cte.session_id
+			WINDOW w AS (partition by cte.user_id)
+			ORDER BY total_games DESC, user_id ASC
+		), pagination AS (
+			SELECT *
+			FROM user_stats cte
+			LIMIT %v, %v
+		), metadata AS (
+			SELECT count(*) as count
+			FROM user_stats cte
+		)
+		SELECT 
+			users.id as user_id,
+			users.name as user_name,
+			users.auth_type as auth_type,
+			users.auth_id as auth_id,
+			cte.total_games,
+			cte.total_wins,
+			metadata.count as total_results
+		FROM pagination cte
+		INNER JOIN users ON users.id = cte.user_id
+		CROSS JOIN metadata
+		`, req.UserId, req.UserId, page*limit, limit,
 	)
 
-	rows, err := s.db.Query(sql)
+	rows, err := s.db.Query(stmt)
 	if err != nil {
 		return nil, err
 	}
 
 	res := GetTeammatesResponse{
 		Items: []*GetTeammatesResponseItem{},
+		Metadata: &models.PaginationResponse{
+			Page:           page,
+			ResultsPerPage: limit,
+		},
 	}
 	steamIdSet := make(map[string]bool)
 
+	var count int
 	for rows.Next() {
 		item := GetTeammatesResponseItem{}
 
@@ -371,6 +384,7 @@ func (s *UserAnalyticsService) getTeammates(
 			&item.Id, &item.Name,
 			&item.Type, &item.AuthId,
 			&item.Games, &item.Wins,
+			&count,
 		)
 		if err != nil {
 			return nil, err
@@ -382,6 +396,8 @@ func (s *UserAnalyticsService) getTeammates(
 
 		res.Items = append(res.Items, &item)
 	}
+
+	res.Metadata.TotalResults = count
 
 	{
 		steamIds := []string{}
