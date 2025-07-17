@@ -1,7 +1,6 @@
 package analytics
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -18,5 +17,5 @@ const (
 )
 
 func NewIncorrectPeriod(period int) error {
-	return errors.New(fmt.Sprintf("expected TimePeriod enum, got %v", period))
+	return fmt.Errorf("expected TimePeriod enum, got %v", period)
 }
