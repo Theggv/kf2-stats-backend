@@ -561,6 +561,12 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 			FROM user_played_with cte
 		)
 		SELECT DISTINCT
+			session.id AS session_id,
+			session.status AS session_status,
+			session.diff AS session_diff,
+			session.mode AS sesion_mode,
+			session.length AS session_length,
+			user_wsp.perk AS user_perk,
 			users.id AS user_id,
 			users.name AS user_name,
 			users.auth_id AS auth_id,
@@ -569,8 +575,6 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 			server.name AS server_name,
 			maps.id AS map_id,
 			maps.name AS map_name,
-			cte.session_id AS session_id,
-			user_wsp.perk AS user_perk,
 			last_seen.created_at AS last_seen,
 			metadata.count AS count
 		FROM pagination cte
@@ -607,17 +611,20 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 	for rows.Next() {
 		var perk int
 		item := GetLastSeenUsersResponseItem{
-			Server: ServerData{},
-			Map:    MapData{},
-			Perks:  []int{},
+			Session: SessionData{},
+			Server:  ServerData{},
+			Map:     MapData{},
+			Perks:   []int{},
 		}
 
 		err := rows.Scan(
+			&item.Session.Id, &item.Session.Status,
+			&item.Session.Difficulty, &item.Session.Mode, &item.Session.Length,
+			&perk,
 			&item.Id, &item.Name,
 			&item.AuthId, &item.Type,
 			&item.Server.Id, &item.Server.Name,
 			&item.Map.Id, &item.Map.Name,
-			&item.SessionId, &perk,
 			&item.LastSeen, &count,
 		)
 		if err != nil {
@@ -721,7 +728,11 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 			FROM user_played_with cte
 		)
 		SELECT DISTINCT
-			cte.session_id AS session_id,
+			session.id AS session_id,
+			session.status AS session_status,
+			session.diff AS session_diff,
+			session.mode AS sesion_mode,
+			session.length AS session_length,
 			user_wsp.perk AS user_perk,
 			server.id AS server_id,
 			server.name AS server_name,
@@ -758,13 +769,16 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 	for rows.Next() {
 		var perk int
 		item := GetLastSessionsWithUserResponseItem{
-			Server: ServerData{},
-			Map:    MapData{},
-			Perks:  []int{},
+			Session: SessionData{},
+			Server:  ServerData{},
+			Map:     MapData{},
+			Perks:   []int{},
 		}
 
 		err := rows.Scan(
-			&item.SessionId, &perk,
+			&item.Session.Id, &item.Session.Status,
+			&item.Session.Difficulty, &item.Session.Mode, &item.Session.Length,
+			&perk,
 			&item.Server.Id, &item.Server.Name,
 			&item.Map.Id, &item.Map.Name,
 			&item.LastSeen, &count,
@@ -773,7 +787,7 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 			return nil, err
 		}
 
-		if len(res.Items) > 0 && res.Items[len(res.Items)-1].SessionId == item.SessionId {
+		if len(res.Items) > 0 && res.Items[len(res.Items)-1].Session.Id == item.Session.Id {
 			last := res.Items[len(res.Items)-1]
 			last.Perks = append(last.Perks, perk)
 		} else {

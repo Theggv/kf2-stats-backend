@@ -147,6 +147,16 @@ type GetLastSeenUsersRequest struct {
 	Pager models.PaginationRequest `json:"pager"`
 }
 
+type SessionData struct {
+	Id int `json:"id"`
+
+	Mode       models.GameMode       `json:"mode"`
+	Length     int                   `json:"length"`
+	Difficulty models.GameDifficulty `json:"diff"`
+
+	Status models.GameStatus `json:"status"`
+}
+
 type ServerData struct {
 	Id   int    `json:"id"`
 	Name string `json:"name"`
@@ -164,9 +174,9 @@ type GetLastSeenUsersResponseItem struct {
 	ProfileUrl *string `json:"profile_url"`
 	Avatar     *string `json:"avatar"`
 
-	SessionId int        `json:"session_id"`
-	Server    ServerData `json:"server"`
-	Map       MapData    `json:"map"`
+	Session SessionData `json:"session"`
+	Server  ServerData  `json:"server"`
+	Map     MapData     `json:"map"`
 
 	Perks []int `json:"perks"`
 
@@ -195,9 +205,9 @@ type GetLastSessionsWithUserRequest struct {
 }
 
 type GetLastSessionsWithUserResponseItem struct {
-	SessionId int        `json:"session_id"`
-	Server    ServerData `json:"server"`
-	Map       MapData    `json:"map"`
+	Session SessionData `json:"session"`
+	Server  ServerData  `json:"server"`
+	Map     MapData     `json:"map"`
 
 	Perks []int `json:"perks"`
 
