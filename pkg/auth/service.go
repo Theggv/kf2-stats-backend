@@ -3,9 +3,7 @@ package auth
 import (
 	"database/sql"
 	"errors"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/theggv/kf2-stats-backend/pkg/common/config"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/steamapi"
@@ -108,7 +106,7 @@ func (s *AuthService) Refresh(refreshToken string) (*Token, error) {
 		return nil, err
 	}
 
-	payload, err := util.ValidateToken(refreshToken, config.Instance.JwtRefreshSecretKey)
+	payload, err := util.ValidateToken(refreshToken, config.Instance.JwtRefreshSecretKey, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -199,15 +197,15 @@ func (s *AuthService) deleteToken(refreshToken string) error {
 func (s *AuthService) generateTokens(payload *models.TokenPayload) (*Token, error) {
 	config := config.Instance
 
-	accessTokenString, err := signToken(
-		payload, config.JwtAccessSecretKey, config.JwtAccessExpiresIn,
+	accessTokenString, err := util.SignToken(
+		payload, config.JwtAccessSecretKey, config.JwtAccessExpiresIn, models.TokenVersion,
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	refreshTokenString, err := signToken(
-		payload.UserId, config.JwtRefreshSecretKey, config.JwtRefreshExpiresIn,
+	refreshTokenString, err := util.SignToken(
+		payload.UserId, config.JwtRefreshSecretKey, config.JwtRefreshExpiresIn, 0,
 	)
 	if err != nil {
 		return nil, err
@@ -217,19 +215,4 @@ func (s *AuthService) generateTokens(payload *models.TokenPayload) (*Token, erro
 		AccessToken:  accessTokenString,
 		RefreshToken: refreshTokenString,
 	}, nil
-}
-
-func signToken(payload any, key string, expiresIn string) (string, error) {
-	duration, err := time.ParseDuration(expiresIn)
-	if err != nil {
-		return "", err
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"payload": payload,
-		"iat":     time.Now().Unix(),
-		"exp":     time.Now().Add(duration).Unix(),
-	})
-
-	return token.SignedString([]byte(key))
 }
