@@ -59,11 +59,25 @@ type UserPerksAnalyticsResponse struct {
 }
 
 type UserPerkHistRequest struct {
-	UserId int  `json:"user_id" binding:"required"`
-	Perk   *int `json:"perk"`
+	UserId int `json:"user_id" binding:"required"`
 
 	From *time.Time `json:"date_from"`
 	To   *time.Time `json:"date_to"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+	MapIds    []int `json:"map_ids"`
+
+	Mode       *models.GameMode       `json:"mode"`
+	Length     *models.GameLength     `json:"length"`
+	Difficulty *models.GameDifficulty `json:"diff"`
+	Status     *models.GameStatus     `json:"status"`
+
+	SpawnCycle  *string `json:"spawn_cycle"`
+	ZedsType    *string `json:"zeds_type"`
+	MinWave     *int    `json:"min_wave"`
+	MaxMonsters *int    `json:"max_monsters"`
+
 	AuthUser *models.TokenPayload `json:"-"`
 }
 
@@ -222,4 +236,59 @@ type GetLastSessionsWithUserResponseItem struct {
 type GetLastSessionsWithUserResponse struct {
 	Items    []*GetLastSessionsWithUserResponseItem `json:"items"`
 	Metadata *models.PaginationResponse             `json:"metadata"`
+}
+
+type FindUserSessionsRequest struct {
+	UserId int `json:"user_id"`
+
+	From *time.Time `json:"date_from"`
+	To   *time.Time `json:"date_to"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+	MapIds    []int `json:"map_ids"`
+
+	Mode       *models.GameMode       `json:"mode"`
+	Length     *models.GameLength     `json:"length"`
+	Difficulty *models.GameDifficulty `json:"diff"`
+	Status     *models.GameStatus     `json:"status"`
+
+	SpawnCycle  *string `json:"spawn_cycle"`
+	ZedsType    *string `json:"zeds_type"`
+	MinWave     *int    `json:"min_wave"`
+	MaxMonsters *int    `json:"max_monsters"`
+
+	SortBy models.SortByRequest     `json:"sort_by"`
+	Pager  models.PaginationRequest `json:"pager"`
+
+	AuthUser *models.TokenPayload `json:"-"`
+}
+
+type FindUserSessionsResponseItemGameData struct {
+	Wave     int `json:"wave"`
+	ZedsLeft int `json:"zeds_left"`
+}
+
+type FindUserSessionsResponseItemStats struct {
+	DamageDealt int `json:"damage_dealt"`
+}
+
+type FindUserSessionsResponseItem struct {
+	Session SessionData `json:"session"`
+	Server  ServerData  `json:"server"`
+	Map     MapData     `json:"map"`
+	Perks   []int       `json:"perks"`
+
+	GameData FindUserSessionsResponseItemGameData `json:"game_data"`
+
+	ExtraGameData *models.ExtraGameData `json:"extra_game_data,omitempty"`
+
+	Stats FindUserSessionsResponseItemStats `json:"stats"`
+
+	UpdatedAt *time.Time `json:"updated_at"`
+}
+
+type FindUserSessionsResponse struct {
+	Items    []*FindUserSessionsResponseItem `json:"items"`
+	Metadata *models.PaginationResponse      `json:"metadata"`
 }

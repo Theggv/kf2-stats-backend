@@ -207,3 +207,27 @@ func (c *controller) getLastGamesWithUser(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, res)
 }
+
+// @Summary Get sessions for user by filter
+// @Tags 	Analytics
+// @Produce json
+// @Param   user body    FindUserSessionsRequest true "Filter JSON"
+// @Success 201 {object} FindUserSessionsResponse
+// @Router /analytics/users/sessions [post]
+func (c *controller) getUserSessions(ctx *gin.Context) {
+	var req FindUserSessionsRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	req.AuthUser, _ = util.GetUserFromCtx(ctx)
+
+	res, err := c.service.getUserSessions(req)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusOK, res)
+}

@@ -26,6 +26,8 @@ func RegisterRoutes(
 	routes.POST("/users/teammates",
 		middleware.OptionalAuthMiddleWave, controller.getTeammates)
 	routes.POST("/users/maps", controller.getPlayedMaps)
+	routes.POST("/users/sessions",
+		middleware.OptionalAuthMiddleWave, controller.getUserSessions)
 	routes.POST("/users/lastseen",
 		middleware.AuthMiddleWave, controller.getLastSeenUsers)
 	routes.POST("/users/lastgameswithuser",
