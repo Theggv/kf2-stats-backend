@@ -11,6 +11,7 @@ func RegisterRoutes(r *gin.RouterGroup, service *AuthService) {
 
 	routes := r.Group("/auth")
 
+	routes.GET("/ping", controller.ping)
 	routes.POST("/login", controller.login)
 	routes.POST("/refresh", controller.refresh)
 	routes.POST("/logout", controller.logout)

@@ -13,6 +13,15 @@ type authController struct {
 	service *AuthService
 }
 
+// @Summary Ping
+// @Tags 	Auth
+// @Produce json
+// @Success 200 {object} AuthResponse
+// @Router /auth/ping [get]
+func (c *authController) ping(ctx *gin.Context) {
+	ctx.String(http.StatusOK, "pong")
+}
+
 // @Summary Login via Steam OpenID
 // @Tags 	Auth
 // @Produce json
