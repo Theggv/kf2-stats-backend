@@ -18,7 +18,8 @@ func OptionalAuthMiddleWave(ctx *gin.Context) {
 
 	payload, err := util.ValidateToken(accessToken, config.Instance.JwtAccessSecretKey, models.TokenVersion)
 	if err != nil {
-		ctx.Next()
+		ctx.JSON(401, gin.H{})
+		ctx.Abort()
 		return
 	}
 
