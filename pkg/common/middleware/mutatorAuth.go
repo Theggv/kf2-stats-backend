@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"strings"
-
 	"github.com/gin-gonic/gin"
 	"github.com/theggv/kf2-stats-backend/pkg/common/config"
 )
@@ -16,23 +14,14 @@ func MutatorAuthMiddleWave(ctx *gin.Context) {
 		return
 	}
 
-	h := authHeader{}
-
-	if err := ctx.ShouldBindHeader(&h); err != nil {
-		ctx.JSON(401, gin.H{"message": "No auth header"})
-		ctx.Abort()
-		return
-	}
-
-	parts := strings.Split(h.Token, `Bearer `)
-
-	if len(parts) < 2 {
+	accessToken, err := retrieveAccessToken(ctx)
+	if err != nil {
 		ctx.JSON(401, gin.H{"message": "Invalid bearer token"})
 		ctx.Abort()
 		return
 	}
 
-	if secretToken != parts[1] {
+	if secretToken != accessToken {
 		ctx.JSON(401, gin.H{"message": "Invalid token"})
 		ctx.Abort()
 		return

@@ -51,7 +51,7 @@ type CreateWaveStatsRequest struct {
 	Wave      int `json:"wave"`
 	Length    int `json:"wave_length"`
 
-	CDData *models.CDGameData `json:"cd_data"`
+	CDData *models.ExtraGameData `json:"cd_data"`
 
 	Players []CreateWaveStatsRequestPlayer `json:"players"`
 }

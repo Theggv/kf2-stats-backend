@@ -57,28 +57,6 @@ func (c *userController) filter(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, res)
 }
 
-// @Summary Get sessions for user by filter
-// @Tags 	Users
-// @Produce json
-// @Param   user body    RecentSessionsRequest true "Filter JSON"
-// @Success 201 {object} RecentSessionsResponse
-// @Router /users/sessions [post]
-func (c *userController) getUserSessions(ctx *gin.Context) {
-	var req RecentSessionsRequest
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		return
-	}
-
-	res, err := c.service.getUserSessions(req)
-	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		return
-	}
-
-	ctx.JSON(http.StatusOK, res)
-}
-
 // @Summary Get user with detailed by id
 // @Tags 	Users
 // @Produce json

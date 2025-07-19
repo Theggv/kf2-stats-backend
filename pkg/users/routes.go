@@ -15,5 +15,4 @@ func RegisterRoutes(r *gin.RouterGroup, service *UserService) {
 	routes.POST("/", middleware.MutatorAuthMiddleWave, controller.create)
 	routes.GET("/:id/detailed", controller.getUserDetailed)
 	routes.POST("/filter", controller.filter)
-	routes.POST("/sessions", controller.getUserSessions)
 }

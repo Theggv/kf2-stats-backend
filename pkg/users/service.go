@@ -3,7 +3,6 @@ package users
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/steamapi"
@@ -355,7 +354,7 @@ func (s *UserService) getSessions(sessionIds []int) (map[int]FilterUsersResponse
 	items := make(map[int]FilterUsersResponseUserSession)
 	for rows.Next() {
 		item := FilterUsersResponseUserSession{}
-		cdData := models.CDGameData{}
+		cdData := models.ExtraGameData{}
 
 		rows.Scan(
 			&item.Id, &item.Mode, &item.Length, &item.Difficulty, &item.Status, &item.Wave,
@@ -385,181 +384,6 @@ func (s *UserService) GetSteamData(steamIds []string) (map[string]steamapi.GetUs
 	}
 
 	return steamDataSet, nil
-}
-
-func (s *UserService) getUserSessions(req RecentSessionsRequest) (*RecentSessionsResponse, error) {
-	page, limit := util.ParsePagination(req.Pager)
-
-	conds := []string{}
-	args := []any{}
-
-	conds = append(conds, "aggr.user_id = ?")
-	args = append(args, req.UserId)
-
-	if len(req.Perks) > 0 {
-		conds = append(conds, fmt.Sprintf("aggr.perk IN (%v)", util.IntArrayToString(req.Perks, ",")))
-	}
-
-	if len(req.MapIds) > 0 {
-		conds = append(conds, fmt.Sprintf("maps.id IN (%v)", util.IntArrayToString(req.MapIds, ",")))
-	}
-
-	if len(req.ServerIds) > 0 {
-		conds = append(conds, fmt.Sprintf("server.id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
-	}
-
-	if req.Mode != nil {
-		conds = append(conds, fmt.Sprintf("session.mode = %v", *req.Mode))
-	}
-
-	if req.Mode == nil || *req.Mode != models.ControlledDifficulty {
-		if req.Difficulty != nil {
-			conds = append(conds, fmt.Sprintf("session.diff = %v", *req.Difficulty))
-		}
-	}
-
-	if req.Status != nil {
-		conds = append(conds, fmt.Sprintf("session.status = %v", *req.Status))
-	}
-
-	if req.Length != nil {
-		conds = append(conds, fmt.Sprintf("session.length = %v", *req.Length))
-	}
-
-	if req.MinWave != nil {
-		conds = append(conds, fmt.Sprintf("gd.wave >= %v", *req.MinWave))
-	}
-
-	if req.Mode != nil && *req.Mode == models.ControlledDifficulty {
-		if req.SpawnCycle != nil {
-			conds = append(conds, "cd.spawn_cycle LIKE ?")
-			args = append(args, "%"+*req.SpawnCycle+"%")
-		}
-
-		if req.MinMaxMonsters != nil {
-			conds = append(conds, fmt.Sprintf("cd.max_monsters >= %v", *req.MinMaxMonsters))
-		}
-	}
-
-	if req.Date != nil {
-		conds = append(conds, "DATE(session.started_at) = ?")
-		args = append(args, req.Date.Format("2006-01-02"))
-	}
-
-	sql := fmt.Sprintf(`
-		SELECT
-			session.id,
-			session.mode,
-			session.length,
-			session.diff,
-			session.status,
-			gd.wave,
-			cd.spawn_cycle,
-			cd.max_monsters,
-			cd.wave_size_fakes,
-			cd.zeds_type,
-			maps.name,
-			server.id,
-			server.name,
-			session.updated_at
-		FROM session
-		INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-		INNER JOIN maps on maps.id = session.map_id
-		INNER JOIN server on server.id = session.server_id
-		INNER JOIN session_game_data gd on gd.session_id = session.id
-		LEFT JOIN session_game_data_extra cd on cd.session_id = session.id
-		WHERE %v
-		GROUP BY session.id
-		ORDER BY session.updated_at DESC
-		LIMIT %v, %v
-		`, strings.Join(conds, " AND "), page*limit, limit,
-	)
-
-	rows, err := s.db.Query(sql, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	sessionMap := make(map[int]*RecentSessionsResponseSession)
-	items := []*RecentSessionsResponseSession{}
-	for rows.Next() {
-		item := RecentSessionsResponseSession{}
-		cdData := models.CDGameData{}
-
-		rows.Scan(
-			&item.Id, &item.Mode, &item.Length, &item.Difficulty, &item.Status, &item.Wave,
-			&cdData.SpawnCycle, &cdData.MaxMonsters, &cdData.WaveSizeFakes, &cdData.ZedsType,
-			&item.MapName, &item.Server.Id, &item.Server.Name, &item.UpdatedAt,
-		)
-
-		if cdData.SpawnCycle != nil {
-			item.CDData = &cdData
-		}
-
-		items = append(items, &item)
-		sessionMap[item.Id] = &item
-	}
-
-	if len(items) > 0 {
-		ids := []int{}
-		for id := range sessionMap {
-			ids = append(ids, id)
-		}
-
-		perkConds := []string{}
-		perkConds = append(perkConds, fmt.Sprintf("aggr.user_id = %v", req.UserId))
-		perkConds = append(perkConds, fmt.Sprintf("session.id IN (%v)", util.IntArrayToString(ids, ",")))
-
-		sql := fmt.Sprintf(`
-			SELECT DISTINCT session.id, aggr.perk
-			FROM session
-			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-			WHERE %v
-			`, strings.Join(perkConds, " AND "),
-		)
-
-		rows, err = s.db.Query(sql)
-		if err != nil {
-			return nil, err
-		}
-
-		for rows.Next() {
-			var sessionId, perk int
-
-			rows.Scan(&sessionId, &perk)
-
-			if data, ok := sessionMap[sessionId]; ok {
-				data.Perks = append(data.Perks, perk)
-			}
-		}
-	}
-
-	var total int
-	{
-		sql = fmt.Sprintf(`
-			SELECT count(distinct session.id) FROM session
-			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-			INNER JOIN maps on maps.id = session.map_id
-			INNER JOIN server on server.id = session.server_id
-			INNER JOIN session_game_data gd on gd.session_id = session.id
-			LEFT JOIN session_game_data_extra cd on cd.session_id = session.id
-			WHERE %v`,
-			strings.Join(conds, " AND "),
-		)
-
-		if err := s.db.QueryRow(sql, args...).Scan(&total); err != nil {
-			return nil, err
-		}
-	}
-
-	return &RecentSessionsResponse{
-		Items: items,
-		Metadata: models.PaginationResponse{
-			Page:           page,
-			ResultsPerPage: limit,
-			TotalResults:   total,
-		},
-	}, nil
 }
 
 func (s *UserService) GetUserProfiles(

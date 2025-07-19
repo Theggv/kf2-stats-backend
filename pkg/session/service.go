@@ -122,7 +122,7 @@ func (s *SessionService) GetGameData(id int) (*models.GameData, error) {
 	return &item, err
 }
 
-func (s *SessionService) GetCDData(id int) (*models.CDGameData, error) {
+func (s *SessionService) GetCDData(id int) (*models.ExtraGameData, error) {
 	row := s.db.QueryRow(`
 		SELECT spawn_cycle, max_monsters, wave_size_fakes, zeds_type
 		FROM session
@@ -133,7 +133,7 @@ func (s *SessionService) GetCDData(id int) (*models.CDGameData, error) {
 		LIMIT 1`, id,
 	)
 
-	item := models.CDGameData{}
+	item := models.ExtraGameData{}
 
 	err := row.Scan(
 		&item.SpawnCycle, &item.MaxMonsters,

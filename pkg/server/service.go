@@ -274,7 +274,7 @@ func (s *ServerService) getSessions(
 	items := make(map[int]*RecentUsersResponseUserSession)
 	for rows.Next() {
 		item := RecentUsersResponseUserSession{}
-		cdData := models.CDGameData{}
+		cdData := models.ExtraGameData{}
 
 		rows.Scan(
 			&item.PlayerId, &item.Id, &item.Mode, &item.Length, &item.Difficulty, &item.Status, &item.Wave,

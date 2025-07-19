@@ -432,7 +432,7 @@ func (s *MatchesService) GetMatchLiveData(sessionId int) (*GetMatchLiveDataRespo
 		WHERE gd.session_id = ?`
 
 	gameData := models.GameData{}
-	cdData := models.CDGameData{}
+	cdData := models.ExtraGameData{}
 
 	err := s.db.QueryRow(sql, sessionId).Scan(
 		&gameData.MaxPlayers, &gameData.PlayersOnline, &gameData.PlayersAlive,

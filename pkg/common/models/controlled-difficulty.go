@@ -1,6 +1,6 @@
 package models
 
-type CDGameData struct {
+type ExtraGameData struct {
 	SpawnCycle    *string `json:"spawn_cycle"`
 	MaxMonsters   *int    `json:"max_monsters"`
 	WaveSizeFakes *int    `json:"wave_size_fakes"`

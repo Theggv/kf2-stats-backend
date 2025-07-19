@@ -130,7 +130,7 @@ func (s *MatchesService) getGameData(matchId []int) ([]*filterGameData, error) {
 
 type filterCDGameData struct {
 	MatchId int
-	CDData  *models.CDGameData
+	CDData  *models.ExtraGameData
 }
 
 func (s *MatchesService) getCDGameData(matchId []int) ([]*filterCDGameData, error) {
@@ -157,7 +157,7 @@ func (s *MatchesService) getCDGameData(matchId []int) ([]*filterCDGameData, erro
 	items := []*filterCDGameData{}
 
 	for rows.Next() {
-		cdData := models.CDGameData{}
+		cdData := models.ExtraGameData{}
 		item := filterCDGameData{}
 
 		rows.Scan(&item.MatchId,
