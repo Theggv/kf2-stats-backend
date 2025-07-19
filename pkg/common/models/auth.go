@@ -1,5 +1,7 @@
 package models
 
+const TokenVersion = 1
+
 type TokenPayload struct {
 	UserId int    `json:"user_id"`
 	Name   string `json:"name"`
