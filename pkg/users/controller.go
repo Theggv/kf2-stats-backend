@@ -94,7 +94,7 @@ func (c *userController) getUserDetailed(ctx *gin.Context) {
 
 	item, err := c.service.getUserDetailed(id)
 	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
+		ctx.String(http.StatusNotFound, err.Error())
 		return
 	}
 

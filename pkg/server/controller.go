@@ -26,7 +26,7 @@ func (c *serverController) getById(ctx *gin.Context) {
 
 	item, err := c.service.GetById(id)
 	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
+		ctx.String(http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -112,7 +112,7 @@ func (c *serverController) getLastSession(ctx *gin.Context) {
 
 	item, err := c.service.GetLastSession(id)
 	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
+		ctx.String(http.StatusNotFound, err.Error())
 		return
 	}
 

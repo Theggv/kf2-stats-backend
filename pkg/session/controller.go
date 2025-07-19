@@ -115,7 +115,7 @@ func (c *sessionController) getDemo(ctx *gin.Context) {
 
 	rawDemo, err := c.service.GetDemo(id)
 	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
+		ctx.String(http.StatusNotFound, err.Error())
 		return
 	}
 

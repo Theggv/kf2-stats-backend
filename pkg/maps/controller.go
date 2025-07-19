@@ -26,7 +26,7 @@ func (c *mapsController) getById(ctx *gin.Context) {
 
 	item, err := c.service.GetById(id)
 	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
+		ctx.String(http.StatusNotFound, err.Error())
 		return
 	}
 
