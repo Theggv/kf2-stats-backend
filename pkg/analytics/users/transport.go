@@ -64,6 +64,7 @@ type UserPerkHistRequest struct {
 
 	From *time.Time `json:"date_from"`
 	To   *time.Time `json:"date_to"`
+	AuthUser *models.TokenPayload `json:"-"`
 }
 
 type AccuracyHistItem struct {
@@ -92,6 +93,8 @@ type GetTeammatesRequest struct {
 	UserId int `json:"user_id" binding:"required"`
 
 	Pager models.PaginationRequest `json:"pager"`
+
+	AuthUser *models.TokenPayload `json:"-"`
 }
 
 type GetTeammatesResponseItem struct {

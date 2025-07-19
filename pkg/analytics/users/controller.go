@@ -69,6 +69,8 @@ func (c *controller) getPlaytimeHist(ctx *gin.Context) {
 		return
 	}
 
+	req.AuthUser, _ = util.GetUserFromCtx(ctx)
+
 	res, err := c.service.getPlaytimeHist(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
@@ -91,6 +93,8 @@ func (c *controller) getAccuracyHist(ctx *gin.Context) {
 		return
 	}
 
+	req.AuthUser, _ = util.GetUserFromCtx(ctx)
+
 	res, err := c.service.getAccuracyHist(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
@@ -112,6 +116,8 @@ func (c *controller) getTeammates(ctx *gin.Context) {
 		ctx.String(http.StatusBadRequest, err.Error())
 		return
 	}
+
+	req.AuthUser, _ = util.GetUserFromCtx(ctx)
 
 	res, err := c.service.getTeammates(req)
 	if err != nil {
@@ -151,7 +157,7 @@ func (c *controller) getPlayedMaps(ctx *gin.Context) {
 // @Success 200 {object} 	GetLastSeenUsersResponse
 // @Router /analytics/users/lastseen [post]
 func (c *controller) getLastSeenUsers(ctx *gin.Context) {
-	user := util.GetUserFromCtx(ctx)
+	user, _ := util.GetUserFromCtx(ctx)
 
 	var req GetLastSeenUsersRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
@@ -180,7 +186,7 @@ func (c *controller) getLastSeenUsers(ctx *gin.Context) {
 // @Success 200 {object} 	GetLastSessionsWithUserResponse
 // @Router /analytics/users/lastgameswithuser [post]
 func (c *controller) getLastGamesWithUser(ctx *gin.Context) {
-	user := util.GetUserFromCtx(ctx)
+	user, _ := util.GetUserFromCtx(ctx)
 
 	var req GetLastSessionsWithUserRequest
 	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
