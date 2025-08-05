@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -27,11 +28,12 @@ func (c *controller) getSessionCount(ctx *gin.Context) {
 	items, err := c.service.GetSessionCount(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
+		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	ctx.JSON(http.StatusOK, &SessionCountResponse{
-		Items: *items,
+		Items: items,
 	})
 }
 
@@ -55,7 +57,7 @@ func (c *controller) getUsageInMinutes(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, &UsageInMinutesResponse{
-		Items: *items,
+		Items: items,
 	})
 }
 
@@ -79,7 +81,7 @@ func (c *controller) getPlayersOnline(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, &PlayersOnlineResponse{
-		Items: *items,
+		Items: items,
 	})
 }
 

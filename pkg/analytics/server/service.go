@@ -22,11 +22,11 @@ func NewServerAnalyticsService(db *sql.DB) *ServerAnalyticsService {
 
 func (s *ServerAnalyticsService) GetSessionCount(
 	req SessionCountRequest,
-) (*[]PeriodData, error) {
+) ([]*PeriodData, error) {
 	conds := make([]string, 0)
-	args := make([]interface{}, 0)
+	args := make([]any, 0)
 
-	conds = append(conds, "session.is_completed = TRUE")
+	conds = append(conds, "session.started_at is not null")
 
 	if req.ServerId != 0 {
 		conds = append(conds, "session.server_id = ?")
@@ -51,52 +51,32 @@ func (s *ServerAnalyticsService) GetSessionCount(
 		return nil, analytics.NewIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
-	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	if req.From != nil && req.To != nil {
+		conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	}
 
-	sql := fmt.Sprintf(`
-		SELECT 
-			count(*) AS times_played, 
-			%v as period
-		FROM session
+	stmt := fmt.Sprintf(`
+		SELECT
+			%v as period,
+			count(*) as value
+		from session
 		WHERE %v
 		GROUP BY period
 		ORDER BY period`,
 		period, strings.Join(conds, " AND "),
 	)
 
-	stmt, err := s.db.Prepare(sql)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := stmt.Query(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	items := []PeriodData{}
-	for rows.Next() {
-		item := PeriodData{}
-
-		err = rows.Scan(&item.Count, &item.Period)
-		if err != nil {
-			return nil, err
-		}
-
-		items = append(items, item)
-	}
-
-	return &items, nil
+	return s.executeHistoricalQuery(stmt, args...)
 }
 
 func (s *ServerAnalyticsService) GetUsageInMinutes(
 	req UsageInMinutesRequest,
-) (*[]PeriodData, error) {
+) ([]*PeriodData, error) {
 	conds := make([]string, 0)
-	args := make([]interface{}, 0)
+	args := make([]any, 0)
 
-	conds = append(conds, "session.is_completed = TRUE", "session.server_id = ?")
+	conds = append(conds, "session.started_at is not null", "session.completed_at is not null", "session.server_id = ?")
 	args = append(args, req.ServerId)
 
 	var period string
@@ -115,52 +95,32 @@ func (s *ServerAnalyticsService) GetUsageInMinutes(
 		return nil, analytics.NewIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?", "session.completed_at IS NOT NULL")
-	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	if req.From != nil && req.To != nil {
+		conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	}
 
-	sql := fmt.Sprintf(`
-		SELECT 
-			sum(timestampdiff(MINUTE, started_at, completed_at)), 
-			%v as period
-		FROM session
+	stmt := fmt.Sprintf(`
+		SELECT
+			%v as period,
+			sum(timestampdiff(MINUTE, started_at, completed_at)) as value
+		from session
 		WHERE %v
 		GROUP BY period
 		ORDER BY period`,
 		period, strings.Join(conds, " AND "),
 	)
 
-	stmt, err := s.db.Prepare(sql)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := stmt.Query(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	items := []PeriodData{}
-	for rows.Next() {
-		item := PeriodData{}
-
-		err = rows.Scan(&item.Count, &item.Period)
-		if err != nil {
-			return nil, err
-		}
-
-		items = append(items, item)
-	}
-
-	return &items, nil
+	return s.executeHistoricalQuery(stmt, args...)
 }
 
 func (s *ServerAnalyticsService) GetPlayersOnline(
 	req PlayersOnlineRequest,
-) (*[]PeriodData, error) {
+) ([]*PeriodData, error) {
 	conds := make([]string, 0)
-	args := make([]interface{}, 0)
+	args := make([]any, 0)
 
-	conds = append(conds, "session.is_completed = TRUE")
+	conds = append(conds, "session.started_at is not null")
 
 	if req.ServerId != 0 {
 		conds = append(conds, "session.server_id = ?")
@@ -185,55 +145,32 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 		return nil, analytics.NewIncorrectPeriod(req.Period)
 	}
 
-	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
-	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	if req.From != nil && req.To != nil {
+		conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	}
 
-	sql := fmt.Sprintf(`
-		SELECT
-			count(DISTINCT aggr.user_id), 
-			%v as period
-		FROM session
-		INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-		WHERE %v
-		GROUP BY period
-		ORDER BY period`,
+	stmt := fmt.Sprintf(`
+		SELECT DISTINCT
+			period,
+			count(user_id) over (partition by period) as value
+		FROM (
+			SELECT DISTINCT
+				%v as period,
+				aggr.user_id as user_id
+			FROM session
+			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
+			WHERE %v
+		) t`,
 		period, strings.Join(conds, " AND "),
 	)
 
-	stmt, err := s.db.Prepare(sql)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := stmt.Query(args...)
-	if err != nil {
-		return nil, err
-	}
-
-	items := []PeriodData{}
-	for rows.Next() {
-		item := PeriodData{}
-
-		err = rows.Scan(&item.Count, &item.Period)
-		if err != nil {
-			return nil, err
-		}
-
-		items = append(items, item)
-	}
-
-	return &items, nil
+	return s.executeHistoricalQuery(stmt, args...)
 }
 
 func (s *ServerAnalyticsService) GetPopularServers() (*PopularServersResponse, error) {
 	stmt := `
-		SELECT
-			server.id,
-			server.name,
-			total_sessions,
-			total_users,
-			diff
-		FROM (
+		WITH server_rating AS (
 			SELECT
 				session.server_id as server_id,
 				count(DISTINCT session.id) as total_sessions,
@@ -241,19 +178,25 @@ func (s *ServerAnalyticsService) GetPopularServers() (*PopularServersResponse, e
 				min(session.diff) as diff
 			FROM session
 			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-			WHERE DATE(session.started_at) BETWEEN now() - interval 30 day AND now()
 			GROUP BY server_id
 			ORDER BY total_users desc
 			LIMIT 5
-		) t
-		INNER JOIN server ON server.id = t.server_id`
+		)
+		SELECT 
+			server.id as server_id,
+			server.name as server_name,
+			cte.total_sessions as total_session,
+			cte.total_users as total_users,
+			cte.diff as difficulty
+		FROM server_rating cte
+		INNER JOIN server ON server.id = cte.server_id`
 
 	rows, err := s.db.Query(stmt)
 	if err != nil {
 		return nil, err
 	}
 
-	items := []PopularServersResponseItem{}
+	items := []*PopularServersResponseItem{}
 	for rows.Next() {
 		item := PopularServersResponseItem{}
 
@@ -264,7 +207,7 @@ func (s *ServerAnalyticsService) GetPopularServers() (*PopularServersResponse, e
 			return nil, err
 		}
 
-		items = append(items, item)
+		items = append(items, &item)
 	}
 
 	return &PopularServersResponse{
@@ -285,4 +228,52 @@ func (s *ServerAnalyticsService) GetCurrentOnline() (*TotalOnlineResponse, error
 	}
 
 	return &res, nil
+}
+
+func (s *ServerAnalyticsService) executeHistoricalQuery(query string, args ...any) ([]*PeriodData, error) {
+	stmt := fmt.Sprintf(`
+		WITH historical_data AS (
+			%v
+		), with_lag AS (
+			SELECT
+				cte.*,
+				LAG(value, 1, 0) OVER w AS prev
+			FROM historical_data cte
+			WINDOW w AS (ORDER BY period)
+		)
+		SELECT 
+			period,
+			value,
+			prev,
+			value - prev AS diff,
+			first_value(value) OVER value_frame AS max_value,
+			avg(value) OVER trend_frame AS trend_value
+		FROM with_lag
+		WINDOW 
+			value_frame AS (ORDER BY value DESC),
+			trend_frame AS (ORDER BY period ROWS BETWEEN 5 PRECEDING AND CURRENT ROW)
+		`, query,
+	)
+
+	rows, err := s.db.Query(stmt, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	items := []*PeriodData{}
+	for rows.Next() {
+		item := PeriodData{}
+
+		err = rows.Scan(
+			&item.Period, &item.Value, &item.PreviousValue,
+			&item.Difference, &item.MaxValue, &item.Trend,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, &item)
+	}
+
+	return items, nil
 }

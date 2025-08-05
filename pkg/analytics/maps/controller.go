@@ -31,6 +31,6 @@ func (c *controller) getMapAnalytics(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, &MapAnalyticsResponse{
-		Items: *items,
+		Items: items,
 	})
 }
