@@ -122,8 +122,8 @@ type GetMatchLiveDataResponsePlayer struct {
 type GetMatchLiveDataResponse struct {
 	Status models.GameStatus `json:"status"`
 
-	GameData models.GameData    `json:"game_data"`
-	CDData   *models.CDGameData `json:"cd_data"`
+	GameData models.GameData       `json:"game_data"`
+	CDData   *models.ExtraGameData `json:"cd_data"`
 
 	Players    []*GetMatchLiveDataResponsePlayer `json:"players"`
 	Spectators []*GetMatchLiveDataResponsePlayer `json:"spectators"`

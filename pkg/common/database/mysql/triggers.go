@@ -50,6 +50,49 @@ func initTriggers(db *sql.DB) error {
 			END IF;
 		END;
 	`)
+	tx.Exec(`
+		DROP TRIGGER IF EXISTS update_session_aggregated_post;
+		CREATE TRIGGER update_session_aggregated_post
+		AFTER UPDATE ON session_aggregated
+		FOR EACH ROW
+		BEGIN
+			IF new.buffs_active_length <> old.buffs_active_length && new.buffs_active_length > 0 THEN
+				UPDATE user_weekly_stats_perk weekly
+				INNER JOIN session ON 
+					weekly.period = yearweek(session.started_at) AND
+					weekly.server_id = session.server_id AND
+					weekly.perk = old.perk AND
+					weekly.user_id = old.user_id
+				SET weekly.buffs_active_length = weekly.buffs_active_length + new.buffs_active_length, 
+					weekly.buffs_total_length = weekly.buffs_total_length + new.buffs_total_length
+				WHERE session.id = old.session_id;
+			END IF;
+		END;
+	`)
+	tx.Exec(`
+		DROP TRIGGER IF EXISTS update_user_weekly_stats_total_max_damage;
+		CREATE TRIGGER update_user_weekly_stats_total_max_damage
+		BEFORE UPDATE ON user_weekly_stats_total
+		FOR EACH ROW
+		BEGIN
+			IF new.max_damage < old.max_damage THEN
+				SET new.max_damage = old.max_damage;
+				SET new.max_damage_session_id = old.max_damage_session_id;
+			END IF;
+		END;
+	`)
+	tx.Exec(`
+		DROP TRIGGER IF EXISTS update_user_weekly_stats_perk_max_damage;
+		CREATE TRIGGER update_user_weekly_stats_perk_max_damage
+		BEFORE UPDATE ON user_weekly_stats_perk
+		FOR EACH ROW
+		BEGIN
+			IF new.max_damage < old.max_damage THEN
+				SET new.max_damage = old.max_damage;
+				SET new.max_damage_session_id = old.max_damage_session_id;
+			END IF;
+		END;
+	`)
 
 	return err
 }

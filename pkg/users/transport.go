@@ -32,8 +32,8 @@ type FilterUsersResponseUserSession struct {
 
 	Status models.GameStatus `json:"status"`
 
-	Wave   int                `json:"wave"`
-	CDData *models.CDGameData `json:"cd_data"`
+	Wave   int                   `json:"wave"`
+	CDData *models.ExtraGameData `json:"cd_data"`
 
 	ServerName string `json:"server_name"`
 	MapName    string `json:"map_name"`
@@ -98,8 +98,8 @@ type RecentSessionsResponseSession struct {
 
 	Status models.GameStatus `json:"status"`
 
-	Wave   int                `json:"wave"`
-	CDData *models.CDGameData `json:"cd_data"`
+	Wave   int                   `json:"wave"`
+	CDData *models.ExtraGameData `json:"cd_data"`
 
 	MapName string                              `json:"map_name"`
 	Server  RecentSessionsResponseSessionServer `json:"server"`

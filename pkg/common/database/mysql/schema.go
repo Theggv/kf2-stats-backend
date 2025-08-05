@@ -43,6 +43,33 @@ func initSchema(db *sql.DB) error {
 		)`,
 	)
 	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS users_steam_data (
+			user_id INTEGER PRIMARY KEY NOT NULL,
+
+			steam_id VARCHAR(32) NOT NULL,
+			name VARCHAR(128) NOT NULL,
+			avatar VARCHAR(128) NOT NULL,
+			profile_url VARCHAR(128) NOT NULL,
+
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+		
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			UNIQUE INDEX idx_uniq_users_steam_data (steam_id)
+		)`,
+	)
+	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS users_token (
+			id INTEGER PRIMARY KEY AUTO_INCREMENT,
+			user_id INTEGER NOT NULL,
+			
+			token TEXT NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+		
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
+		)`,
+	)
+	tx.Exec(`
 		CREATE TABLE IF NOT EXISTS session (
 			id INTEGER PRIMARY KEY AUTO_INCREMENT,
 			server_id INTEGER NOT NULL,
@@ -51,6 +78,7 @@ func initSchema(db *sql.DB) error {
 			mode INTEGER NOT NULL,
 			length INTEGER NOT NULL,
 			diff INTEGER NOT NULL,
+			calc_diff REAL NOT NULL DEFAULT 0,
 
 			status INTEGER NOT NULL DEFAULT 0,
 
@@ -64,6 +92,7 @@ func initSchema(db *sql.DB) error {
 			FOREIGN KEY (server_id) REFERENCES server(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			FOREIGN KEY (map_id) REFERENCES maps(id) ON UPDATE CASCADE ON DELETE CASCADE,
 
+			INDEX idx_session_status (status),
 			INDEX idx_session_completed_at_is_completed ((date(started_at)), is_completed)
 		)
 	`)
@@ -77,28 +106,6 @@ func initSchema(db *sql.DB) error {
 			FOREIGN KEY (session_id) REFERENCES session(id) ON UPDATE CASCADE ON DELETE CASCADE
 		)
 	`)
-	// tx.Exec(`
-	// 	CREATE TABLE IF NOT EXISTS session_demo_analytics (
-	// 		session_id INTEGER PRIMARY KEY NOT NULL,
-
-	// 		wave INTEGER NOT NULL,
-	// 		attempt INTEGER NOT NULL,
-
-	// 		duration REAL NOT NULL,
-	// 		wave_size INTEGER NOT NULL,
-	// 		zeds_left INTEGER NOT NULL,
-
-	// 		players_count REAL NOT NULL,
-	// 		avg_kills_per_second REAL NOT NULL,
-
-	// 		total_killed INTEGER NOT NULL,
-	// 		trash_killed INTEGER NOT NULL,
-	// 		medium_killed INTEGER NOT NULL,
-	// 		large_killed INTEGER NOT NULL,
-
-	// 		FOREIGN KEY (session_id) REFERENCES session(id) ON UPDATE CASCADE ON DELETE CASCADE
-	// 	)
-	// `)
 	tx.Exec(`
 		CREATE TABLE IF NOT EXISTS session_game_data (
 			session_id INTEGER PRIMARY KEY NOT NULL,
@@ -117,13 +124,16 @@ func initSchema(db *sql.DB) error {
 		)
 	`)
 	tx.Exec(`
-		CREATE TABLE IF NOT EXISTS session_game_data_cd (
+		CREATE TABLE IF NOT EXISTS session_game_data_extra (
 			session_id INTEGER PRIMARY KEY NOT NULL,
 			
-			spawn_cycle TEXT NOT NULL,
-			max_monsters INTEGER NOT NULL,
-			wave_size_fakes INTEGER NOT NULL,
-			zeds_type TEXT NOT NULL,
+			spawn_cycle TEXT,
+			max_monsters INTEGER,
+			wave_size_fakes INTEGER,
+			zeds_type TEXT,
+
+			percentage INTEGER,
+			extra_percentage INTEGER,
 
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -146,13 +156,16 @@ func initSchema(db *sql.DB) error {
 		)
 	`)
 	tx.Exec(`
-		CREATE TABLE IF NOT EXISTS wave_stats_cd (
+		CREATE TABLE IF NOT EXISTS wave_stats_extra (
 			stats_id INTEGER PRIMARY KEY NOT NULL,
 
-			spawn_cycle TEXT NOT NULL,
-			max_monsters INTEGER NOT NULL,
-			wave_size_fakes INTEGER NOT NULL,
-			zeds_type TEXT NOT NULL,
+			spawn_cycle TEXT,
+			max_monsters INTEGER,
+			wave_size_fakes INTEGER,
+			zeds_type TEXT,
+
+			percentage INTEGER,
+			extra_percentage INTEGER,
 
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -303,6 +316,9 @@ func initSchema(db *sql.DB) error {
 			zedtime_count INTEGER NOT NULL,
 			zedtime_length REAL NOT NULL,
 
+			buffs_active_length REAL NOT NULL DEFAULT 0,
+			buffs_total_length REAL NOT NULL DEFAULT 0,
+
 			FOREIGN KEY (session_id) REFERENCES session(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 
@@ -321,17 +337,55 @@ func initSchema(db *sql.DB) error {
 			FOREIGN KEY (id) REFERENCES session_aggregated(id) ON UPDATE CASCADE ON DELETE CASCADE
 		)
 	`)
-	tx.Exec(`
-		CREATE TABLE IF NOT EXISTS daily_user_stats (
-			id INTEGER PRIMARY KEY AUTO_INCREMENT,
 
-			period DATE NOT NULL,
+	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS user_weekly_stats_total (
+			period INTEGER NOT NULL,
+
+			server_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+
+			total_games INTEGER NOT NULL,
+			total_waves INTEGER NOT NULL,
+			playtime_seconds INTEGER NOT NULL,
+			deaths INTEGER NOT NULL,
+
+			shots_fired INTEGER NOT NULL,
+			shots_hit INTEGER NOT NULL,
+			shots_hs INTEGER NOT NULL,
+
+			dosh_earned INTEGER NOT NULL,
+
+			heals_given INTEGER NOT NULL,
+			heals_recv INTEGER NOT NULL,
+
+			damage_dealt INTEGER NOT NULL,
+			damage_taken INTEGER NOT NULL,
+
+			large_kills INTEGER NOT NULL,
+			total_kills INTEGER NOT NULL,
+
+			max_damage_session_id INTEGER NOT NULL,
+			max_damage INTEGER NOT NULL,
+
+			PRIMARY KEY (period, server_id, user_id),
+
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			FOREIGN KEY (server_id) REFERENCES server(id) ON UPDATE CASCADE ON DELETE CASCADE
+		)
+	`)
+
+	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS user_weekly_stats_perk (
+			period INTEGER NOT NULL,
+
+			server_id INTEGER NOT NULL,
 			user_id INTEGER NOT NULL,
 			perk INTEGER NOT NULL,
 
+			total_games INTEGER NOT NULL,
+			total_waves INTEGER NOT NULL,
 			playtime_seconds INTEGER NOT NULL,
-			games_played INTEGER NOT NULL,
-			waves_played INTEGER NOT NULL, 
 			deaths INTEGER NOT NULL,
 
 			shots_fired INTEGER NOT NULL,
@@ -348,23 +402,20 @@ func initSchema(db *sql.DB) error {
 
 			zedtime_count INTEGER NOT NULL,
 			zedtime_length REAL NOT NULL,
+			
+			buffs_active_length REAL NOT NULL,
+			buffs_total_length REAL NOT NULL,
+
+			large_kills INTEGER NOT NULL,
+			total_kills INTEGER NOT NULL,
+
+			max_damage_session_id INTEGER NOT NULL,
+			max_damage INTEGER NOT NULL,
+
+			PRIMARY KEY (period, server_id, user_id, perk),
 
 			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
-
-			UNIQUE INDEX daily_user_stats_uniq (period, perk, user_id),
-			INDEX daily_user_stats_perk_idx (perk)
-		)
-	`)
-	tx.Exec(`
-		CREATE TABLE IF NOT EXISTS daily_user_kills (
-			id INTEGER PRIMARY KEY NOT NULL,
-
-			trash INTEGER NOT NULL,
-			medium INTEGER NOT NULL,
-			large INTEGER NOT NULL,
-			total INTEGER NOT NULL,
-
-			FOREIGN KEY (id) REFERENCES daily_user_stats(id) ON UPDATE CASCADE ON DELETE CASCADE
+			FOREIGN KEY (server_id) REFERENCES server(id) ON UPDATE CASCADE ON DELETE CASCADE
 		)
 	`)
 

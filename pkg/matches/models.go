@@ -99,8 +99,8 @@ type Match struct {
 	Map    *MatchMap    `json:"map"`
 	Server *MatchServer `json:"server"`
 
-	GameData *models.GameData   `json:"game_data"`
-	CDData   *models.CDGameData `json:"cd_data"`
+	GameData *models.GameData      `json:"game_data"`
+	CDData   *models.ExtraGameData `json:"cd_data"`
 
 	Players    []*MatchPlayer `json:"players"`
 	Spectators []*MatchPlayer `json:"spectators"`

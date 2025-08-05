@@ -19,3 +19,13 @@ func lerp(start, end, t float64) float64 {
 func standardize(value, mean, stddev float64) float64 {
 	return (value - mean) / stddev
 }
+
+func mean(value []float64) float64 {
+	sum := 0.0
+
+	for i := range value {
+		sum += value[i]
+	}
+
+	return sum / float64(len(value))
+}

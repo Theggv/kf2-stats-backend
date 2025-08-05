@@ -7,6 +7,7 @@ import (
 	analyticsPerks "github.com/theggv/kf2-stats-backend/pkg/analytics/perks"
 	analyticsServer "github.com/theggv/kf2-stats-backend/pkg/analytics/server"
 	analyticsUsers "github.com/theggv/kf2-stats-backend/pkg/analytics/users"
+	"github.com/theggv/kf2-stats-backend/pkg/auth"
 	"github.com/theggv/kf2-stats-backend/pkg/common/store"
 	"github.com/theggv/kf2-stats-backend/pkg/leaderboards"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
@@ -20,6 +21,7 @@ import (
 func RegisterApiRoutes(r *gin.Engine, store *store.Store, memoryStore *persist.MemoryStore) {
 	api := r.Group("/api")
 
+	auth.RegisterRoutes(api, store.Auth)
 	server.RegisterRoutes(api, store.Servers)
 	maps.RegisterRoutes(api, store.Maps)
 	session.RegisterRoutes(api, store.Sessions)

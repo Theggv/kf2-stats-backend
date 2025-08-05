@@ -14,5 +14,5 @@ func RegisterRoutes(r *gin.RouterGroup, mapsService *MapsService) {
 
 	routes.GET("/", controller.getByPattern)
 	routes.GET("/:id", controller.getById)
-	routes.PUT("/preview", middleware.AuthMiddleware, controller.updatePreview)
+	routes.PUT("/preview", middleware.MutatorAuthMiddleWave, controller.updatePreview)
 }

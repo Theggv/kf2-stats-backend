@@ -7,11 +7,15 @@ import (
 )
 
 type LeaderBoardsRequest struct {
-	Type LeaderBoardType `json:"type" binding:"required"`
-	Perk int             `json:"perk"`
+	ServerIds []int `json:"server_id"`
+
+	Perk int `json:"perk"`
 
 	From time.Time `json:"date_from" binding:"required"`
 	To   time.Time `json:"date_to" binding:"required"`
+
+	OrderBy LeaderBoardOrderBy `json:"type" binding:"required"`
+	Page    int                `json:"page"`
 }
 
 type MostDamageMatch struct {
@@ -39,8 +43,9 @@ type LeaderBoardsResponseItem struct {
 	TotalLargeKills int `json:"total_large_kills"`
 	TotalHuskRages  int `json:"total_husk_rages"`
 
-	TotalHeals     int     `json:"total_heals"`
-	AverageZedtime float64 `json:"avg_zt"`
+	TotalHeals         int     `json:"total_heals"`
+	AverageZedtime     float64 `json:"avg_zt"`
+	AverageBuffsUptime float64 `json:"avg_buffs_uptime"`
 
 	TotalPlaytime int `json:"total_playtime"`
 
@@ -49,5 +54,6 @@ type LeaderBoardsResponseItem struct {
 }
 
 type LeaderBoardsResponse struct {
-	Items []*LeaderBoardsResponseItem `json:"items"`
+	Items    []*LeaderBoardsResponseItem `json:"items"`
+	Metadata *models.PaginationResponse  `json:"metadata"`
 }

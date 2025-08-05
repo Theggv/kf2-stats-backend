@@ -130,7 +130,7 @@ func (s *MatchesService) getGameData(matchId []int) ([]*filterGameData, error) {
 
 type filterCDGameData struct {
 	MatchId int
-	CDData  *models.CDGameData
+	CDData  *models.ExtraGameData
 }
 
 func (s *MatchesService) getCDGameData(matchId []int) ([]*filterCDGameData, error) {
@@ -143,7 +143,7 @@ func (s *MatchesService) getCDGameData(matchId []int) ([]*filterCDGameData, erro
 			cd.spawn_cycle, cd.max_monsters,
 			cd.wave_size_fakes, cd.zeds_type
 		FROM session
-		INNER JOIN session_game_data_cd cd ON session.id = cd.session_id
+		INNER JOIN session_game_data_extra cd ON session.id = cd.session_id
 		WHERE %v`,
 		fmt.Sprintf("session.id in (%v)", util.IntArrayToString(matchId, ",")),
 	)
@@ -157,7 +157,7 @@ func (s *MatchesService) getCDGameData(matchId []int) ([]*filterCDGameData, erro
 	items := []*filterCDGameData{}
 
 	for rows.Next() {
-		cdData := models.CDGameData{}
+		cdData := models.ExtraGameData{}
 		item := filterCDGameData{}
 
 		rows.Scan(&item.MatchId,
@@ -332,7 +332,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 	}
 
 	// Order
-	if req.ReverseOrder != nil && *req.ReverseOrder == true {
+	if req.ReverseOrder != nil && *req.ReverseOrder {
 		order = "desc"
 	}
 
@@ -380,7 +380,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		items = append(items, &item)
 	}
 
-	if req.IncludeServer != nil && *req.IncludeServer == true {
+	if req.IncludeServer != nil && *req.IncludeServer {
 		serverData, err := s.getServerData(matchId)
 		if err != nil {
 			return nil, err
@@ -395,7 +395,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		}
 	}
 
-	if req.IncludeMap != nil && *req.IncludeMap == true {
+	if req.IncludeMap != nil && *req.IncludeMap {
 		mapData, err := s.getMapData(matchId)
 		if err != nil {
 			return nil, err
@@ -410,7 +410,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		}
 	}
 
-	if req.IncludeGameData != nil && *req.IncludeGameData == true {
+	if req.IncludeGameData != nil && *req.IncludeGameData {
 		gameData, err := s.getGameData(matchId)
 		if err != nil {
 			return nil, err
@@ -425,7 +425,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		}
 	}
 
-	if req.IncludeCDData != nil && *req.IncludeCDData == true {
+	if req.IncludeCDData != nil && *req.IncludeCDData {
 		cdData, err := s.getCDGameData(matchId)
 		if err != nil {
 			return nil, err
@@ -440,7 +440,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		}
 	}
 
-	if req.IncludePlayers != nil && *req.IncludePlayers == true {
+	if req.IncludePlayers != nil && *req.IncludePlayers {
 		playerData, err := s.getPlayerData(matchId)
 		if err != nil {
 			return nil, err

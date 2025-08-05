@@ -1,7 +1,6 @@
 package demorecord
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -85,7 +84,7 @@ func Parse(raw []byte) (*DemoRecordRaw, error) {
 
 func parseHeader(raw []byte) (*DemoRecordHeader, error) {
 	if len(raw) < 11 {
-		return nil, errors.New(fmt.Sprintf("unexpected header size, expected 11, got %v", len(raw)))
+		return nil, fmt.Errorf("unexpected header size, expected 11, got %v", len(raw))
 	}
 
 	header := DemoRecordHeader{
@@ -95,8 +94,8 @@ func parseHeader(raw []byte) (*DemoRecordHeader, error) {
 	}
 
 	if header.Header != "kf2rec" {
-		return nil, errors.New(
-			fmt.Sprintf("unexpected header.Header: expected: %v, got: %v", "kf2rec", header.Header),
+		return nil, fmt.Errorf(
+			"unexpected header.Header: expected: %v, got: %v", "kf2rec", header.Header,
 		)
 	}
 
@@ -109,7 +108,7 @@ func parseHeader(raw []byte) (*DemoRecordHeader, error) {
 
 func parseEvent(raw []byte) (*DemoRecordRawEvent, int, error) {
 	if len(raw) < 6 {
-		return nil, 0, errors.New(fmt.Sprintf("unexpected event size, expected at least 6, got %v", len(raw)))
+		return nil, 0, fmt.Errorf("unexpected event size, expected at least 6, got %v", len(raw))
 	}
 
 	event := DemoRecordRawEvent{

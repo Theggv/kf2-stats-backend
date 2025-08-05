@@ -2,7 +2,6 @@ package leaderboards
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -31,117 +30,168 @@ func (s *LeaderBoardsService) Inject(
 	s.userService = userService
 }
 
+type userIdResponse struct {
+	Ids   []int
+	Total int
+}
+
 func (s *LeaderBoardsService) getLeaderBoard(
 	req LeaderBoardsRequest,
 ) (*LeaderBoardsResponse, error) {
-
 	var (
-		userIds []int
-		err     error
+		userData *userIdResponse
+		err      error
 	)
-	switch req.Type {
-	case AverageZedtime:
-		userIds, err = s.getZedtimeTop(req)
-	case Accuracy:
-		userIds, err = s.getAccuracyTop(req)
-	case HsAccuracy:
-		userIds, err = s.getHSAccuracyTop(req)
+
+	if req.Page < 0 {
+		req.Page = 0
+	}
+
+	err = s.validateRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	switch req.OrderBy {
 	case MostDamage:
-		userIds, err = s.getMostDamageTop(req)
+		userData, err = s.getMostDamageTop(req)
 	default:
-		userIds, err = s.getLeaderboardIds(req)
+		userData, err = s.getLeaderboardIds(req)
 	}
 
 	if err != nil {
 		return nil, err
 	}
 
-	if len(userIds) == 0 {
+	if len(userData.Ids) == 0 {
 		return &LeaderBoardsResponse{
 			Items: []*LeaderBoardsResponseItem{},
+			Metadata: &models.PaginationResponse{
+				Page:           req.Page,
+				ResultsPerPage: 50,
+				TotalResults:   0,
+			},
 		}, nil
 	}
 
-	conds := make([]string, 0)
-	args := make([]interface{}, 0)
-
-	// field args
-	args = append(args,
-		req.Perk, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"),
-		req.Perk, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"),
-		req.From.Format("2006-01-02"), req.To.Format("2006-01-02"),
-	)
-
-	// where args
-	conds = append(conds, fmt.Sprintf("user_id IN (%v)", util.IntArrayToString(userIds, ",")))
-
-	conds = append(conds, "period BETWEEN ? AND ?")
-	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
-
-	if req.Perk != 0 {
-		conds = append(conds, "perk = ?")
-		args = append(args, req.Perk)
+	fields := []string{
+		"users.id as user_id",
+		"users.name as user_name",
+		"users.auth_type as auth_type",
+		"users.auth_id as auth_id",
+		"t.total_games as total_games",
+		"t.total_deaths as total_deaths",
+		"t.total_damage as total_damage",
+		"t.total_kills as total_kills",
+		"t.large_kills as large_kills",
+		"t.total_heals as total_heals",
+		"t.total_playtime as total_playtime",
 	}
 
-	sql := fmt.Sprintf(`
-		SELECT
-			users.id,
-			users.name,
-			users.auth_type,
-			users.auth_id,
-			t.total_games,
-			t.total_deaths,
-			t.total_damage,
-			t.total_kills,
-			t.total_large_kills,
-			t.total_heals,
-			t.total_playtime,
-			get_avg_hs_acc(users.id, ?, ?, ?) as avg_hs_acc,
-			get_avg_acc(users.id, ?, ?, ?) as avg_acc,
-			get_avg_zt(users.id, ?, ?) as avg_zt
-		FROM (
-			SELECT
-				user_id,
-				coalesce(sum(games_played), 0) as total_games,
-				coalesce(sum(deaths), 0) as total_deaths,
-				coalesce(sum(damage_dealt), 0) as total_damage,
-				coalesce(sum(kills.total), 0) as total_kills,
-				coalesce(sum(kills.large), 0) as total_large_kills,
-				coalesce(sum(heals_given), 0) as total_heals,
-				floor(coalesce(sum(playtime_seconds), 0) / 3600) as total_playtime
-			FROM daily_user_stats
-			INNER JOIN daily_user_kills kills on kills.id = daily_user_stats.id
+	conds := make([]string, 0)
+	args := make([]any, 0)
+
+	tableName := "user_weekly_stats_total"
+	if req.Perk != 0 {
+		tableName = "user_weekly_stats_perk"
+
+		fields = append(fields,
+			"greatest(0, least(coalesce(sum(shots_hs) / sum(shots_hit), 0), 1)) as avg_hs_acc",
+			"greatest(0, least(coalesce(sum(shots_hit) / sum(shots_fired), 0), 1)) as avg_acc",
+			"coalesce(sum(zedtime_length) / sum(zedtime_count), 0) as avg_zt",
+			"coalesce(sum(buffs_active_length) / sum(buffs_total_length), 0) as avg_buffs_uptime",
+		)
+	}
+
+	// prepare subquery
+	var sq string
+	{
+		fields := []string{
+			"coalesce(sum(total_games), 0) as total_games",
+			"coalesce(sum(deaths), 0) as total_deaths",
+			"coalesce(sum(damage_dealt), 0) as total_damage",
+			"coalesce(sum(heals_given), 0) as total_heals",
+			"coalesce(sum(total_kills), 0) as total_kills",
+			"coalesce(sum(large_kills), 0) as large_kills",
+			"coalesce(sum(shots_hs), 0) as shots_hs",
+			"coalesce(sum(shots_hit), 0) as shots_hit",
+			"coalesce(sum(shots_fired), 0) as shots_fired",
+			"floor(coalesce(sum(playtime_seconds), 0) / 3600) as total_playtime",
+		}
+
+		conds = append(conds, fmt.Sprintf("user_id IN (%v)", util.IntArrayToString(userData.Ids, ",")))
+
+		conds = append(conds, "period BETWEEN yearweek(?) AND yearweek(?)")
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+
+		if len(req.ServerIds) > 0 {
+			conds = append(conds, fmt.Sprintf("server_id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
+		}
+
+		if req.Perk != 0 {
+			conds = append(conds, "perk = ?")
+			args = append(args, req.Perk)
+
+			fields = append(fields,
+				"coalesce(sum(zedtime_length), 0) as zedtime_length",
+				"coalesce(sum(zedtime_count), 0) as zedtime_count",
+				"coalesce(sum(buffs_active_length), 0) as buffs_active_length",
+				"coalesce(sum(buffs_total_length), 0) as buffs_total_length",
+			)
+		}
+
+		sq = fmt.Sprintf(`
+			SELECT user_id, %v
+			FROM %v
 			WHERE %v
 			GROUP BY user_id
-		) t
+		`, strings.Join(fields, ", "), tableName, strings.Join(conds, " AND "))
+	}
+
+	stmt := fmt.Sprintf(`
+		SELECT %v
+		FROM (%v) t
 		INNER JOIN users ON users.id = t.user_id
 		GROUP BY user_id
 		ORDER BY FIELD(users.id, %v)
-		`, strings.Join(conds, " AND "), util.IntArrayToString(userIds, ","),
+		`, strings.Join(fields, ", "), sq, util.IntArrayToString(userData.Ids, ","),
 	)
 
-	rows, err := s.db.Query(sql, args...)
+	rows, err := s.db.Query(stmt, args...)
 	if err != nil {
 		return nil, err
 	}
 
 	res := LeaderBoardsResponse{
 		Items: []*LeaderBoardsResponseItem{},
+		Metadata: &models.PaginationResponse{
+			Page:           req.Page,
+			ResultsPerPage: 50,
+			TotalResults:   userData.Total,
+		},
 	}
 	steamIdSet := make(map[string]bool)
 
 	for rows.Next() {
 		item := LeaderBoardsResponseItem{}
 
-		err := rows.Scan(
+		bindings := []any{
 			&item.Id, &item.Name,
 			&item.Type, &item.AuthId,
 			&item.TotalGames, &item.TotalDeaths,
 			&item.TotalDamage, &item.TotalKills,
 			&item.TotalLargeKills, &item.TotalHeals,
-			&item.TotalPlaytime, &item.HSAccuracy,
-			&item.Accuracy, &item.AverageZedtime,
-		)
+			&item.TotalPlaytime,
+		}
+
+		if req.Perk != 0 {
+			bindings = append(bindings,
+				&item.HSAccuracy, &item.Accuracy,
+				&item.AverageZedtime, &item.AverageBuffsUptime,
+			)
+		}
+
+		err := rows.Scan(bindings...)
 		if err != nil {
 			return nil, err
 		}
@@ -156,9 +206,9 @@ func (s *LeaderBoardsService) getLeaderBoard(
 	// Join most damage games
 	{
 		conds := make([]string, 0)
-		args := make([]interface{}, 0)
+		args := make([]any, 0)
 
-		conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
+		conds = append(conds, "period BETWEEN yearweek(?) AND yearweek(?)")
 		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
 		if req.Perk != 0 {
@@ -166,28 +216,31 @@ func (s *LeaderBoardsService) getLeaderBoard(
 			args = append(args, req.Perk)
 		}
 
-		conds = append(conds, fmt.Sprintf("user_id IN (%v)", util.IntArrayToString(userIds, ",")))
+		if len(req.ServerIds) > 0 {
+			conds = append(conds, fmt.Sprintf("server_id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
+		}
 
-		sql := fmt.Sprintf(`
+		conds = append(conds, fmt.Sprintf("user_id IN (%v)", util.IntArrayToString(userData.Ids, ",")))
+
+		stmt := fmt.Sprintf(`
 			SELECT
 				user_id,
-				ANY_VALUE(session_id) as session_id,
-				max(metric) as metric
+				ANY_VALUE(max_damage_session_id) as session_id,
+				max(max_damage) as metric
 			FROM (
 				SELECT
 					user_id,
-					session_id,
-					sum(aggr.damage_dealt) as metric
-				FROM session
-				INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
+					max_damage_session_id,
+					max(max_damage) as max_damage
+				FROM %v
 				WHERE %v
-				GROUP BY session_id, user_id
-				ORDER BY metric DESC
+				GROUP BY user_id, max_damage_session_id
+				ORDER BY max_damage DESC
 			) t
-			GROUP BY user_id`, strings.Join(conds, " AND "),
+			GROUP BY user_id`, tableName, strings.Join(conds, " AND "),
 		)
 
-		rows, err := s.db.Query(sql, args...)
+		rows, err := s.db.Query(stmt, args...)
 		if err != nil {
 			return nil, err
 		}
@@ -230,205 +283,50 @@ func (s *LeaderBoardsService) getLeaderBoard(
 			}
 		}
 	}
+
 	return &res, nil
-}
-
-func (s *LeaderBoardsService) getAccuracyTop(
-	req LeaderBoardsRequest,
-) ([]int, error) {
-	conds := make([]string, 0)
-	args := make([]interface{}, 0)
-
-	if req.Perk == 0 {
-		return nil, errors.New(fmt.Sprintf("perk cannot be null with selected type"))
-	}
-
-	args = append(args, req.Perk, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
-
-	conds = append(conds, "perk = ?")
-	args = append(args, req.Perk)
-
-	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
-	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
-
-	sql := fmt.Sprintf(`
-		SELECT
-			user_id,
-			get_avg_acc(user_id, ?, ?, ?) as metric
-		FROM (
-			SELECT
-				user_id,
-				count(distinct session.id) as total_games
-			FROM session
-			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-			WHERE %v
-			GROUP BY user_id
-			HAVING total_games >= 10
-		) t
-		ORDER BY metric DESC
-		LIMIT 50`, strings.Join(conds, " AND "),
-	)
-
-	rows, err := s.db.Query(sql, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	items := []int{}
-	for rows.Next() {
-		var item int
-		var unused float64
-		err := rows.Scan(&item, &unused)
-		if err != nil {
-			return nil, err
-		}
-
-		items = append(items, item)
-	}
-
-	return items, nil
-}
-
-func (s *LeaderBoardsService) getHSAccuracyTop(
-	req LeaderBoardsRequest,
-) ([]int, error) {
-	conds := make([]string, 0)
-	args := make([]interface{}, 0)
-
-	if req.Perk == 0 {
-		return nil, errors.New(fmt.Sprintf("perk cannot be null with selected type"))
-	}
-
-	args = append(args, req.Perk, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
-
-	conds = append(conds, "perk = ?")
-	args = append(args, req.Perk)
-
-	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
-	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
-
-	sql := fmt.Sprintf(`
-		SELECT
-			user_id,
-			get_avg_hs_acc(user_id, ?, ?, ?) as metric
-		FROM (
-			SELECT
-				user_id,
-				count(distinct session.id) as total_games
-			FROM session
-			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-			WHERE %v
-			GROUP BY user_id
-			HAVING total_games >= 10
-		) t
-		ORDER BY metric DESC
-		LIMIT 50`, strings.Join(conds, " AND "),
-	)
-
-	rows, err := s.db.Query(sql, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	items := []int{}
-	for rows.Next() {
-		var item int
-		var unused float64
-		err := rows.Scan(&item, &unused)
-		if err != nil {
-			return nil, err
-		}
-
-		items = append(items, item)
-	}
-
-	return items, nil
-}
-
-func (s *LeaderBoardsService) getZedtimeTop(
-	req LeaderBoardsRequest,
-) ([]int, error) {
-	conds := make([]string, 0)
-	args := make([]interface{}, 0)
-
-	conds = append(conds, fmt.Sprintf("perk = %v", models.Commando))
-	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
-	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
-	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
-
-	sql := fmt.Sprintf(`
-		SELECT
-			user_id,
-			get_avg_zt(user_id, ?, ?) as metric
-		FROM (
-			SELECT
-				user_id,
-				count(distinct session.id) as total_games
-			FROM session
-			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-			WHERE %v
-			GROUP BY user_id
-			HAVING total_games >= 10
-		) t
-		ORDER BY metric DESC
-		LIMIT 50`, strings.Join(conds, " AND "),
-	)
-
-	rows, err := s.db.Query(sql, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	items := []int{}
-	for rows.Next() {
-		var item int
-		var unused float64
-		err := rows.Scan(&item, &unused)
-		if err != nil {
-			return nil, err
-		}
-
-		items = append(items, item)
-	}
-
-	return items, nil
 }
 
 func (s *LeaderBoardsService) getMostDamageTop(
 	req LeaderBoardsRequest,
-) ([]int, error) {
+) (*userIdResponse, error) {
 	conds := make([]string, 0)
-	args := make([]interface{}, 0)
+	args := make([]any, 0)
 
-	conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
+	conds = append(conds, "period BETWEEN yearweek(?) AND yearweek(?)")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
+	if len(req.ServerIds) > 0 {
+		conds = append(conds, fmt.Sprintf("server_id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
+	}
+
+	tableName := "user_weekly_stats_total"
 	if req.Perk != 0 {
+		tableName = "user_weekly_stats_perk"
 		conds = append(conds, "perk = ?")
 		args = append(args, req.Perk)
 	}
 
-	sql := fmt.Sprintf(`
+	stmt := fmt.Sprintf(`
 		SELECT
 			user_id,
-			max(metric) as metric
+			max(max_damage) as metric
 		FROM (
 			SELECT
 				user_id,
-				session_id,
-				sum(aggr.damage_dealt) as metric
-			FROM session
-			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
+				max_damage_session_id,
+				max(max_damage) as max_damage
+			FROM %v
 			WHERE %v
-			GROUP BY session_id, user_id
-			ORDER BY metric DESC
+			GROUP BY user_id, max_damage_session_id
+			ORDER BY max_damage DESC
 		) t
 		GROUP BY user_id
 		ORDER BY metric desc
-		LIMIT 50`, strings.Join(conds, " AND "),
+		LIMIT %v, 50`, tableName, strings.Join(conds, " AND "), req.Page*50,
 	)
 
-	rows, err := s.db.Query(sql, args...)
+	rows, err := s.db.Query(stmt, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -445,65 +343,91 @@ func (s *LeaderBoardsService) getMostDamageTop(
 		items = append(items, item)
 	}
 
-	return items, nil
+	totalRows, err := s.getTotalRows(req, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userIdResponse{
+		Ids:   items,
+		Total: totalRows,
+	}, nil
 }
 
 func (s *LeaderBoardsService) getLeaderboardIds(
 	req LeaderBoardsRequest,
-) ([]int, error) {
+) (*userIdResponse, error) {
 	conds := make([]string, 0)
-	args := make([]interface{}, 0)
+	args := make([]any, 0)
 
 	var metric string
-	switch req.Type {
+	switch req.OrderBy {
 	case TotalGames:
-		metric = "coalesce(sum(games_played), 0) as metric"
+		metric = "sum(total_games) as metric"
 	case TotalDeaths:
 		metric = "coalesce(sum(deaths), 0) as metric"
 	case TotalDamage:
 		metric = "coalesce(sum(damage_dealt), 0) as metric"
 	case TotalKills:
-		metric = "coalesce(sum(kills.total), 0) as metric"
+		metric = "coalesce(sum(total_kills), 0) as metric"
 	case TotalLargeKills:
-		metric = "coalesce(sum(kills.large), 0) as metric"
+		metric = "coalesce(sum(large_kills), 0) as metric"
 	case TotalHeals:
 		metric = "coalesce(sum(heals_given), 0) as metric"
 	case TotalPlaytime:
 		metric = "floor(coalesce(sum(playtime_seconds), 0) / 3600) as metric"
+	case AverageZedtime:
+		metric = "coalesce(sum(zedtime_length) / sum(zedtime_count), 0) as metric"
+	case AverageBuffsUptime:
+		metric = "coalesce(sum(buffs_active_length) / sum(buffs_total_length), 0) as metric"
+	case Accuracy:
+		metric = "greatest(0, least(coalesce(sum(shots_hit) / sum(shots_fired), 0), 1)) as metric"
+	case HsAccuracy:
+		metric = "greatest(0, least(coalesce(sum(shots_hs) / sum(shots_hit), 0), 1)) as metric"
 	}
 
-	conds = append(conds, "period BETWEEN ? AND ?")
+	conds = append(conds, "period BETWEEN yearweek(?) AND yearweek(?)")
 	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 
+	if len(req.ServerIds) > 0 {
+		conds = append(conds, fmt.Sprintf("server_id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
+	}
+
+	tableName := "user_weekly_stats_total"
 	if req.Perk != 0 {
+		tableName = "user_weekly_stats_perk"
 		conds = append(conds, "perk = ?")
 		args = append(args, req.Perk)
 	}
 
-	sql := fmt.Sprintf(`
-		SELECT
-			users.id,
-			t.metric
+	restrictByGamesCond := ""
+	if req.To.Sub(req.From).Hours()/24 >= 81 {
+		// 3 Month leaderboard requires at least 25 recent games
+		restrictByGamesCond = "HAVING sum(total_games) >= 25"
+	} else if req.To.Sub(req.From).Hours()/24 >= 28 {
+		// Month leaderboard requires at least 10 recent games
+		restrictByGamesCond = "HAVING sum(total_games) >= 10"
+	} else {
+		restrictByGamesCond = "HAVING sum(total_games) >= 3"
+	}
+
+	stmt := fmt.Sprintf(`
+		SELECT users.id, t.metric
 		FROM (
-			SELECT
-				user_id,
-				coalesce(sum(games_played), 0) as total_games,
-				%v
-			FROM daily_user_stats
-			INNER JOIN daily_user_kills kills ON kills.id = daily_user_stats.id
+			SELECT user_id, %v
+			FROM %v
 			WHERE %v
 			GROUP BY user_id
-			HAVING total_games >= 10
+			%v
 			ORDER BY metric DESC
-			LIMIT 50
+			LIMIT %v, 50
 		) t
 		INNER JOIN users ON users.id = t.user_id
-		GROUP BY user_id
 		ORDER BY metric DESC, name ASC
-		`, metric, strings.Join(conds, " AND "),
+		`, metric, tableName, strings.Join(conds, " AND "), restrictByGamesCond, req.Page*50,
 	)
 
-	rows, err := s.db.Query(sql, args...)
+	rows, err := s.db.Query(stmt, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -520,5 +444,82 @@ func (s *LeaderBoardsService) getLeaderboardIds(
 		items = append(items, item)
 	}
 
-	return items, nil
+	totalRows, err := s.getTotalRows(req, true)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userIdResponse{
+		Ids:   items,
+		Total: totalRows,
+	}, nil
+}
+
+func (s *LeaderBoardsService) validateRequest(req LeaderBoardsRequest) error {
+	if req.Perk == 0 {
+		switch req.OrderBy {
+		case AverageZedtime:
+		case AverageBuffsUptime:
+			return fmt.Errorf("selected type requires selected perk")
+		}
+	}
+
+	return nil
+}
+
+func (s *LeaderBoardsService) getTotalRows(
+	req LeaderBoardsRequest, restrictByGames bool,
+) (int, error) {
+	conds := make([]string, 0)
+	args := make([]any, 0)
+
+	conds = append(conds, "period BETWEEN yearweek(?) AND yearweek(?)")
+	args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+
+	tableName := "user_weekly_stats_total"
+	if req.Perk != 0 {
+		tableName = "user_weekly_stats_perk"
+		conds = append(conds, "perk = ?")
+		args = append(args, req.Perk)
+	}
+
+	if len(req.ServerIds) > 0 {
+		conds = append(conds, fmt.Sprintf("server_id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
+	}
+
+	restrictByGamesCond := ""
+	if restrictByGames {
+		if req.To.Sub(req.From).Hours()/24 >= 81 {
+			// 3 Month leaderboard requires at least 25 recent games
+			restrictByGamesCond = "HAVING sum(total_games) >= 25"
+		} else if req.To.Sub(req.From).Hours()/24 >= 28 {
+			// Month leaderboard requires at least 10 recent games
+			restrictByGamesCond = "HAVING sum(total_games) >= 10"
+		} else {
+			restrictByGamesCond = "HAVING sum(total_games) >= 3"
+		}
+	}
+
+	var total int
+	stmt := fmt.Sprintf(`
+		SELECT count(*)
+		FROM (
+			SELECT user_id, sum(total_games) as metric
+			FROM %v
+			WHERE %v
+			GROUP BY user_id
+			%v
+			ORDER BY metric DESC
+		) t
+		`, tableName, strings.Join(conds, " AND "), restrictByGamesCond,
+	)
+
+	row := s.db.QueryRow(stmt, args...)
+
+	err := row.Scan(&total)
+	if err != nil {
+		return 0, err
+	}
+
+	return total, nil
 }

@@ -23,25 +23,37 @@ func RegisterRoutes(
 
 	routes.POST("/server/session/count",
 		cache.Cache(memoryStore, 5*time.Minute,
-			strategy.CacheByRequestBody[SessionCountRequest](func(req SessionCountRequest) string {
-				return fmt.Sprintf("%v/%v/%v/%v",
-					req.ServerId, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"), req.Period)
+			strategy.CacheByRequestBody(func(req SessionCountRequest) string {
+				if req.From != nil && req.To != nil {
+					return fmt.Sprintf("%v/%v/%v/%v",
+						req.ServerId, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"), req.Period)
+				}
+
+				return fmt.Sprintf("%v/%v", req.ServerId, req.Period)
 			}),
 		),
 		controller.getSessionCount)
 	routes.POST("/server/usage",
 		cache.Cache(memoryStore, 5*time.Minute,
-			strategy.CacheByRequestBody[UsageInMinutesRequest](func(req UsageInMinutesRequest) string {
-				return fmt.Sprintf("%v/%v/%v/%v",
-					req.ServerId, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"), req.Period)
+			strategy.CacheByRequestBody(func(req UsageInMinutesRequest) string {
+				if req.From != nil && req.To != nil {
+					return fmt.Sprintf("%v/%v/%v/%v",
+						req.ServerId, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"), req.Period)
+				}
+
+				return fmt.Sprintf("%v/%v", req.ServerId, req.Period)
 			}),
 		),
 		controller.getUsageInMinutes)
 	routes.POST("/server/online",
 		cache.Cache(memoryStore, 5*time.Minute,
-			strategy.CacheByRequestBody[PlayersOnlineRequest](func(req PlayersOnlineRequest) string {
-				return fmt.Sprintf("%v/%v/%v/%v",
-					req.ServerId, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"), req.Period)
+			strategy.CacheByRequestBody(func(req PlayersOnlineRequest) string {
+				if req.From != nil && req.To != nil {
+					return fmt.Sprintf("%v/%v/%v/%v",
+						req.ServerId, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"), req.Period)
+				}
+
+				return fmt.Sprintf("%v/%v", req.ServerId, req.Period)
 			}),
 		),
 		controller.getPlayersOnline)

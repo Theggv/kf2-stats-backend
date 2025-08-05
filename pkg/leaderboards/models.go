@@ -1,9 +1,9 @@
 package leaderboards
 
-type LeaderBoardType = int
+type LeaderBoardOrderBy = int
 
 const (
-	TotalGames LeaderBoardType = iota + 1
+	TotalGames LeaderBoardOrderBy = iota + 1
 	TotalDeaths
 
 	Accuracy
@@ -19,5 +19,7 @@ const (
 	TotalHeals
 
 	AverageZedtime
+	AverageBuffsUptime
+
 	TotalPlaytime
 )

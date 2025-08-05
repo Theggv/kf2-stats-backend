@@ -1,7 +1,6 @@
 package maps
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -27,8 +26,7 @@ func (c *mapsController) getById(ctx *gin.Context) {
 
 	item, err := c.service.GetById(id)
 	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
+		ctx.String(http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -47,7 +45,6 @@ func (c *mapsController) getByPattern(ctx *gin.Context) {
 	items, err := c.service.GetByPattern(pattern)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -66,14 +63,12 @@ func (c *mapsController) updatePreview(ctx *gin.Context) {
 	var req UpdatePreviewRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	err := c.service.UpdatePreview(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 

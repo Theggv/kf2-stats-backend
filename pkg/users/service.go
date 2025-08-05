@@ -3,7 +3,6 @@ package users
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/steamapi"
@@ -201,7 +200,7 @@ func (s *UserService) getUserDetailed(id int) (*FilterUsersResponseUser, error) 
 func (s *UserService) filter(req FilterUsersRequest) (*FilterUsersResponse, error) {
 	page, limit := util.ParsePagination(req.Pager)
 
-	sql := fmt.Sprintf(`
+	stmt := fmt.Sprintf(`
 		SELECT 
 			users.id,
 			users.name,
@@ -212,13 +211,16 @@ func (s *UserService) filter(req FilterUsersRequest) (*FilterUsersResponse, erro
 			users_activity.updated_at
 		FROM users
 		INNER JOIN users_activity ON users_activity.user_id = users.id
-		WHERE lower(users.name) LIKE '%%%v%%'
+		WHERE LOWER(users.name) LIKE ?
 		ORDER BY users_activity.updated_at DESC
 		LIMIT %v, %v
-		`, req.SearchText, page*limit, limit,
+		`, page*limit, limit,
 	)
+	args := []any{
+		fmt.Sprintf("%%%v%%", req.SearchText),
+	}
 
-	rows, err := s.db.Query(sql)
+	rows, err := s.db.Query(stmt, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -296,14 +298,16 @@ func (s *UserService) filter(req FilterUsersRequest) (*FilterUsersResponse, erro
 	var total int
 	{
 		// Prepare count query
-		sql = fmt.Sprintf(`
+		stmt = `
 			SELECT count(*) FROM users
 			INNER JOIN users_activity ON users_activity.user_id = users.id
-			WHERE lower(users.name) LIKE '%%%v%%'`,
-			req.SearchText,
-		)
+			WHERE lower(users.name) LIKE ?`
 
-		if err := s.db.QueryRow(sql).Scan(&total); err != nil {
+		args := []any{
+			fmt.Sprintf("%%%v%%", req.SearchText),
+		}
+
+		if err := s.db.QueryRow(stmt, args...).Scan(&total); err != nil {
 			return nil, err
 		}
 	}
@@ -337,7 +341,7 @@ func (s *UserService) getSessions(sessionIds []int) (map[int]FilterUsersResponse
 		INNER JOIN server ON server.id = session.server_id
 		INNER JOIN maps ON maps.id = session.map_id
 		INNER JOIN session_game_data gd ON gd.session_id = session.id
-		LEFT JOIN session_game_data_cd cd ON cd.session_id = session.id
+		LEFT JOIN session_game_data_extra cd ON cd.session_id = session.id
 		WHERE session.id IN (%v)`,
 		util.IntArrayToString(sessionIds, ","),
 	)
@@ -350,7 +354,7 @@ func (s *UserService) getSessions(sessionIds []int) (map[int]FilterUsersResponse
 	items := make(map[int]FilterUsersResponseUserSession)
 	for rows.Next() {
 		item := FilterUsersResponseUserSession{}
-		cdData := models.CDGameData{}
+		cdData := models.ExtraGameData{}
 
 		rows.Scan(
 			&item.Id, &item.Mode, &item.Length, &item.Difficulty, &item.Status, &item.Wave,
@@ -382,179 +386,56 @@ func (s *UserService) GetSteamData(steamIds []string) (map[string]steamapi.GetUs
 	return steamDataSet, nil
 }
 
-func (s *UserService) getUserSessions(req RecentSessionsRequest) (*RecentSessionsResponse, error) {
-	page, limit := util.ParsePagination(req.Pager)
-
-	conds := []string{}
-	args := []any{}
-
-	conds = append(conds, "aggr.user_id = ?")
-	args = append(args, req.UserId)
-
-	if len(req.Perks) > 0 {
-		conds = append(conds, fmt.Sprintf("aggr.perk IN (%v)", util.IntArrayToString(req.Perks, ",")))
-	}
-
-	if len(req.MapIds) > 0 {
-		conds = append(conds, fmt.Sprintf("maps.id IN (%v)", util.IntArrayToString(req.MapIds, ",")))
-	}
-
-	if len(req.ServerIds) > 0 {
-		conds = append(conds, fmt.Sprintf("server.id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
-	}
-
-	if req.Mode != nil {
-		conds = append(conds, fmt.Sprintf("session.mode = %v", *req.Mode))
-	}
-
-	if req.Mode == nil || *req.Mode != models.ControlledDifficulty {
-		if req.Difficulty != nil {
-			conds = append(conds, fmt.Sprintf("session.diff = %v", *req.Difficulty))
-		}
-	}
-
-	if req.Status != nil {
-		conds = append(conds, fmt.Sprintf("session.status = %v", *req.Status))
-	}
-
-	if req.Length != nil {
-		conds = append(conds, fmt.Sprintf("session.length = %v", *req.Length))
-	}
-
-	if req.MinWave != nil {
-		conds = append(conds, fmt.Sprintf("gd.wave >= %v", *req.MinWave))
-	}
-
-	if req.Mode != nil && *req.Mode == models.ControlledDifficulty {
-		if req.SpawnCycle != nil {
-			conds = append(conds, "cd.spawn_cycle LIKE ?")
-			args = append(args, "%"+*req.SpawnCycle+"%")
-		}
-
-		if req.MinMaxMonsters != nil {
-			conds = append(conds, fmt.Sprintf("cd.max_monsters >= %v", *req.MinMaxMonsters))
-		}
-	}
-
-	if req.Date != nil {
-		conds = append(conds, "DATE(session.started_at) = ?")
-		args = append(args, req.Date.Format("2006-01-02"))
-	}
-
-	sql := fmt.Sprintf(`
-		SELECT
-			session.id,
-			session.mode,
-			session.length,
-			session.diff,
-			session.status,
-			gd.wave,
-			cd.spawn_cycle,
-			cd.max_monsters,
-			cd.wave_size_fakes,
-			cd.zeds_type,
-			maps.name,
-			server.id,
-			server.name,
-			session.updated_at
-		FROM session
-		INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-		INNER JOIN maps on maps.id = session.map_id
-		INNER JOIN server on server.id = session.server_id
-		INNER JOIN session_game_data gd on gd.session_id = session.id
-		LEFT JOIN session_game_data_cd cd on cd.session_id = session.id
-		WHERE %v
-		GROUP BY session.id
-		ORDER BY session.updated_at DESC
-		LIMIT %v, %v
-		`, strings.Join(conds, " AND "), page*limit, limit,
-	)
-
-	rows, err := s.db.Query(sql, args...)
+func (s *UserService) GetUserProfiles(
+	userId []int,
+) ([]*models.UserProfile, error) {
+	users, err := s.GetManyById(userId)
 	if err != nil {
 		return nil, err
 	}
 
-	sessionMap := make(map[int]*RecentSessionsResponseSession)
-	items := []*RecentSessionsResponseSession{}
-	for rows.Next() {
-		item := RecentSessionsResponseSession{}
-		cdData := models.CDGameData{}
+	set := make(map[string]bool)
+	steamIds := []string{}
 
-		rows.Scan(
-			&item.Id, &item.Mode, &item.Length, &item.Difficulty, &item.Status, &item.Wave,
-			&cdData.SpawnCycle, &cdData.MaxMonsters, &cdData.WaveSizeFakes, &cdData.ZedsType,
-			&item.MapName, &item.Server.Id, &item.Server.Name, &item.UpdatedAt,
-		)
-
-		if cdData.SpawnCycle != nil {
-			item.CDData = &cdData
+	for _, player := range users {
+		if player.Type != models.Steam {
+			continue
 		}
-
-		items = append(items, &item)
-		sessionMap[item.Id] = &item
+		set[player.AuthId] = true
 	}
 
-	if len(items) > 0 {
-		ids := []int{}
-		for id := range sessionMap {
-			ids = append(ids, id)
-		}
-
-		perkConds := []string{}
-		perkConds = append(perkConds, fmt.Sprintf("aggr.user_id = %v", req.UserId))
-		perkConds = append(perkConds, fmt.Sprintf("session.id IN (%v)", util.IntArrayToString(ids, ",")))
-
-		sql := fmt.Sprintf(`
-			SELECT DISTINCT session.id, aggr.perk
-			FROM session
-			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-			WHERE %v
-			`, strings.Join(perkConds, " AND "),
-		)
-
-		rows, err = s.db.Query(sql)
-		if err != nil {
-			return nil, err
-		}
-
-		for rows.Next() {
-			var sessionId, perk int
-
-			rows.Scan(&sessionId, &perk)
-
-			if data, ok := sessionMap[sessionId]; ok {
-				data.Perks = append(data.Perks, perk)
-			}
-		}
+	for key := range set {
+		steamIds = append(steamIds, key)
 	}
 
-	var total int
-	{
-		sql = fmt.Sprintf(`
-			SELECT count(distinct session.id) FROM session
-			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
-			INNER JOIN maps on maps.id = session.map_id
-			INNER JOIN server on server.id = session.server_id
-			INNER JOIN session_game_data gd on gd.session_id = session.id
-			LEFT JOIN session_game_data_cd cd on cd.session_id = session.id
-			WHERE %v`,
-			strings.Join(conds, " AND "),
-		)
-
-		if err := s.db.QueryRow(sql, args...).Scan(&total); err != nil {
-			return nil, err
-		}
+	steamData, err := s.steamApiService.GetUserSummary(steamIds)
+	if err != nil {
+		return nil, err
 	}
 
-	return &RecentSessionsResponse{
-		Items: items,
-		Metadata: models.PaginationResponse{
-			Page:           page,
-			ResultsPerPage: limit,
-			TotalResults:   total,
-		},
-	}, nil
+	steamDataSet := make(map[string]steamapi.GetUserSummaryPlayer)
+	for _, data := range steamData {
+		steamDataSet[data.SteamId] = data
+	}
+
+	profiles := []*models.UserProfile{}
+
+	for _, player := range users {
+		profile := models.UserProfile{
+			Id:     player.Id,
+			AuthId: player.AuthId,
+			Name:   player.Name,
+		}
+
+		if data, exists := steamDataSet[player.AuthId]; exists {
+			profile.ProfileUrl = &data.ProfileUrl
+			profile.Avatar = &data.Avatar
+		}
+
+		profiles = append(profiles, &profile)
+	}
+
+	return profiles, nil
 }
 
 func (s *UserService) GetUserProfiles(

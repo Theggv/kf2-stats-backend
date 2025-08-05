@@ -1,9 +1,12 @@
 package demorecord
 
+import "github.com/theggv/kf2-stats-backend/pkg/common/models"
+
 type DemoRecordAnalysisWaveBuffsUptime struct {
-	UserId     int     `json:"user_index"`
-	TotalTicks int     `json:"total_ticks"`
-	Percent    float64 `json:"percent"`
+	UserId int `json:"user_index"`
+
+	BuffedTicks int `json:"buffed_ticks"`
+	TotalTicks  int `json:"total_ticks"`
 }
 
 type DemoRecordAnalysisWaveDifficultyItem struct {
@@ -66,12 +69,19 @@ type Summary struct {
 	LargePercent  float64 `json:"large_percent"`
 }
 
+type BuffsUptimeAnalytics struct {
+	BuffedTicks int `json:"buffed_ticks"`
+	TotalTicks  int `json:"total_ticks"`
+
+	Detailed []*DemoRecordAnalysisWaveBuffsUptime `json:"detailed"`
+}
+
 type DemoRecordAnalysisWaveAnalytics struct {
 	Summary    *Summary             `json:"summary"`
 	Difficulty *DifficultyAnalytics `json:"difficulty"`
 	Zedtime    *ZedtimeAnalytics    `json:"zedtime"`
 
-	BuffsUptime []*DemoRecordAnalysisWaveBuffsUptime `json:"buffs_uptime"`
+	BuffsUptime *BuffsUptimeAnalytics `json:"buffs_uptime"`
 }
 
 type DemoRecordAnalysisWave struct {
@@ -89,6 +99,20 @@ type DemoRecordAnalysisAnalytics struct {
 	Summary    *Summary             `json:"summary"`
 	Difficulty *DifficultyAnalytics `json:"difficulty"`
 	Zedtime    *ZedtimeAnalytics    `json:"zedtime"`
+
+	BuffsUptime *BuffsUptimeAnalytics `json:"buffs_uptime"`
+}
+
+type DemoRecordPlayers []*DemoRecordParsedPlayer
+
+func (p DemoRecordPlayers) GetByIndex(userIndex int) *models.UserProfile {
+	for _, item := range p {
+		if item.UserId == userIndex {
+			return item.Profile
+		}
+	}
+
+	return nil
 }
 
 type DemoRecordAnalysis struct {
@@ -100,7 +124,7 @@ type DemoRecordAnalysis struct {
 
 	Analytics *DemoRecordAnalysisAnalytics `json:"analytics"`
 
-	Players []*DemoRecordParsedPlayer `json:"players"`
+	Players DemoRecordPlayers         `json:"players"`
 	Waves   []*DemoRecordAnalysisWave `json:"waves"`
 }
 
@@ -112,8 +136,9 @@ func (demo *DemoRecordParsed) Analyze() *DemoRecordAnalysis {
 		EndTick:   demo.EndTick,
 		Players:   demo.Players,
 		Analytics: &DemoRecordAnalysisAnalytics{
-			Summary: &Summary{},
-			Zedtime: &ZedtimeAnalytics{},
+			Summary:     &Summary{},
+			Zedtime:     &ZedtimeAnalytics{},
+			BuffsUptime: &BuffsUptimeAnalytics{},
 		},
 	}
 
@@ -123,85 +148,8 @@ func (demo *DemoRecordParsed) Analyze() *DemoRecordAnalysis {
 		res.Waves = append(res.Waves, demo.analyzeWave(wave))
 	}
 
-	// diff := []float64{}
-	// for _, wave := range res.Waves {
-	// 	for _, tick := range wave.Analytics.Difficulty.Buckets {
-	// 		diff = append(diff, tick.Score)
-	// 	}
-	// }
-
-	// mean, stddev := stat.MeanStdDev(diff, nil)
-	// fmt.Printf("mean: %v stddev: %v\n", mean, stddev)
-
-	{
-		// Zedtime analytics
-		analytics := res.Analytics.Zedtime
-
-		for i := range res.Waves {
-			item := res.Waves[i].Analytics.Zedtime
-
-			analytics.TotalZedtimes += item.TotalZedtimes
-
-			analytics.AvgExtendsCount += item.AvgExtendsCount
-
-			if item.TimeBetweenZedtimes.Avg > 0 {
-				analytics.NonNullTimeBetweenZedtimes += 1
-				analytics.TimeBetweenZedtimes.Avg += item.TimeBetweenZedtimes.Avg
-			}
-
-			if item.FirstZedtimeTick.Avg > 0 {
-				analytics.NonNullZedtimesCount += 1
-				analytics.FirstZedtimeTick.Avg += item.FirstZedtimeTick.Avg
-				analytics.ZedtimeDuration.Avg += item.ZedtimeDuration.Avg
-			}
-
-			if item.FirstZedtimeTick.Max > analytics.FirstZedtimeTick.Max {
-				analytics.FirstZedtimeTick.Max = item.FirstZedtimeTick.Max
-			}
-
-			if item.FirstZedtimeTick.Min > 0 &&
-				(item.FirstZedtimeTick.Min < analytics.FirstZedtimeTick.Min ||
-					analytics.FirstZedtimeTick.Min == 0) {
-				analytics.FirstZedtimeTick.Min = item.FirstZedtimeTick.Min
-			}
-
-			if item.ZedtimeDuration.Max > analytics.ZedtimeDuration.Max {
-				analytics.ZedtimeDuration.Max = item.ZedtimeDuration.Max
-			}
-
-			if item.ZedtimeDuration.Min > 0 &&
-				(item.ZedtimeDuration.Min < analytics.ZedtimeDuration.Min ||
-					analytics.ZedtimeDuration.Min == 0) {
-				analytics.ZedtimeDuration.Min = item.ZedtimeDuration.Min
-			}
-
-			if item.TimeBetweenZedtimes.Max > analytics.TimeBetweenZedtimes.Max {
-				analytics.TimeBetweenZedtimes.Max = item.TimeBetweenZedtimes.Max
-			}
-
-			if item.TimeBetweenZedtimes.Min > 0 &&
-				(item.TimeBetweenZedtimes.Min < analytics.TimeBetweenZedtimes.Min ||
-					analytics.TimeBetweenZedtimes.Min == 0) {
-				analytics.TimeBetweenZedtimes.Min = item.TimeBetweenZedtimes.Min
-			}
-		}
-
-		if analytics.TotalZedtimes > 0 {
-			if analytics.NonNullZedtimesCount > 0 {
-				analytics.AvgExtendsCount /= float64(analytics.NonNullZedtimesCount)
-				analytics.FirstZedtimeTick.Avg /= float64(analytics.NonNullZedtimesCount)
-				analytics.ZedtimeDuration.Avg /= float64(analytics.NonNullZedtimesCount)
-			}
-
-			if analytics.NonNullTimeBetweenZedtimes > 0 {
-				analytics.TimeBetweenZedtimes.Avg /= float64(analytics.NonNullTimeBetweenZedtimes)
-			}
-
-			if analytics.AvgExtendsCount > 0 {
-				analytics.AvgExtendDuration = (analytics.ZedtimeDuration.Avg - 3) / analytics.AvgExtendsCount
-			}
-		}
-	}
+	res.Analytics.Zedtime = res.calcZedtimeAnalytics()
+	res.Analytics.BuffsUptime = res.calcBuffsUptime()
 
 	return &res
 }
@@ -213,7 +161,7 @@ func (demo *DemoRecordParsed) analyzeWave(wave *DemoRecordParsedWave) *DemoRecor
 			Summary:     &Summary{},
 			Difficulty:  &DifficultyAnalytics{},
 			Zedtime:     &ZedtimeAnalytics{},
-			BuffsUptime: []*DemoRecordAnalysisWaveBuffsUptime{},
+			BuffsUptime: &BuffsUptimeAnalytics{},
 		},
 		Zedtimes:     []*DemoRecordAnalysisZedtime{},
 		ZedsLeft:     []*DemoRecordParsedEventZedsLeft{},
@@ -238,74 +186,11 @@ func (demo *DemoRecordParsed) analyzeWave(wave *DemoRecordParsedWave) *DemoRecor
 
 	res.ZedsLeft = append(res.ZedsLeft, zedsLeft...)
 
-	{
-		// Zedtime wave analytics
-		analytics := res.Analytics.Zedtime
+	res.Analytics.Zedtime = res.calcZedtimeAnalytics()
+	res.Analytics.Summary = res.calcSummary()
 
-		if len(res.Zedtimes) > 0 {
-			analytics.ZedtimeDuration.Min = res.Zedtimes[0].MetaData.Duration
-			analytics.ZedtimeDuration.Max = res.Zedtimes[0].MetaData.Duration
-		}
-
-		if len(res.Zedtimes) > 1 {
-			analytics.TimeBetweenZedtimes.Min = float64(res.Zedtimes[1].TicksSinceLast) / 100
-			analytics.TimeBetweenZedtimes.Max = float64(res.Zedtimes[1].TicksSinceLast) / 100
-		}
-
-		for i := range res.Zedtimes {
-			item := res.Zedtimes[i]
-
-			analytics.AvgExtendsCount += float64(item.MetaData.ExtendsCount)
-			analytics.ZedtimeDuration.Avg += item.MetaData.Duration
-			analytics.TimeBetweenZedtimes.Avg += float64(item.TicksSinceLast)
-
-			if item.MetaData.Duration > analytics.ZedtimeDuration.Max {
-				analytics.ZedtimeDuration.Max = item.MetaData.Duration
-			}
-
-			if item.MetaData.Duration < analytics.ZedtimeDuration.Min {
-				analytics.ZedtimeDuration.Min = item.MetaData.Duration
-			}
-
-			if i == 0 {
-				continue
-			}
-
-			if float64(item.TicksSinceLast)/100 > analytics.TimeBetweenZedtimes.Max {
-				analytics.TimeBetweenZedtimes.Max = float64(item.TicksSinceLast) / 100
-			}
-
-			if float64(item.TicksSinceLast)/100 < analytics.TimeBetweenZedtimes.Min {
-				analytics.TimeBetweenZedtimes.Min = float64(item.TicksSinceLast) / 100
-			}
-		}
-
-		if len(res.Zedtimes) > 0 {
-			analytics.TotalZedtimes = len(res.Zedtimes)
-
-			analytics.FirstZedtimeTick.Min = float64(res.Zedtimes[0].MetaData.StartTick - res.MetaData.StartTick)
-			analytics.FirstZedtimeTick.Max = analytics.FirstZedtimeTick.Min
-			analytics.FirstZedtimeTick.Avg = analytics.FirstZedtimeTick.Min
-
-			analytics.AvgExtendsCount /= float64(len(res.Zedtimes))
-			analytics.ZedtimeDuration.Avg /= float64(len(res.Zedtimes))
-
-			if len(res.Zedtimes) > 1 {
-				analytics.TimeBetweenZedtimes.Avg /= float64(len(res.Zedtimes)-1) * 100
-			} else {
-				analytics.TimeBetweenZedtimes.Avg = 0
-			}
-
-			if analytics.AvgExtendsCount > 0 {
-				analytics.AvgExtendDuration = (analytics.ZedtimeDuration.Avg - 3) / analytics.AvgExtendsCount
-			}
-		}
-	}
-
-	res.Analytics.BuffsUptime = calcWaveBuffsUptime(&res)
-
-	res.generateSummary()
-	res.calcDifficulty(100, 500)
+	res.Analytics.BuffsUptime = res.calcBuffsUptime()
+	res.Analytics.Difficulty = res.calcDifficulty(100, 1000)
 
 	return &res
 }
@@ -339,13 +224,38 @@ func (demo *DemoRecordParsed) analyzePlayerEvents(
 			wave.StartTick,
 		); lastHpChange != nil {
 			res.HealthChanges = append(res.HealthChanges, *lastHpChange)
+		} else {
+			res.HealthChanges = append(res.HealthChanges, &DemoRecordParsedEventHpChange{
+				Tick:   wave.StartTick,
+				UserId: userId,
+				Health: 100,
+			})
 		}
 
-		res.Buffs = append(res.Buffs, &DemoRecordParsedEventBuff{
-			Tick:     wave.StartTick,
-			UserId:   userId,
-			MaxBuffs: 0,
-		})
+		if buff := findLastLower(
+			filter(
+				demo.PlayerEvents.Buffs,
+				func(item *DemoRecordParsedEventBuff) int {
+					return item.UserId
+				}, userId,
+			),
+			func(item *DemoRecordParsedEventBuff) int {
+				return item.Tick
+			},
+			wave.StartTick,
+		); buff != nil {
+			res.Buffs = append(res.Buffs, &DemoRecordParsedEventBuff{
+				Tick:     wave.StartTick,
+				UserId:   userId,
+				MaxBuffs: (*buff).MaxBuffs,
+			})
+		} else {
+			res.Buffs = append(res.Buffs, &DemoRecordParsedEventBuff{
+				Tick:     wave.StartTick,
+				UserId:   userId,
+				MaxBuffs: 0,
+			})
+		}
 	}
 
 	res.Perks = append(res.Perks,
@@ -431,103 +341,114 @@ func (demo *DemoRecordParsed) analyzeWaveZedtimes(
 	return items
 }
 
-func (wave *DemoRecordAnalysisWave) generateSummary() {
-	res := Summary{
-		ZedsKilled: &ZedCounter{},
-	}
+func (demo *DemoRecordAnalysis) calcZedtimeAnalytics() *ZedtimeAnalytics {
+	res := ZedtimeAnalytics{}
 
-	if len(wave.ZedsLeft) > 0 {
-		res.WaveSize = wave.ZedsLeft[0].ZedsLeft
-		res.ZedsLeft = wave.ZedsLeft[len(wave.ZedsLeft)-1].ZedsLeft
-		res.CompletionPercent = 1 - float64(res.ZedsLeft)/float64(res.WaveSize)
-	}
+	for i := range demo.Waves {
+		item := demo.Waves[i].Analytics.Zedtime
 
-	res.Duration = float64(wave.MetaData.EndTick-wave.MetaData.StartTick) / 100
+		res.TotalZedtimes += item.TotalZedtimes
 
-	for i := range wave.PlayerEvents.Kills {
-		kill := wave.PlayerEvents.Kills[i]
+		res.AvgExtendsCount += item.AvgExtendsCount
 
-		if kill.IsLarge() {
-			res.ZedsKilled.Large += 1
-		} else if kill.IsMedium() {
-			res.ZedsKilled.Medium += 1
-		} else if kill.IsTrash() {
-			res.ZedsKilled.Trash += 1
-		} else if kill.IsBoss() {
-			res.ZedsKilled.Boss += 1
+		if item.TimeBetweenZedtimes.Avg > 0 {
+			res.NonNullTimeBetweenZedtimes += 1
+			res.TimeBetweenZedtimes.Avg += item.TimeBetweenZedtimes.Avg
 		}
 
-		res.ZedsKilled.Total += 1
+		if item.FirstZedtimeTick.Avg > 0 {
+			res.NonNullZedtimesCount += 1
+			res.FirstZedtimeTick.Avg += item.FirstZedtimeTick.Avg
+			res.ZedtimeDuration.Avg += item.ZedtimeDuration.Avg
+		}
+
+		if item.FirstZedtimeTick.Max > res.FirstZedtimeTick.Max {
+			res.FirstZedtimeTick.Max = item.FirstZedtimeTick.Max
+		}
+
+		if item.FirstZedtimeTick.Min > 0 &&
+			(item.FirstZedtimeTick.Min < res.FirstZedtimeTick.Min ||
+				res.FirstZedtimeTick.Min == 0) {
+			res.FirstZedtimeTick.Min = item.FirstZedtimeTick.Min
+		}
+
+		if item.ZedtimeDuration.Max > res.ZedtimeDuration.Max {
+			res.ZedtimeDuration.Max = item.ZedtimeDuration.Max
+		}
+
+		if item.ZedtimeDuration.Min > 0 &&
+			(item.ZedtimeDuration.Min < res.ZedtimeDuration.Min ||
+				res.ZedtimeDuration.Min == 0) {
+			res.ZedtimeDuration.Min = item.ZedtimeDuration.Min
+		}
+
+		if item.TimeBetweenZedtimes.Max > res.TimeBetweenZedtimes.Max {
+			res.TimeBetweenZedtimes.Max = item.TimeBetweenZedtimes.Max
+		}
+
+		if item.TimeBetweenZedtimes.Min > 0 &&
+			(item.TimeBetweenZedtimes.Min < res.TimeBetweenZedtimes.Min ||
+				res.TimeBetweenZedtimes.Min == 0) {
+			res.TimeBetweenZedtimes.Min = item.TimeBetweenZedtimes.Min
+		}
 	}
 
-	if res.ZedsKilled.Total > 0 {
-		res.TrashPercent = float64(res.ZedsKilled.Trash) / float64(res.ZedsKilled.Total)
-		res.MediumPercent = float64(res.ZedsKilled.Medium) / float64(res.ZedsKilled.Total)
-		res.LargePercent = float64(res.ZedsKilled.Large) / float64(res.ZedsKilled.Total)
-		res.AvgKillsPerSecond = float64(res.ZedsKilled.Total) / res.Duration
+	if res.TotalZedtimes > 0 {
+		if res.NonNullZedtimesCount > 0 {
+			res.AvgExtendsCount /= float64(res.NonNullZedtimesCount)
+			res.FirstZedtimeTick.Avg /= float64(res.NonNullZedtimesCount)
+			res.ZedtimeDuration.Avg /= float64(res.NonNullZedtimesCount)
+		}
+
+		if res.NonNullTimeBetweenZedtimes > 0 {
+			res.TimeBetweenZedtimes.Avg /= float64(res.NonNullTimeBetweenZedtimes)
+		}
+
+		if res.AvgExtendsCount > 0 {
+			res.AvgExtendDuration = (res.ZedtimeDuration.Avg - 3) / res.AvgExtendsCount
+		}
 	}
 
-	wave.Analytics.Summary = &res
+	return &res
 }
 
-func calcWaveBuffsUptime(wave *DemoRecordAnalysisWave) []*DemoRecordAnalysisWaveBuffsUptime {
-	res := []*DemoRecordAnalysisWaveBuffsUptime{}
+func (demo *DemoRecordAnalysis) calcBuffsUptime() *BuffsUptimeAnalytics {
+	res := BuffsUptimeAnalytics{
+		BuffedTicks: 0,
+		TotalTicks:  0,
 
-	type PlayerBuffs struct {
-		Buffs []*DemoRecordParsedEventBuff
-
-		TotalTicks int
+		Detailed: []*DemoRecordAnalysisWaveBuffsUptime{},
 	}
 
-	playerBuffs := map[int]*PlayerBuffs{}
-	maxBuffDurationInTicks := 500
+	playerBuffs := map[int]*DemoRecordAnalysisWaveBuffsUptime{}
 
-	for i := range wave.PlayerEvents.Perks {
-		item := wave.PlayerEvents.Perks[i]
+	for i := range demo.Waves {
+		wave := demo.Waves[i]
 
-		playerBuffs[item.UserId] = &PlayerBuffs{}
-	}
+		data := wave.Analytics.BuffsUptime
 
-	for i := range wave.PlayerEvents.Buffs {
-		item := wave.PlayerEvents.Buffs[i]
+		for j := range data.Detailed {
+			item := data.Detailed[j]
 
-		if data, ok := playerBuffs[item.UserId]; ok {
-			data.Buffs = append(data.Buffs, item)
-		} else {
-			playerBuffs[item.UserId] = &PlayerBuffs{}
-			data := playerBuffs[item.UserId]
-			data.Buffs = append(data.Buffs, item)
-		}
-	}
-
-	for userId, data := range playerBuffs {
-		for buffIdx := range data.Buffs {
-			if buffIdx == 0 {
-				continue
-			}
-
-			prevBuff := data.Buffs[buffIdx-1]
-			curBuff := data.Buffs[buffIdx]
-
-			if prevBuff.MaxBuffs > 0 {
-				data.TotalTicks += curBuff.Tick - prevBuff.Tick
+			if data, ok := playerBuffs[item.UserId]; ok {
+				data.BuffedTicks += item.BuffedTicks
+				data.TotalTicks += item.TotalTicks
+			} else {
+				playerBuffs[item.UserId] = &DemoRecordAnalysisWaveBuffsUptime{
+					UserId:      item.UserId,
+					BuffedTicks: item.BuffedTicks,
+					TotalTicks:  item.TotalTicks,
+				}
 			}
 		}
 
-		if len(data.Buffs) > 0 {
-			lastBuff := data.Buffs[len(data.Buffs)-1]
-			if lastBuff.MaxBuffs > 0 {
-				// Last buff is still active
-				data.TotalTicks += min(maxBuffDurationInTicks, wave.MetaData.EndTick-lastBuff.Tick)
-			}
-		}
-
-		res = append(res, &DemoRecordAnalysisWaveBuffsUptime{
-			UserId:     userId,
-			TotalTicks: data.TotalTicks,
-			Percent:    float64(data.TotalTicks) / float64(wave.MetaData.EndTick-wave.MetaData.StartTick),
-		})
+		res.BuffedTicks += data.BuffedTicks
+		res.TotalTicks += data.TotalTicks
 	}
 
-	return res
+	for _, data := range playerBuffs {
+		res.Detailed = append(res.Detailed, data)
+	}
+
+	return &res
 }

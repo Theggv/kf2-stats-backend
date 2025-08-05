@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -25,14 +24,12 @@ func (c *sessionController) create(ctx *gin.Context) {
 	var req CreateSessionRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	id, err := c.service.Create(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -51,14 +48,12 @@ func (c *sessionController) updateStatus(ctx *gin.Context) {
 	var req UpdateStatusRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	err := c.service.UpdateStatus(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -75,14 +70,12 @@ func (c *sessionController) updateGameData(ctx *gin.Context) {
 	var req UpdateGameDataRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	err := c.service.UpdateGameData(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -101,7 +94,6 @@ func (c *sessionController) uploadDemo(ctx *gin.Context) {
 	err := c.service.UploadDemo(raw)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -118,21 +110,18 @@ func (c *sessionController) getDemo(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
 	rawDemo, err := c.service.GetDemo(id)
 	if err != nil {
-		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
+		ctx.String(http.StatusNotFound, err.Error())
 		return
 	}
 
 	parsedDemo, err := rawDemo.ToParsed()
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
@@ -141,6 +130,10 @@ func (c *sessionController) getDemo(ctx *gin.Context) {
 	analysis := parsedDemo.Analyze()
 
 	marshal, err := json.Marshal(analysis)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	var b bytes.Buffer
 	writer := gzip.NewWriter(&b)

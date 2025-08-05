@@ -7,6 +7,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/theggv/kf2-stats-backend/pkg/common/config"
+	"github.com/theggv/kf2-stats-backend/pkg/common/cron"
 	"github.com/theggv/kf2-stats-backend/pkg/common/database/mysql"
 	"github.com/theggv/kf2-stats-backend/pkg/common/store"
 	"github.com/theggv/kf2-stats-backend/pkg/migrations"
@@ -23,15 +24,23 @@ import (
 // @BasePath /api
 func main() {
 	config := config.Instance
-	db := mysql.NewDBInstance(
+	db, err := mysql.NewDBInstance(
 		config.DBUser, config.DBPassword, config.DBHost, config.DBName, config.DBPort,
 	)
 
-	rootStore := store.New(db, config)
+	if err != nil {
+		panic(err)
+	}
+
+	db.InitTables()
+
+	rootStore := store.New(db.Conn, config)
 	memoryStore := persist.NewMemoryStore(5 * time.Minute)
 
 	// Run migrations
-	migrations.ExecuteAll(db)
+	migrations.ExecuteAll(db.Conn)
+
+	cron.SetupTasks(rootStore)
 
 	r := gin.Default()
 

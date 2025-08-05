@@ -9,42 +9,47 @@ import (
 type SessionCountRequest struct {
 	ServerId int `json:"server_id"`
 
-	From   time.Time            `json:"date_from" binding:"required"`
-	To     time.Time            `json:"date_to" binding:"required"`
+	From   *time.Time           `json:"date_from"`
+	To     *time.Time           `json:"date_to"`
 	Period analytics.TimePeriod `json:"period" binding:"required"`
 }
 
 type PeriodData struct {
-	Count  int    `json:"count"`
 	Period string `json:"period"`
+
+	Value         int     `json:"value"`
+	PreviousValue int     `json:"prev"`
+	Difference    int     `json:"diff"`
+	MaxValue      int     `json:"max_value"`
+	Trend         float64 `json:"trend"`
 }
 
 type SessionCountResponse struct {
-	Items []PeriodData `json:"items"`
+	Items []*PeriodData `json:"items"`
 }
 
 type UsageInMinutesRequest struct {
 	ServerId int `json:"server_id" binding:"required"`
 
-	From   time.Time            `json:"date_from" binding:"required"`
-	To     time.Time            `json:"date_to" binding:"required"`
+	From   *time.Time           `json:"date_from"`
+	To     *time.Time           `json:"date_to"`
 	Period analytics.TimePeriod `json:"period" binding:"required"`
 }
 
 type UsageInMinutesResponse struct {
-	Items []PeriodData `json:"items"`
+	Items []*PeriodData `json:"items"`
 }
 
 type PlayersOnlineRequest struct {
 	ServerId int `json:"server_id"`
 
-	From   time.Time            `json:"date_from" binding:"required"`
-	To     time.Time            `json:"date_to" binding:"required"`
+	From   *time.Time           `json:"date_from"`
+	To     *time.Time           `json:"date_to"`
 	Period analytics.TimePeriod `json:"period" binding:"required"`
 }
 
 type PlayersOnlineResponse struct {
-	Items []PeriodData `json:"items"`
+	Items []*PeriodData `json:"items"`
 }
 
 type PopularServersResponseItem struct {
@@ -57,7 +62,7 @@ type PopularServersResponseItem struct {
 }
 
 type PopularServersResponse struct {
-	Items []PopularServersResponseItem `json:"items"`
+	Items []*PopularServersResponseItem `json:"items"`
 }
 
 type TotalOnlineResponse struct {
