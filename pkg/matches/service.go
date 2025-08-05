@@ -8,6 +8,7 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
+	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 	"github.com/theggv/kf2-stats-backend/pkg/stats"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
@@ -25,22 +26,25 @@ type getMatchWavesPlayersStatsResponse struct {
 type MatchesService struct {
 	db *sql.DB
 
-	userService     *users.UserService
-	sessionService  *session.SessionService
-	mapsService     *maps.MapsService
-	serverService   *server.ServerService
-	steamApiService *steamapi.SteamApiUserService
+	userService       *users.UserService
+	sessionService    *session.SessionService
+	difficultyService *difficulty.DifficultyCalculatorService
+	mapsService       *maps.MapsService
+	serverService     *server.ServerService
+	steamApiService   *steamapi.SteamApiUserService
 }
 
 func (s *MatchesService) Inject(
 	userService *users.UserService,
 	sessionService *session.SessionService,
+	difficultyService *difficulty.DifficultyCalculatorService,
 	mapsService *maps.MapsService,
 	serverService *server.ServerService,
 	steamApiService *steamapi.SteamApiUserService,
 ) {
 	s.userService = userService
 	s.sessionService = sessionService
+	s.difficultyService = difficultyService
 	s.mapsService = mapsService
 	s.serverService = serverService
 	s.steamApiService = steamApiService
