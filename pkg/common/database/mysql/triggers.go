@@ -46,7 +46,9 @@ func initTriggers(db *sql.DB) error {
 					updated_at = CURRENT_TIMESTAMP
 				WHERE current_session_id = new.id;
 
-				CALL insert_session_aggregated(new.id);
+				IF old.started_at is not null THEN
+					CALL insert_session_aggregated(new.id);
+				END IF;
 			END IF;
 		END;
 	`)
