@@ -19,7 +19,7 @@ type CreateWaveStatsRequestPlayer struct {
 	ShotsHit   int `json:"shots_hit"`
 	ShotsHS    int `json:"shots_hs"`
 
-	Kills ZedCounter `json:"kills"`
+	Kills models.ZedCounter `json:"kills"`
 
 	HuskBackpackKills int `json:"husk_b"`
 	HuskRages         int `json:"husk_r"`

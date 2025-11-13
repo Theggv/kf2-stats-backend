@@ -16,7 +16,7 @@ type DemoRecordAnalysisWaveDifficultyItem struct {
 }
 
 type DemoRecordAnalysisZedtime struct {
-	MetaData *DemoRecordParsedZedtime `json:"meta_data"`
+	MetaData *DemoRecordParsedZedtime `json:"metadata"`
 
 	TicksSinceLast int `json:"ticks_since_last"`
 
@@ -85,7 +85,7 @@ type DemoRecordAnalysisWaveAnalytics struct {
 }
 
 type DemoRecordAnalysisWave struct {
-	MetaData *DemoRecordParsedWave `json:"meta_data"`
+	MetaData *DemoRecordParsedWave `json:"metadata"`
 
 	Analytics *DemoRecordAnalysisWaveAnalytics `json:"analytics"`
 

@@ -23,7 +23,7 @@ func RegisterRoutes(
 
 	routes.POST("/maps",
 		cache.Cache(memoryStore, 5*time.Minute,
-			strategy.CacheByRequestBody[MapAnalyticsRequest](func(req MapAnalyticsRequest) string {
+			strategy.CacheByRequestBody(func(req MapAnalyticsRequest) string {
 				return fmt.Sprintf("%v/%v/%v/%v",
 					req.ServerId, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"), req.Limit)
 			}),

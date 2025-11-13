@@ -353,7 +353,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		return nil, err
 	}
 
-	matchId := []int{}
+	sessionIds := []int{}
 	items := []*Match{}
 
 	defer rows.Close()
@@ -376,12 +376,12 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 
 		item.Session = sessionData
 
-		matchId = append(matchId, item.Session.SessionId)
+		sessionIds = append(sessionIds, item.Session.SessionId)
 		items = append(items, &item)
 	}
 
 	if req.IncludeServer != nil && *req.IncludeServer {
-		serverData, err := s.getServerData(matchId)
+		serverData, err := s.getServerData(sessionIds)
 		if err != nil {
 			return nil, err
 		}
@@ -396,7 +396,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 	}
 
 	if req.IncludeMap != nil && *req.IncludeMap {
-		mapData, err := s.getMapData(matchId)
+		mapData, err := s.getMapData(sessionIds)
 		if err != nil {
 			return nil, err
 		}
@@ -411,7 +411,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 	}
 
 	if req.IncludeGameData != nil && *req.IncludeGameData {
-		gameData, err := s.getGameData(matchId)
+		gameData, err := s.getGameData(sessionIds)
 		if err != nil {
 			return nil, err
 		}
@@ -426,7 +426,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 	}
 
 	if req.IncludeCDData != nil && *req.IncludeCDData {
-		cdData, err := s.getCDGameData(matchId)
+		cdData, err := s.getCDGameData(sessionIds)
 		if err != nil {
 			return nil, err
 		}
@@ -441,7 +441,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 	}
 
 	if req.IncludePlayers != nil && *req.IncludePlayers {
-		playerData, err := s.getPlayerData(matchId)
+		playerData, err := s.getPlayerData(sessionIds)
 		if err != nil {
 			return nil, err
 		}
@@ -451,6 +451,21 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 				if items[i].Session.SessionId == playerData[j].MatchId {
 					items[i].Players = playerData[j].Players
 					items[i].Spectators = playerData[j].Spectators
+				}
+			}
+		}
+	}
+
+	{
+		difficulty, err := s.difficultyService.GetByIds(sessionIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range items {
+			for j := range difficulty {
+				if items[i].Session.SessionId == difficulty[j].SessionId {
+					items[i].Metadata.Difficulty = difficulty[j]
 				}
 			}
 		}
