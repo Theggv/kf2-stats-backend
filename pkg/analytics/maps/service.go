@@ -51,14 +51,14 @@ func (s *MapAnalyticsService) GetMapAnalytics(
 		), other AS (
 			SELECT count(*) as value
 			FROM session
-			LEFT JOIN rating ON rating.map_id = session.map_id
-			WHERE rating.map_id is null AND %v
+			LEFT JOIN maps_rating ON maps_rating.map_id = session.map_id
+			WHERE maps_rating.map_id is null AND %v
 		), result AS (
 			SELECT
 				maps.id as map_id,
 				maps.name as map_name,
 				cte.value as value
-			FROM rating cte
+			FROM maps_rating cte
 			INNER JOIN maps ON maps.id = cte.map_id
 
 			UNION ALL
@@ -76,7 +76,11 @@ func (s *MapAnalyticsService) GetMapAnalytics(
 		strings.Join(conds, " AND "), limit, strings.Join(conds, " AND "),
 	)
 
-	rows, err := s.db.Query(stmt, args...)
+	doubleArgs := []any{}
+	doubleArgs = append(doubleArgs, args...)
+	doubleArgs = append(doubleArgs, args...)
+
+	rows, err := s.db.Query(stmt, doubleArgs...)
 	if err != nil {
 		return nil, err
 	}
