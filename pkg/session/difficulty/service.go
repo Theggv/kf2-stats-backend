@@ -10,7 +10,6 @@ import (
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
-	"github.com/theggv/kf2-stats-backend/pkg/stats"
 )
 
 type DifficultyCalculatorService struct {
@@ -313,7 +312,7 @@ func (s *DifficultyCalculatorService) processSession(data *DifficultyCalculatorG
 
 	for _, wave := range data.Waves {
 		zeds := wave.Zeds.ConvertToMap()
-		totalZeds := calcTotalZeds(zeds)
+		totalZeds := zeds.GetTotal()
 
 		res := DifficultyCalculatorGameWaveScore{
 			ZedsDifficulty: calcWaveZedsDifficulty(
@@ -503,7 +502,7 @@ func (s *DifficultyCalculatorService) getSessions(sessionId []int) ([]*Difficult
 
 		for rows.Next() {
 			item := DifficultyCalculatorGameWave{
-				Zeds: &stats.ZedCounter{},
+				Zeds: &models.ZedCounter{},
 			}
 
 			var sessionId int
@@ -525,7 +524,7 @@ func (s *DifficultyCalculatorService) getSessions(sessionId []int) ([]*Difficult
 				return nil, err
 			}
 
-			item.TotalZeds = calcTotalZeds(item.Zeds.ConvertToMap())
+			item.TotalZeds = item.Zeds.ConvertToMap().GetTotal()
 
 			item.DurationRealtime = float64(item.Duration) - item.ZedtimeLength/5
 

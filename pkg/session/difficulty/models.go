@@ -2,7 +2,6 @@ package difficulty
 
 import (
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
-	"github.com/theggv/kf2-stats-backend/pkg/stats"
 )
 
 type DifficultyCalculatorGameScore struct {
@@ -61,7 +60,7 @@ type DifficultyCalculatorGameWave struct {
 	SpawnCycle  string `json:"spawn_cycle"`
 	ZedsType    string `json:"zeds_type"`
 
-	Zeds *stats.ZedCounter `json:"-"`
+	Zeds *models.ZedCounter `json:"-"`
 
 	TotalZeds     int     `json:"total_zeds"`
 	MediumPercent float64 `json:"medium_p"`

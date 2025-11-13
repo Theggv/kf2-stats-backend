@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
-	"github.com/theggv/kf2-stats-backend/pkg/stats"
 )
 
 type MatchWave struct {
@@ -48,7 +47,7 @@ type MatchWavePlayerStats struct {
 	ZedTimeCount  int     `json:"zedtime_count"`
 	ZedTimeLength float32 `json:"zedtime_length"`
 
-	Kills stats.ZedCounter `json:"kills"`
+	Kills models.ZedCounter `json:"kills"`
 
 	HuskBackpackKills int `json:"husk_b"`
 	HuskRages         int `json:"husk_r"`

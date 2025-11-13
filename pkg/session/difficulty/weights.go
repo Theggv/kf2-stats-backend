@@ -65,24 +65,14 @@ func calcZedsWeight(data map[string]int) float64 {
 	return result
 }
 
-func calcTotalZeds(data map[string]int) int {
-	result := 0
-
-	for _, val := range data {
-		result += val
-	}
-
-	return result
-}
-
 func calcWaveZedsDifficulty(
 	zedsType string,
 	wave int,
 	gameLength models.GameLength,
 	gameDifficulty models.GameDifficulty,
-	data map[string]int,
+	data models.ZedsMap,
 ) float64 {
-	totalZeds := calcTotalZeds(data)
+	totalZeds := data.GetTotal()
 	if totalZeds <= 0 {
 		return 0
 	}
@@ -156,7 +146,7 @@ func calcWaveZedsDifficulty(
 }
 
 func predictDuration(
-	zeds map[string]int,
+	zeds models.ZedsMap,
 	totalPlayers int,
 	wave int,
 ) float64 {

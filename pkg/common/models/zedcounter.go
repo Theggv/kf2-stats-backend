@@ -1,4 +1,4 @@
-package stats
+package models
 
 type ZedCounter struct {
 	Cyst         int `json:"cyst"`
@@ -31,8 +31,8 @@ func (c ZedCounter) GetTotalLarges() int {
 	return c.Scrake + c.FP + c.QP
 }
 
-func (c ZedCounter) ConvertToMap() map[string]int {
-	data := map[string]int{
+func (c ZedCounter) ConvertToMap() ZedsMap {
+	data := ZedsMap{
 		"cyst":          c.Cyst,
 		"alpha_clot":    c.AlphaClot,
 		"slasher":       c.Slasher,
@@ -58,4 +58,16 @@ func (c ZedCounter) ConvertToMap() map[string]int {
 	}
 
 	return data
+}
+
+type ZedsMap map[string]int
+
+func (c ZedsMap) GetTotal() int {
+	result := 0
+
+	for _, val := range c {
+		result += val
+	}
+
+	return result
 }

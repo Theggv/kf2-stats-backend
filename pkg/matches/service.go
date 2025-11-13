@@ -9,7 +9,6 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
-	"github.com/theggv/kf2-stats-backend/pkg/stats"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
@@ -289,7 +288,7 @@ func (s *MatchesService) getMatchWavesPlayersStats(sessionId int) (
 			playerStatsId int
 		)
 		s := MatchWavePlayerStats{}
-		kills := stats.ZedCounter{}
+		kills := models.ZedCounter{}
 
 		err := rows.Scan(&playerStatsId,
 			&s.ShotsFired, &s.ShotsHit, &s.ShotsHS,
@@ -349,7 +348,7 @@ func (s *MatchesService) GetMatchPlayerStats(sessionId, userId int) (*GetMatchPl
 	for rows.Next() {
 		var useless int
 		player := PlayerWaveStats{}
-		kills := stats.ZedCounter{}
+		kills := models.ZedCounter{}
 
 		err := rows.Scan(&player.PlayerStatsId,
 			&player.ShotsFired, &player.ShotsHit, &player.ShotsHS,
