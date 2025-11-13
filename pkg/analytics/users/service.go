@@ -319,6 +319,13 @@ func (s *UserAnalyticsService) getAccuracyHist(
 	conds = append(conds, "aggr.user_id = ?")
 	args = append(args, req.UserId)
 
+	conds = append(conds, "DATE(session.updated_at) BETWEEN ? AND ?")
+	if req.From != nil && req.To != nil {
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	} else {
+		args = append(args, "2000-01-01", "3000-01-01")
+	}
+
 	if len(req.Perks) > 0 {
 		conds = append(conds, fmt.Sprintf("aggr.perk IN (%v)", util.IntArrayToString(req.Perks, ",")))
 	}
@@ -527,7 +534,6 @@ func (s *UserAnalyticsService) getPlayedMaps(
 	conds = append(conds,
 		"player_id = ?",
 		"DATE(session.updated_at) BETWEEN ? AND ?",
-		"session.completed_at IS NOT NULL",
 	)
 
 	args = append(args, req.UserId)
@@ -562,7 +568,7 @@ func (s *UserAnalyticsService) getPlayedMaps(
 			maps.name AS map_name,
 			COUNT(session.id) over w AS total_games,
 			COUNT(CASE WHEN session.status = 2 THEN 1 END) over w AS total_wins,
-			MAX(session.completed_at) over w AS last_played
+			MAX(session.updated_at) over w AS last_played
 		FROM cte
 		INNER JOIN session ON cte.session_id = session.id
 		INNER JOIN maps ON maps.id = session.map_id

@@ -24,7 +24,7 @@ func (s *ServerAnalyticsService) GetSessionCount(
 	req SessionCountRequest,
 ) (*[]PeriodData, error) {
 	conds := make([]string, 0)
-	args := make([]interface{}, 0)
+	args := make([]any, 0)
 
 	conds = append(conds, "session.is_completed = TRUE")
 
@@ -94,7 +94,7 @@ func (s *ServerAnalyticsService) GetUsageInMinutes(
 	req UsageInMinutesRequest,
 ) (*[]PeriodData, error) {
 	conds := make([]string, 0)
-	args := make([]interface{}, 0)
+	args := make([]any, 0)
 
 	conds = append(conds, "session.is_completed = TRUE", "session.server_id = ?")
 	args = append(args, req.ServerId)
@@ -158,7 +158,7 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 	req PlayersOnlineRequest,
 ) (*[]PeriodData, error) {
 	conds := make([]string, 0)
-	args := make([]interface{}, 0)
+	args := make([]any, 0)
 
 	conds = append(conds, "session.is_completed = TRUE")
 
