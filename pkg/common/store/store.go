@@ -67,15 +67,15 @@ func New(db *sql.DB, config *config.AppConfig) *Store {
 
 	store.Auth.Inject(store.Users, store.SteamApi)
 	store.Servers.Inject(store.Users)
-	store.Stats.Inject(store.Users)
-	store.Sessions.Inject(store.Maps, store.Servers, store.Users)
+	store.Stats.Inject(store.Users, store.Difficulty)
+	store.Sessions.Inject(store.Maps, store.Servers, store.Users, store.Difficulty)
 	store.Matches.Inject(
 		store.Users, store.Sessions,
 		store.Difficulty, store.Maps,
 		store.Servers, store.SteamApi,
 	)
 	store.Users.Inject(store.SteamApi)
-	store.AnalyticsUsers.Inject(store.Users)
+	store.AnalyticsUsers.Inject(store.Users, store.Difficulty)
 	store.LeaderBoards.Inject(store.Users)
 
 	return &store

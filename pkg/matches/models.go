@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
+	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 )
 
 type MatchWave struct {
@@ -92,6 +93,10 @@ type MatchPlayer struct {
 	Armor  int `json:"armor"`
 }
 
+type MatchMetadata struct {
+	Difficulty *difficulty.GetSessionDifficultyResponse `json:"diff"`
+}
+
 type Match struct {
 	Session MatchSession `json:"session"`
 
@@ -103,4 +108,6 @@ type Match struct {
 
 	Players    []*MatchPlayer `json:"players"`
 	Spectators []*MatchPlayer `json:"spectators"`
+
+	Metadata MatchMetadata `json:"metadata"`
 }

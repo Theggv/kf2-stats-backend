@@ -99,9 +99,14 @@ func (s *MatchesService) GetById(id int) (*Match, error) {
 		match.GameData = gameData
 	}
 
-	cdData, err := s.sessionService.GetCDData(session.Id)
-	if err == nil && cdData.SpawnCycle != nil {
-		match.CDData = cdData
+	extraData, err := s.sessionService.GetExtraData(session.Id)
+	if err == nil && extraData.SpawnCycle != nil {
+		match.CDData = extraData
+	}
+
+	diff, err := s.difficultyService.GetById(session.Id)
+	if err == nil {
+		match.Metadata.Difficulty = diff
 	}
 
 	return &match, nil

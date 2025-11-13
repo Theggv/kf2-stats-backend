@@ -7,6 +7,7 @@ import (
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
+	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
@@ -14,6 +15,7 @@ type UserAnalyticsService struct {
 	db *sql.DB
 
 	userService *users.UserService
+	diffService *difficulty.DifficultyCalculatorService
 }
 
 func NewUserAnalyticsService(db *sql.DB) *UserAnalyticsService {
@@ -26,8 +28,10 @@ func NewUserAnalyticsService(db *sql.DB) *UserAnalyticsService {
 
 func (s *UserAnalyticsService) Inject(
 	userService *users.UserService,
+	diffService *difficulty.DifficultyCalculatorService,
 ) {
 	s.userService = userService
+	s.diffService = diffService
 }
 
 func (s *UserAnalyticsService) GetUserAnalytics(
@@ -754,6 +758,26 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 	}
 
 	{
+		sessionIds := []int{}
+		for _, item := range res.Items {
+			sessionIds = append(sessionIds, item.Session.Id)
+		}
+
+		difficulty, err := s.diffService.GetByIds(sessionIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range res.Items {
+			for j := range difficulty {
+				if res.Items[i].Session.Id == difficulty[j].SessionId {
+					res.Items[i].Metadata.Difficulty = difficulty[j]
+				}
+			}
+		}
+	}
+
+	{
 		steamIds := []string{}
 		for key := range steamIdSet {
 			steamIds = append(steamIds, key)
@@ -905,6 +929,26 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 		}
 	}
 
+	{
+		sessionIds := []int{}
+		for _, item := range res.Items {
+			sessionIds = append(sessionIds, item.Session.Id)
+		}
+
+		difficulty, err := s.diffService.GetByIds(sessionIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range res.Items {
+			for j := range difficulty {
+				if res.Items[i].Session.Id == difficulty[j].SessionId {
+					res.Items[i].Metadata.Difficulty = difficulty[j]
+				}
+			}
+		}
+	}
+
 	res.Metadata.TotalResults = count
 
 	return &res, nil
@@ -916,8 +960,11 @@ func (s *UserAnalyticsService) getUserSessions(
 	page, limit := util.ParsePagination(req.Pager)
 
 	sortBy := "updated_at"
-	if req.SortBy.Field == "damage_dealt" {
+	switch req.SortBy.Field {
+	case "damage_dealt":
 		sortBy = "damage_dealt"
+	case "calc_difficulty":
+		sortBy = "calc_difficulty"
 	}
 
 	direction := "ASC"
@@ -990,7 +1037,7 @@ func (s *UserAnalyticsService) getUserSessions(
 		}
 	}
 
-	sql := fmt.Sprintf(`
+	stmt := fmt.Sprintf(`
 		WITH user_session AS (
 			SELECT aggr.id AS aggr_id
 			FROM session
@@ -1001,11 +1048,13 @@ func (s *UserAnalyticsService) getUserSessions(
 		), pagination AS (
 			SELECT DISTINCT
 				session.id AS session_id,
+				diff.final_score AS calc_difficulty,
 				sum(aggr.damage_dealt) OVER w AS damage_dealt,
 				session.updated_at AS updated_at
 			FROM user_session cte
 			INNER JOIN session_aggregated aggr ON aggr.id = cte.aggr_id
 			INNER JOIN session ON session.id = aggr.session_id
+			INNER JOIN session_diff diff ON diff.session_id = session.id
 			WINDOW w AS (partition by session.id)
 			ORDER BY %v %v
 			LIMIT %v, %v
@@ -1060,7 +1109,7 @@ func (s *UserAnalyticsService) getUserSessions(
 		req.UserId,
 	)
 
-	rows, err := s.db.Query(sql, args...)
+	rows, err := s.db.Query(stmt, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -1074,6 +1123,7 @@ func (s *UserAnalyticsService) getUserSessions(
 		},
 	}
 
+	defer rows.Close()
 	for rows.Next() {
 		var perk int
 		item := FindUserSessionsResponseItem{
@@ -1108,6 +1158,26 @@ func (s *UserAnalyticsService) getUserSessions(
 		} else {
 			item.Perks = append(item.Perks, perk)
 			res.Items = append(res.Items, &item)
+		}
+	}
+
+	{
+		sessionIds := []int{}
+		for _, item := range res.Items {
+			sessionIds = append(sessionIds, item.Session.Id)
+		}
+
+		difficulty, err := s.diffService.GetByIds(sessionIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range res.Items {
+			for j := range difficulty {
+				if res.Items[i].Session.Id == difficulty[j].SessionId {
+					res.Items[i].Metadata.Difficulty = difficulty[j]
+				}
+			}
 		}
 	}
 

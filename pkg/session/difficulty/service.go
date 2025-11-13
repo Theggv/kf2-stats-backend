@@ -14,48 +14,125 @@ import (
 
 type DifficultyCalculatorService struct {
 	db *sql.DB
+
+	queue map[int]bool
+	mu    sync.Mutex
 }
 
 func NewDifficultyCalculator(db *sql.DB) *DifficultyCalculatorService {
 	service := DifficultyCalculatorService{
-		db: db,
+		db:    db,
+		queue: map[int]bool{},
 	}
+
+	go service.initQueue(30 * time.Second)
 
 	return &service
 }
 
-func (s *DifficultyCalculatorService) GetById(sessionId int) (*GetSessionDifficultyResponse, error) {
-	res := GetSessionDifficultyResponse{
-		SessionId: sessionId,
-		Summary:   &GetSessionDifficultyResponseSummary{},
-		Waves:     []*GetSessionDifficultyResponseWave{},
+func (s *DifficultyCalculatorService) AddToQueue(sessionId int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.queue[sessionId] = true
+}
+
+func (s *DifficultyCalculatorService) CheckIfQueued(sessionId int) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_, exists := s.queue[sessionId]
+
+	return exists
+}
+
+func (s *DifficultyCalculatorService) initQueue(updateTime time.Duration) {
+	for range time.Tick(updateTime) {
+		s.processQueue()
+	}
+}
+
+func (s *DifficultyCalculatorService) processQueue() {
+	items := []int{}
+
+	s.mu.Lock()
+	for item := range s.queue {
+		items = append(items, item)
+	}
+	clear(s.queue)
+	s.mu.Unlock()
+
+	if len(items) == 0 {
+		return
 	}
 
+	_, err := s.BatchRecalculate(items)
+	if err != nil {
+		fmt.Printf("[processQueue] %v\n", err)
+	}
+}
+
+func (s *DifficultyCalculatorService) GetById(sessionId int) (*GetSessionDifficultyResponse, error) {
+	items, err := s.GetByIds([]int{sessionId})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(items) == 0 {
+		return nil, nil
+	}
+
+	return items[0], nil
+}
+
+func (s *DifficultyCalculatorService) GetByIds(sessionIds []int) ([]*GetSessionDifficultyResponse, error) {
+	if len(sessionIds) == 0 {
+		return []*GetSessionDifficultyResponse{}, nil
+	}
+
+	lookup := map[int]*GetSessionDifficultyResponse{}
+
 	{
-		stmt := `
+		stmt := fmt.Sprintf(`
 			SELECT
+				session_id,
 				avg_zeds_diff, map_bonus,
 				completion_p, restarts_penalty,
 				potential_score, final_score
 			FROM session_diff
-			WHERE session_id = ?
-			`
-
-		row := s.db.QueryRow(stmt, sessionId)
-
-		err := row.Scan(
-			&res.Summary.AvgZedsDifficulty, &res.Summary.MapBonus,
-			&res.Summary.CompletionPercent, &res.Summary.RestartsPenalty,
-			&res.Summary.PotentialScore, &res.Summary.FinalScore,
+			WHERE session_id IN (%v)
+			`, util.IntArrayToString(sessionIds, ","),
 		)
+
+		rows, err := s.db.Query(stmt)
 		if err != nil {
 			return nil, err
+		}
+
+		defer rows.Close()
+		for rows.Next() {
+			item := GetSessionDifficultyResponse{
+				Summary: &GetSessionDifficultyResponseSummary{},
+				Waves:   []*GetSessionDifficultyResponseWave{},
+			}
+
+			err := rows.Scan(
+				&item.SessionId,
+				&item.Summary.AvgZedsDifficulty, &item.Summary.MapBonus,
+				&item.Summary.CompletionPercent, &item.Summary.RestartsPenalty,
+				&item.Summary.PotentialScore, &item.Summary.FinalScore,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			lookup[item.SessionId] = &item
 		}
 	}
 
 	{
-		stmt := `
+		stmt := fmt.Sprintf(`
 			SELECT
+				session.id as session_id,
 				ws.id as wave_id,
 				zeds_diff,
 				duration,
@@ -71,19 +148,23 @@ func (s *DifficultyCalculatorService) GetById(sessionId int) (*GetSessionDifficu
 			INNER JOIN wave_stats_diff diff 
 				ON diff.stats_id = ws.id
 			WHERE 
-				session.id = ? AND ws.wave <= session.length
-		`
+				session.id IN (%v) AND ws.wave <= session.length
+			`, util.IntArrayToString(sessionIds, ","),
+		)
 
-		rows, err := s.db.Query(stmt, sessionId)
+		rows, err := s.db.Query(stmt)
 		if err != nil {
 			return nil, err
 		}
 
+		defer rows.Close()
 		for rows.Next() {
+			var sessionId int
 			item := GetSessionDifficultyResponseWave{}
 
 			err = rows.Scan(
-				&item.WaveId, &item.ZedsDifficulty, &item.Duration,
+				&sessionId, &item.WaveId,
+				&item.ZedsDifficulty, &item.Duration,
 				&item.PredictedDuration, &item.PredictedDurationError,
 				&item.KitingPenalty, &item.WaveSizePenalty,
 				&item.TotalPlayersPenalty, &item.Score,
@@ -93,11 +174,16 @@ func (s *DifficultyCalculatorService) GetById(sessionId int) (*GetSessionDifficu
 				return nil, err
 			}
 
-			res.Waves = append(res.Waves, &item)
+			lookup[sessionId].Waves = append(lookup[sessionId].Waves, &item)
 		}
 	}
 
-	return &res, nil
+	res := []*GetSessionDifficultyResponse{}
+	for _, value := range lookup {
+		res = append(res, value)
+	}
+
+	return res, nil
 }
 
 func (s *DifficultyCalculatorService) RecalculateAll() error {
@@ -174,7 +260,7 @@ func (s *DifficultyCalculatorService) RecalculateByServerId(serverId int) error 
 			sessionIds = append(sessionIds, sessionId)
 		}
 
-		_, err = s.Recalculate(sessionIds)
+		_, err = s.BatchRecalculate(sessionIds)
 		if err != nil {
 			return err
 		}
@@ -183,7 +269,8 @@ func (s *DifficultyCalculatorService) RecalculateByServerId(serverId int) error 
 	return nil
 }
 
-func (s *DifficultyCalculatorService) Recalculate(sessionIds []int) ([]*DifficultyCalculatorGame, error) {
+// Batch recalculate and update session difficulties
+func (s *DifficultyCalculatorService) BatchRecalculate(sessionIds []int) ([]*DifficultyCalculatorGame, error) {
 	items, err := s.getSessions(sessionIds)
 	if err != nil {
 		return nil, err
@@ -203,6 +290,7 @@ func (s *DifficultyCalculatorService) Recalculate(sessionIds []int) ([]*Difficul
 	return items, nil
 }
 
+// Batch calculate difficulties with some concurrency level
 func (s *DifficultyCalculatorService) processItems(
 	items []*DifficultyCalculatorGame, maxConcurrency int,
 ) {
@@ -222,6 +310,7 @@ func (s *DifficultyCalculatorService) processItems(
 	wg.Wait()
 }
 
+// Batch update session difficulties using transaction
 func (s *DifficultyCalculatorService) updateItems(
 	items []*DifficultyCalculatorGame,
 ) func(tx *sql.Tx) error {
@@ -307,6 +396,7 @@ func (s *DifficultyCalculatorService) updateItems(
 	}
 }
 
+// Calculate session difficulty
 func (s *DifficultyCalculatorService) processSession(data *DifficultyCalculatorGame) {
 	session := data.Session
 
