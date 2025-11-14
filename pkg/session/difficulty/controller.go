@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/theggv/kf2-stats-backend/pkg/common/config"
 )
 
 type controller struct {
@@ -14,9 +15,16 @@ type controller struct {
 // @Summary Recalculate all session difficulties
 // @Tags 	Difficulty
 // @Produce json
+// @Param   key query 	string true "Api key"
 // @Success 201
 // @Router /sessions/difficulty/server [post]
 func (c *controller) recalculateAll(ctx *gin.Context) {
+	key := ctx.Query("key")
+	if key != config.Instance.Token {
+		ctx.String(http.StatusUnauthorized, "Invalid api key")
+		return
+	}
+
 	err := c.service.RecalculateAll()
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
@@ -29,10 +37,17 @@ func (c *controller) recalculateAll(ctx *gin.Context) {
 // @Summary Recalculate session difficulties by server_id
 // @Tags 	Difficulty
 // @Produce json
+// @Param   key query 	string true "Api key"
 // @Param   id path   	 	int true "Server id"
 // @Success 201
 // @Router /sessions/difficulty/server/{id} [post]
 func (c *controller) recalculateByServerId(ctx *gin.Context) {
+	key := ctx.Query("key")
+	if key != config.Instance.Token {
+		ctx.String(http.StatusUnauthorized, "Invalid api key")
+		return
+	}
+
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
