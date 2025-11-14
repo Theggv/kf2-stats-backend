@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/theggv/kf2-stats-backend/pkg/analytics"
+	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 )
 
 type SessionCountRequest struct {
@@ -14,18 +15,8 @@ type SessionCountRequest struct {
 	Period analytics.TimePeriod `json:"period" binding:"required"`
 }
 
-type PeriodData struct {
-	Period string `json:"period"`
-
-	Value         int     `json:"value"`
-	PreviousValue int     `json:"prev"`
-	Difference    int     `json:"diff"`
-	MaxValue      int     `json:"max_value"`
-	Trend         float64 `json:"trend"`
-}
-
 type SessionCountResponse struct {
-	Items []*PeriodData `json:"items"`
+	Items []*models.PeriodData `json:"items"`
 }
 
 type UsageInMinutesRequest struct {
@@ -37,7 +28,7 @@ type UsageInMinutesRequest struct {
 }
 
 type UsageInMinutesResponse struct {
-	Items []*PeriodData `json:"items"`
+	Items []*models.PeriodData `json:"items"`
 }
 
 type PlayersOnlineRequest struct {
@@ -49,7 +40,7 @@ type PlayersOnlineRequest struct {
 }
 
 type PlayersOnlineResponse struct {
-	Items []*PeriodData `json:"items"`
+	Items []*models.PeriodData `json:"items"`
 }
 
 type PopularServersResponseItem struct {

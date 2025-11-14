@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/theggv/kf2-stats-backend/pkg/analytics"
+	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 )
 
 type ServerAnalyticsService struct {
@@ -22,7 +23,7 @@ func NewServerAnalyticsService(db *sql.DB) *ServerAnalyticsService {
 
 func (s *ServerAnalyticsService) GetSessionCount(
 	req SessionCountRequest,
-) ([]*PeriodData, error) {
+) ([]*models.PeriodData, error) {
 	conds := make([]string, 0)
 	args := make([]any, 0)
 
@@ -67,12 +68,12 @@ func (s *ServerAnalyticsService) GetSessionCount(
 		period, strings.Join(conds, " AND "),
 	)
 
-	return s.executeHistoricalQuery(stmt, args...)
+	return analytics.ExecuteHistoricalQuery(s.db, stmt, args...)
 }
 
 func (s *ServerAnalyticsService) GetUsageInMinutes(
 	req UsageInMinutesRequest,
-) ([]*PeriodData, error) {
+) ([]*models.PeriodData, error) {
 	conds := make([]string, 0)
 	args := make([]any, 0)
 
@@ -111,12 +112,12 @@ func (s *ServerAnalyticsService) GetUsageInMinutes(
 		period, strings.Join(conds, " AND "),
 	)
 
-	return s.executeHistoricalQuery(stmt, args...)
+	return analytics.ExecuteHistoricalQuery(s.db, stmt, args...)
 }
 
 func (s *ServerAnalyticsService) GetPlayersOnline(
 	req PlayersOnlineRequest,
-) ([]*PeriodData, error) {
+) ([]*models.PeriodData, error) {
 	conds := make([]string, 0)
 	args := make([]any, 0)
 
@@ -165,7 +166,7 @@ func (s *ServerAnalyticsService) GetPlayersOnline(
 		period, strings.Join(conds, " AND "),
 	)
 
-	return s.executeHistoricalQuery(stmt, args...)
+	return analytics.ExecuteHistoricalQuery(s.db, stmt, args...)
 }
 
 func (s *ServerAnalyticsService) GetPopularServers() (*PopularServersResponse, error) {
@@ -228,52 +229,4 @@ func (s *ServerAnalyticsService) GetCurrentOnline() (*TotalOnlineResponse, error
 	}
 
 	return &res, nil
-}
-
-func (s *ServerAnalyticsService) executeHistoricalQuery(query string, args ...any) ([]*PeriodData, error) {
-	stmt := fmt.Sprintf(`
-		WITH historical_data AS (
-			%v
-		), with_lag AS (
-			SELECT
-				cte.*,
-				LAG(value, 1, 0) OVER w AS prev
-			FROM historical_data cte
-			WINDOW w AS (ORDER BY period)
-		)
-		SELECT 
-			period,
-			value,
-			prev,
-			value - prev AS diff,
-			first_value(value) OVER value_frame AS max_value,
-			avg(value) OVER trend_frame AS trend_value
-		FROM with_lag
-		WINDOW 
-			value_frame AS (ORDER BY value DESC),
-			trend_frame AS (ORDER BY period ROWS BETWEEN 5 PRECEDING AND CURRENT ROW)
-		`, query,
-	)
-
-	rows, err := s.db.Query(stmt, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	items := []*PeriodData{}
-	for rows.Next() {
-		item := PeriodData{}
-
-		err = rows.Scan(
-			&item.Period, &item.Value, &item.PreviousValue,
-			&item.Difference, &item.MaxValue, &item.Trend,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		items = append(items, &item)
-	}
-
-	return items, nil
 }
