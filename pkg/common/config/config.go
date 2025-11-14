@@ -26,7 +26,7 @@ var Instance *AppConfig = new()
 func new() *AppConfig {
 	godotenv.Load(".env")
 
-	return &AppConfig{
+	config := AppConfig{
 		ServerAddr:  getEnv("SERVER_ADDR", "127.0.0.1:3000"),
 		Token:       getEnv("SECRET_TOKEN", ""),
 		SteamApiKey: getEnv("STEAM_API_KEY", ""),
@@ -42,4 +42,10 @@ func new() *AppConfig {
 		JwtRefreshSecretKey: getEnv("JWT_REFRESH_SECRET_KEY", ""),
 		JwtRefreshExpiresIn: getEnv("JWT_REFRESH_EXPIRES_IN", "30d"),
 	}
+
+	if config.Token == "" {
+		panic("SECRET_TOKEN is not set. Check your .env file.")
+	}
+
+	return &config
 }
