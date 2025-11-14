@@ -12,48 +12,58 @@ func initStored(db *sql.DB) error {
 	}
 
 	tx.Exec(`
-		DROP PROCEDURE IF EXISTS fix_dropped_sessions;
-		CREATE PROCEDURE fix_dropped_sessions()
+		DROP PROCEDURE IF EXISTS handle_dangling_sessions;
+		CREATE PROCEDURE handle_dangling_sessions(IN minutes int)
 		BEGIN
-			UPDATE session
-			INNER JOIN (
-				SELECT server_id, max(id) as max_id FROM session
+			DECLARE EXIT HANDLER FOR SQLEXCEPTION
+			BEGIN
+				ROLLBACK;
+				RESIGNAL;
+			END;
+
+			START TRANSACTION;
+
+			-- Delete sessions that didn't update for @minutes and 
+			-- don't have any related player data.
+
+			WITH current_sessions AS (
+				SELECT server_id, max(id) as max_id 
+				FROM session
 				GROUP BY server_id
-			) as tbl on session.server_id = tbl.server_id
-			SET status = -1
-			WHERE 
-				session.id NOT IN (tbl.max_id) AND 
-				status IN (0, 1);
-		END;
-	`)
-	tx.Exec(`
-		DROP PROCEDURE IF EXISTS abort_old_sessions;
-		CREATE PROCEDURE abort_old_sessions(IN minutes int)
-		BEGIN
-			UPDATE session
-			INNER JOIN server ON server.id = session.server_id
-			INNER JOIN session_game_data gd ON gd.session_id = session.id
-			SET session.status = -1
-			WHERE 
-				session.status IN (0, 1) AND 
-				session.started_at >= CURRENT_TIMESTAMP - INTERVAL 30 DAY AND
-				timestampdiff(MINUTE, gd.updated_at, CURRENT_TIMESTAMP) > minutes;
-		END;
-	`)
-	tx.Exec(`
-		DROP PROCEDURE IF EXISTS delete_empty_sessions;
-		CREATE PROCEDURE delete_empty_sessions()
-		BEGIN
-			DELETE FROM session 
+			)
+			DELETE s FROM session s
+			INNER JOIN current_sessions cte ON cte.server_id = s.server_id
 			WHERE
-				session.status IN (-1, 2, 3) AND
-				session.started_at >= CURRENT_TIMESTAMP - INTERVAL 30 DAY AND
-				NOT EXISTS (
+				s.status IN (0, 1) AND
+				(
+					timestampdiff(MINUTE, s.updated_at, CURRENT_TIMESTAMP) > minutes OR 
+					s.id != cte.max_id
+				)
+				AND NOT EXISTS (
 					SELECT 1
 					FROM wave_stats ws
 					INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
-					WHERE ws.session_id = session.id
+					WHERE ws.session_id = s.id
 				);
+
+			-- Otherwise cancel sessions with existed player data.
+			
+			WITH current_sessions AS (
+				SELECT server_id, max(id) as max_id 
+				FROM session
+				GROUP BY server_id
+			)
+			UPDATE session s
+			INNER JOIN current_sessions cte on s.server_id = cte.server_id
+			SET s.status = -1
+			WHERE 
+				s.status IN (0, 1) AND 
+				(
+					timestampdiff(MINUTE, s.updated_at, CURRENT_TIMESTAMP) > minutes OR 
+					s.id != cte.max_id
+				);
+
+			COMMIT;
 		END;
 	`)
 	tx.Exec(`
