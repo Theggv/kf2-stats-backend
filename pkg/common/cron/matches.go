@@ -13,7 +13,7 @@ func handleDanglingSessions(db *sql.DB) {
 		_, err := db.Exec(`CALL handle_dangling_sessions(?)`, olderThanMinutes)
 
 		if err != nil {
-			fmt.Printf("[abortOldMatches] error: %v\n", err)
+			fmt.Printf("[handleDanglingSessions] error: %v\n", err)
 		}
 	}
 }
