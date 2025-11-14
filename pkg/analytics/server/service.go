@@ -7,6 +7,7 @@ import (
 
 	"github.com/theggv/kf2-stats-backend/pkg/analytics"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
+	"github.com/theggv/kf2-stats-backend/pkg/common/util"
 )
 
 type ServerAnalyticsService struct {
@@ -229,4 +230,62 @@ func (s *ServerAnalyticsService) GetCurrentOnline() (*TotalOnlineResponse, error
 	}
 
 	return &res, nil
+}
+
+func (s *ServerAnalyticsService) getSessionCountHist(
+	req SessionCountHistRequest,
+) ([]*models.PeriodData, error) {
+	conds := []string{}
+	args := []any{}
+
+	conds = append(conds, "session.server_id = ?")
+	args = append(args, req.ServerId)
+
+	conds = append(conds, "DATE(session.updated_at) BETWEEN ? AND ?")
+	if req.From != nil && req.To != nil {
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	} else {
+		args = append(args, "2000-01-01", "3000-01-01")
+	}
+
+	if len(req.MapIds) > 0 {
+		conds = append(conds, fmt.Sprintf("map_id IN (%v)", util.IntArrayToString(req.MapIds, ",")))
+	}
+
+	if len(req.Statuses) > 0 {
+		conds = append(conds, fmt.Sprintf("session.status IN (%v)", util.IntArrayToString(req.Statuses, ",")))
+	}
+
+	if req.MinWave != nil {
+		conds = append(conds, fmt.Sprintf("gd.wave >= %v", *req.MinWave))
+	}
+
+	if req.SpawnCycle != nil {
+		conds = append(conds, "extra.spawn_cycle LIKE ?")
+		args = append(args, fmt.Sprintf("%%%v%%", *req.SpawnCycle))
+	}
+
+	if req.ZedsType != nil {
+		conds = append(conds, "extra.zeds_type LIKE ?")
+		args = append(args, fmt.Sprintf("%v%%", *req.ZedsType))
+	}
+
+	if req.MaxMonsters != nil {
+		conds = append(conds, fmt.Sprintf("extra.max_monsters = %v", *req.MaxMonsters))
+	}
+
+	stmt := fmt.Sprintf(`
+		SELECT
+			DATE(session.updated_at) as period,
+			count(distinct session.id) as value
+		FROM session
+		INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
+		INNER JOIN session_game_data gd on gd.session_id = session.id
+		LEFT JOIN session_game_data_extra extra on extra.session_id = session.id
+		WHERE %v
+		GROUP BY period
+		ORDER BY period`, strings.Join(conds, " AND "),
+	)
+
+	return analytics.ExecuteHistoricalQuery(s.db, stmt, args...)
 }

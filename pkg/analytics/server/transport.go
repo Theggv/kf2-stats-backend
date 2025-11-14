@@ -59,3 +59,21 @@ type PopularServersResponse struct {
 type TotalOnlineResponse struct {
 	Count int `json:"count"`
 }
+
+type SessionCountHistRequest struct {
+	ServerId int `json:"server_id" binding:"required"`
+
+	From *time.Time `json:"date_from"`
+	To   *time.Time `json:"date_to"`
+
+	MapIds []int `json:"map_ids"`
+
+	Statuses []models.GameStatus `json:"statuses"`
+
+	SpawnCycle  *string `json:"spawn_cycle"`
+	ZedsType    *string `json:"zeds_type"`
+	MinWave     *int    `json:"min_wave"`
+	MaxMonsters *int    `json:"max_monsters"`
+
+	AuthUser *models.TokenPayload `json:"-"`
+}

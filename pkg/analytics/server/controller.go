@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +15,7 @@ type controller struct {
 // @Tags 	Analytics
 // @Produce json
 // @Param   body body 		SessionCountRequest true "Body"
-// @Success 200 {object} 	SessionCountResponse
+// @Success 201 {object} 	SessionCountResponse
 // @Router /analytics/server/session/count [post]
 func (c *controller) getSessionCount(ctx *gin.Context) {
 	var req SessionCountRequest
@@ -28,20 +27,41 @@ func (c *controller) getSessionCount(ctx *gin.Context) {
 	items, err := c.service.GetSessionCount(req)
 	if err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
-		fmt.Printf("%v\n", err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, &SessionCountResponse{
+	ctx.JSON(http.StatusCreated, &SessionCountResponse{
 		Items: items,
 	})
+}
+
+// @Summary Get played session count for certain period grouped by time period
+// @Tags 	Analytics
+// @Produce json
+// @Param   body body 		SessionCountHistRequest true "Body"
+// @Success 201 {array} 	models.PeriodData
+// @Router /analytics/server/session/count/hist [post]
+func (c *controller) getSessionCountHist(ctx *gin.Context) {
+	var req SessionCountHistRequest
+	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	items, err := c.service.getSessionCountHist(req)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, items)
 }
 
 // @Summary Get server usage in minutes for certain period grouped by time period
 // @Tags 	Analytics
 // @Produce json
 // @Param   body body 		UsageInMinutesRequest true "Body"
-// @Success 200 {object} 	UsageInMinutesResponse
+// @Success 201 {object} 	UsageInMinutesResponse
 // @Router /analytics/server/usage [post]
 func (c *controller) getUsageInMinutes(ctx *gin.Context) {
 	var req UsageInMinutesRequest
@@ -56,7 +76,7 @@ func (c *controller) getUsageInMinutes(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, &UsageInMinutesResponse{
+	ctx.JSON(http.StatusCreated, &UsageInMinutesResponse{
 		Items: items,
 	})
 }
@@ -65,7 +85,7 @@ func (c *controller) getUsageInMinutes(ctx *gin.Context) {
 // @Tags 	Analytics
 // @Produce json
 // @Param   body body 		PlayersOnlineRequest true "Body"
-// @Success 200 {object} 	PlayersOnlineResponse
+// @Success 201 {object} 	PlayersOnlineResponse
 // @Router /analytics/server/online [post]
 func (c *controller) getPlayersOnline(ctx *gin.Context) {
 	var req PlayersOnlineRequest
@@ -80,7 +100,7 @@ func (c *controller) getPlayersOnline(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, &PlayersOnlineResponse{
+	ctx.JSON(http.StatusCreated, &PlayersOnlineResponse{
 		Items: items,
 	})
 }

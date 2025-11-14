@@ -33,6 +33,10 @@ func RegisterRoutes(
 			}),
 		),
 		controller.getSessionCount)
+
+	routes.POST("/server/session/count/hist",
+		controller.getSessionCountHist)
+
 	routes.POST("/server/usage",
 		cache.Cache(memoryStore, 5*time.Minute,
 			strategy.CacheByRequestBody(func(req UsageInMinutesRequest) string {
@@ -64,4 +68,5 @@ func RegisterRoutes(
 	routes.GET("/server/current-online",
 		cache.CacheByRequestURI(memoryStore, 15*time.Second),
 		controller.getCurrentOnline)
+
 }
