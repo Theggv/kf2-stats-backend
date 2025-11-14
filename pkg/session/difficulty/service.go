@@ -322,6 +322,10 @@ func (s *DifficultyCalculatorService) updateItems(
 				for _, wave := range item.Waves {
 					res := wave.Result
 
+					if res == nil {
+						continue
+					}
+
 					values = append(values,
 						fmt.Sprintf("(%v, %v, %v, %v, %v, %v, %v, %v)",
 							wave.Id, res.ZedsDifficulty, wave.Duration, res.PredictedDuration,
@@ -359,6 +363,10 @@ func (s *DifficultyCalculatorService) updateItems(
 
 			for _, item := range items {
 				res := item.Result
+
+				if res == nil {
+					continue
+				}
 
 				values = append(values,
 					fmt.Sprintf("(%v, %v, %v, %v, %v, %v, %v, %v)",
@@ -401,7 +409,7 @@ func (s *DifficultyCalculatorService) processSession(data *DifficultyCalculatorG
 	session := data.Session
 
 	for _, wave := range data.Waves {
-		zeds := wave.Zeds.ConvertToMap()
+		zeds := wave.Zeds.ToMap()
 		totalZeds := zeds.GetTotal()
 
 		res := DifficultyCalculatorGameWaveScore{
@@ -467,7 +475,12 @@ func (s *DifficultyCalculatorService) processSession(data *DifficultyCalculatorG
 			} else if session.Status == models.Win {
 				res.CompletionPercent = 1
 			} else if wave, ok := data.GetLastWave(); ok {
-				res.CompletionPercent = npInterp(float64(wave.Wave-1)/float64(session.Length), pair{0, 1}, pair{0.5, 1})
+				gameLength := session.Length
+				// 25 completed waves for full completion percent for endless mode.
+				if session.Mode == models.Endless {
+					gameLength = 25
+				}
+				res.CompletionPercent = npInterp(float64(wave.Wave-1)/float64(gameLength), pair{0, 1}, pair{0.5, 1})
 			} else {
 				res.CompletionPercent = 0
 			}
@@ -614,7 +627,7 @@ func (s *DifficultyCalculatorService) getSessions(sessionId []int) ([]*Difficult
 				return nil, err
 			}
 
-			item.TotalZeds = item.Zeds.ConvertToMap().GetTotal()
+			item.TotalZeds = item.Zeds.ToMap().GetTotal()
 
 			item.DurationRealtime = float64(item.Duration) - item.ZedtimeLength/5
 

@@ -31,7 +31,7 @@ func (c ZedCounter) GetTotalLarges() int {
 	return c.Scrake + c.FP + c.QP
 }
 
-func (c ZedCounter) ConvertToMap() ZedsMap {
+func (c ZedCounter) ToMap() ZedsMap {
 	data := ZedsMap{
 		"cyst":          c.Cyst,
 		"alpha_clot":    c.AlphaClot,
