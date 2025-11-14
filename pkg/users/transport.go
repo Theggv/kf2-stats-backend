@@ -37,6 +37,8 @@ type FilterUsersResponseUserSession struct {
 
 	ServerName string `json:"server_name"`
 	MapName    string `json:"map_name"`
+
+	Metadata models.SessionMetadata `json:"metadata"`
 }
 
 type FilterUsersResponseUser struct {

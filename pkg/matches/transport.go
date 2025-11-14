@@ -1,17 +1,22 @@
 package matches
 
 import (
+	"time"
+
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 )
 
 type FilterMatchesRequest struct {
-	ServerId []int               `json:"server_id"`
-	MapId    []int               `json:"map_id"`
-	Status   []models.GameStatus `json:"status"`
+	ServerIds []int               `json:"server_ids"`
+	MapIds    []int               `json:"map_ids"`
+	Statuses  []models.GameStatus `json:"statuses"`
 
 	Mode       *models.GameMode       `json:"mode"`
 	Length     *models.GameLength     `json:"length"`
 	Difficulty *models.GameDifficulty `json:"diff"`
+
+	From *time.Time `json:"date_from"`
+	To   *time.Time `json:"date_to"`
 
 	IncludeServer   *bool `json:"include_server"`
 	IncludeMap      *bool `json:"include_map"`

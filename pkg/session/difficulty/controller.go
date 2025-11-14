@@ -67,7 +67,7 @@ func (c *controller) recalculateByServerId(ctx *gin.Context) {
 // @Tags 	Difficulty
 // @Produce json
 // @Param   id path   	 	int true "Session id"
-// @Success 200 {object} 	GetSessionDifficultyResponse
+// @Success 200 {object} 	models.SessionMetadataDifficulty
 // @Router /sessions/difficulty/{id} [get]
 func (c *controller) getById(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))

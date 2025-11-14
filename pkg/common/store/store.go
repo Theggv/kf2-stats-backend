@@ -74,7 +74,7 @@ func New(db *sql.DB, config *config.AppConfig) *Store {
 		store.Difficulty, store.Maps,
 		store.Servers, store.SteamApi,
 	)
-	store.Users.Inject(store.SteamApi)
+	store.Users.Inject(store.SteamApi, store.Difficulty)
 	store.AnalyticsUsers.Inject(store.Users, store.Difficulty)
 	store.LeaderBoards.Inject(store.Users)
 

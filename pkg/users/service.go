@@ -7,12 +7,14 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/steamapi"
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
+	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 )
 
 type UserService struct {
 	db *sql.DB
 
 	steamApiService *steamapi.SteamApiUserService
+	diffService     *difficulty.DifficultyCalculatorService
 }
 
 func NewUserService(db *sql.DB) *UserService {
@@ -25,8 +27,10 @@ func NewUserService(db *sql.DB) *UserService {
 
 func (s *UserService) Inject(
 	steamApiService *steamapi.SteamApiUserService,
+	diffService *difficulty.DifficultyCalculatorService,
 ) {
 	s.steamApiService = steamApiService
+	s.diffService = diffService
 }
 
 func (s *UserService) FindCreateFind(req CreateUserRequest) (int, error) {
@@ -183,13 +187,13 @@ func (s *UserService) getUserDetailed(id int) (*FilterUsersResponseUser, error) 
 
 		if item.LastSessionId != nil {
 			if data, ok := sessions[*item.LastSessionId]; ok {
-				item.LastSession = &data
+				item.LastSession = data
 			}
 		}
 
 		if item.CurrentSessionId != nil {
 			if data, ok := sessions[*item.CurrentSessionId]; ok {
-				item.CurrentSession = &data
+				item.CurrentSession = data
 			}
 		}
 	}
@@ -283,13 +287,13 @@ func (s *UserService) filter(req FilterUsersRequest) (*FilterUsersResponse, erro
 		for _, item := range items {
 			if item.LastSessionId != nil {
 				if data, ok := sessions[*item.LastSessionId]; ok {
-					item.LastSession = &data
+					item.LastSession = data
 				}
 			}
 
 			if item.CurrentSessionId != nil {
 				if data, ok := sessions[*item.CurrentSessionId]; ok {
-					item.CurrentSession = &data
+					item.CurrentSession = data
 				}
 			}
 		}
@@ -322,7 +326,7 @@ func (s *UserService) filter(req FilterUsersRequest) (*FilterUsersResponse, erro
 	}, nil
 }
 
-func (s *UserService) getSessions(sessionIds []int) (map[int]FilterUsersResponseUserSession, error) {
+func (s *UserService) getSessions(sessionIds []int) (map[int]*FilterUsersResponseUserSession, error) {
 	sql := fmt.Sprintf(`
 		SELECT 
 			session.id,
@@ -351,7 +355,7 @@ func (s *UserService) getSessions(sessionIds []int) (map[int]FilterUsersResponse
 		return nil, err
 	}
 
-	items := make(map[int]FilterUsersResponseUserSession)
+	items := map[int]*FilterUsersResponseUserSession{}
 	for rows.Next() {
 		item := FilterUsersResponseUserSession{}
 		cdData := models.ExtraGameData{}
@@ -366,7 +370,23 @@ func (s *UserService) getSessions(sessionIds []int) (map[int]FilterUsersResponse
 			item.CDData = &cdData
 		}
 
-		items[item.Id] = item
+		items[item.Id] = &item
+	}
+
+	// Join session difficulty
+	{
+		difficulty, err := s.diffService.GetByIds(sessionIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range items {
+			for j := range difficulty {
+				if items[i].Id == difficulty[j].SessionId {
+					items[i].Metadata.Difficulty = difficulty[j]
+				}
+			}
+		}
 	}
 
 	return items, nil
