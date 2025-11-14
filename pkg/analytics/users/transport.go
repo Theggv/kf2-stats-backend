@@ -5,7 +5,6 @@ import (
 
 	"github.com/theggv/kf2-stats-backend/pkg/analytics"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
-	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 )
 
 type UserAnalyticsRequest struct {
@@ -201,7 +200,7 @@ type GetLastSeenUsersResponseItem struct {
 
 	Perks []int `json:"perks"`
 
-	Metadata SessionMetadata `json:"metadata"`
+	Metadata models.SessionMetadata `json:"metadata"`
 
 	LastSeen *time.Time `json:"last_seen"`
 
@@ -234,7 +233,7 @@ type GetLastSessionsWithUserResponseItem struct {
 
 	Perks []int `json:"perks"`
 
-	Metadata SessionMetadata `json:"metadata"`
+	Metadata models.SessionMetadata `json:"metadata"`
 
 	LastSeen *time.Time `json:"last_seen"`
 }
@@ -279,10 +278,6 @@ type FindUserSessionsResponseItemStats struct {
 	DamageDealt int `json:"damage_dealt"`
 }
 
-type SessionMetadata struct {
-	Difficulty *difficulty.GetSessionDifficultyResponse `json:"diff"`
-}
-
 type FindUserSessionsResponseItem struct {
 	Session SessionData `json:"session"`
 	Server  ServerData  `json:"server"`
@@ -295,7 +290,7 @@ type FindUserSessionsResponseItem struct {
 
 	Stats FindUserSessionsResponseItemStats `json:"stats"`
 
-	Metadata SessionMetadata `json:"metadata"`
+	Metadata models.SessionMetadata `json:"metadata"`
 
 	UpdatedAt *time.Time `json:"updated_at"`
 }

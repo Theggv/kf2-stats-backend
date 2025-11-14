@@ -71,7 +71,7 @@ func (s *DifficultyCalculatorService) processQueue() {
 	}
 }
 
-func (s *DifficultyCalculatorService) GetById(sessionId int) (*GetSessionDifficultyResponse, error) {
+func (s *DifficultyCalculatorService) GetById(sessionId int) (*models.SessionMetadataDifficulty, error) {
 	items, err := s.GetByIds([]int{sessionId})
 	if err != nil {
 		return nil, err
@@ -84,12 +84,12 @@ func (s *DifficultyCalculatorService) GetById(sessionId int) (*GetSessionDifficu
 	return items[0], nil
 }
 
-func (s *DifficultyCalculatorService) GetByIds(sessionIds []int) ([]*GetSessionDifficultyResponse, error) {
+func (s *DifficultyCalculatorService) GetByIds(sessionIds []int) ([]*models.SessionMetadataDifficulty, error) {
 	if len(sessionIds) == 0 {
-		return []*GetSessionDifficultyResponse{}, nil
+		return []*models.SessionMetadataDifficulty{}, nil
 	}
 
-	lookup := map[int]*GetSessionDifficultyResponse{}
+	lookup := map[int]*models.SessionMetadataDifficulty{}
 
 	{
 		stmt := fmt.Sprintf(`
@@ -110,9 +110,9 @@ func (s *DifficultyCalculatorService) GetByIds(sessionIds []int) ([]*GetSessionD
 
 		defer rows.Close()
 		for rows.Next() {
-			item := GetSessionDifficultyResponse{
-				Summary: &GetSessionDifficultyResponseSummary{},
-				Waves:   []*GetSessionDifficultyResponseWave{},
+			item := models.SessionMetadataDifficulty{
+				Summary: &models.SessionMetadataDifficultySummary{},
+				Waves:   []*models.SessionMetadataDifficultyWave{},
 			}
 
 			err := rows.Scan(
@@ -160,7 +160,7 @@ func (s *DifficultyCalculatorService) GetByIds(sessionIds []int) ([]*GetSessionD
 		defer rows.Close()
 		for rows.Next() {
 			var sessionId int
-			item := GetSessionDifficultyResponseWave{}
+			item := models.SessionMetadataDifficultyWave{}
 
 			err = rows.Scan(
 				&sessionId, &item.WaveId,
@@ -178,7 +178,7 @@ func (s *DifficultyCalculatorService) GetByIds(sessionIds []int) ([]*GetSessionD
 		}
 	}
 
-	res := []*GetSessionDifficultyResponse{}
+	res := []*models.SessionMetadataDifficulty{}
 	for _, value := range lookup {
 		res = append(res, value)
 	}

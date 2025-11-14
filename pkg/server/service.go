@@ -7,6 +7,7 @@ import (
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
+	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
@@ -14,10 +15,15 @@ type ServerService struct {
 	db *sql.DB
 
 	userService *users.UserService
+	diffService *difficulty.DifficultyCalculatorService
 }
 
-func (s *ServerService) Inject(userService *users.UserService) {
+func (s *ServerService) Inject(
+	userService *users.UserService,
+	diffService *difficulty.DifficultyCalculatorService,
+) {
 	s.userService = userService
+	s.diffService = diffService
 }
 
 func NewServerService(db *sql.DB) *ServerService {
@@ -129,6 +135,17 @@ func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResp
 			WHERE %v
 			WINDOW w AS (PARTITION BY wsp.player_id ORDER BY wsp.id DESC)
 			ORDER BY wsp.id DESC
+		), recent_players AS (
+			SELECT user_id, wsp_id
+			FROM ranking cte
+			WHERE rating = 1
+		), pagination AS (
+			SELECT user_id, wsp_id 
+			FROM recent_players cte
+			LIMIT %v, %v
+		), metadata AS (
+			SELECT count(distinct user_id) as total 
+			FROM recent_players cte
 		)
 		SELECT 
 			users.id,
@@ -137,13 +154,13 @@ func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResp
 			users.auth_type,
 			ws.session_id,
 			wsp.id wsp_id,
-			wsp.created_at
-		FROM ranking
-		INNER JOIN wave_stats_player wsp ON wsp.id = ranking.wsp_id
+			wsp.created_at,
+			metadata.total as total_players
+		FROM pagination cte
+		INNER JOIN wave_stats_player wsp ON wsp.id = cte.wsp_id
 		INNER JOIN wave_stats ws ON ws.id = wsp.stats_id
 		INNER JOIN users ON users.id = wsp.player_id
-		WHERE rating = 1
-		LIMIT %v, %v
+		CROSS JOIN metadata
 		`, strings.Join(conds, " AND "), page*limit, limit,
 	)
 
@@ -156,12 +173,14 @@ func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResp
 	steamIdSet := make(map[string]bool)
 	items := []*RecentUsersResponseUser{}
 
+	var total int
 	for rows.Next() {
 		item := RecentUsersResponseUser{}
 
 		rows.Scan(
 			&item.Id, &item.Name, &item.AuthId, &item.Type,
 			&item.SessionId, &item.WaveStatsPlayerId, &item.UpdatedAt,
+			&total,
 		)
 
 		waveStatsPlayerIdSet[item.Id] = userIdTuple{
@@ -208,21 +227,6 @@ func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResp
 		}
 	}
 
-	// Prepare count query
-	sql = fmt.Sprintf(`
-		SELECT count(distinct wsp.player_id) FROM session
-		INNER JOIN wave_stats ws ON ws.session_id = session.id
-		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
-		WHERE %v`,
-		strings.Join(conds, " AND "),
-	)
-
-	row := s.db.QueryRow(sql)
-	var total int
-	if row.Scan(&total) != nil {
-		return nil, err
-	}
-
 	return &RecentUsersResponse{
 		Items: items,
 		Metadata: models.PaginationResponse{
@@ -241,7 +245,7 @@ func (s *ServerService) getSessions(
 		wspIds = append(wspIds, value.WaveStatsPlayerId)
 	}
 
-	sql := fmt.Sprintf(`
+	stmt := fmt.Sprintf(`
 		SELECT
 			wsp.player_id,
 			session.id,
@@ -265,13 +269,14 @@ func (s *ServerService) getSessions(
 		`, util.IntArrayToString(wspIds, ","),
 	)
 
-	rows, err := s.db.Query(sql)
+	rows, err := s.db.Query(stmt)
 	if err != nil {
 		return nil, err
 	}
 
 	perkConds := []string{}
-	items := make(map[int]*RecentUsersResponseUserSession)
+	items := map[int]*RecentUsersResponseUserSession{}
+	lookup := map[int]bool{}
 	for rows.Next() {
 		item := RecentUsersResponseUserSession{}
 		cdData := models.ExtraGameData{}
@@ -287,33 +292,58 @@ func (s *ServerService) getSessions(
 		}
 
 		items[item.PlayerId] = &item
+		lookup[item.Id] = true
 		perkConds = append(perkConds,
 			fmt.Sprintf("(session.id = %v AND wsp.player_id = %v)", item.Id, item.PlayerId),
 		)
 	}
 
-	sql = fmt.Sprintf(`
-		SELECT DISTINCT wsp.player_id, perk
-		FROM session
-		INNER JOIN wave_stats ws ON ws.session_id = session.id
-		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
-		INNER JOIN maps on maps.id = session.map_id
-		WHERE %v
-		`, strings.Join(perkConds, " OR "),
-	)
+	// Join perks
+	{
+		stmt = fmt.Sprintf(`
+			SELECT DISTINCT wsp.player_id, perk
+			FROM session
+			INNER JOIN wave_stats ws ON ws.session_id = session.id
+			INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
+			INNER JOIN maps on maps.id = session.map_id
+			WHERE %v
+			`, strings.Join(perkConds, " OR "),
+		)
 
-	rows, err = s.db.Query(sql)
-	if err != nil {
-		return nil, err
+		rows, err = s.db.Query(stmt)
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			var playerId, perk int
+
+			rows.Scan(&playerId, &perk)
+
+			if data, ok := items[playerId]; ok {
+				data.Perks = append(data.Perks, perk)
+			}
+		}
 	}
 
-	for rows.Next() {
-		var playerId, perk int
+	// Join session difficulty
+	{
+		sessionIds := []int{}
+		for sessionId := range lookup {
+			sessionIds = append(sessionIds, sessionId)
+		}
 
-		rows.Scan(&playerId, &perk)
+		difficulty, err := s.diffService.GetByIds(sessionIds)
+		if err != nil {
+			return nil, err
+		}
 
-		if data, ok := items[playerId]; ok {
-			data.Perks = append(data.Perks, perk)
+		for i := range items {
+			for j := range difficulty {
+				if items[i].Id == difficulty[j].SessionId {
+					items[i].Metadata.Difficulty = difficulty[j]
+				}
+			}
 		}
 	}
 

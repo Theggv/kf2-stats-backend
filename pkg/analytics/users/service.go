@@ -1055,13 +1055,13 @@ func (s *UserAnalyticsService) getUserSessions(
 		), pagination AS (
 			SELECT DISTINCT
 				session.id AS session_id,
-				diff.final_score AS calc_difficulty,
+				coalesce(diff.final_score, 0) AS calc_difficulty,
 				sum(aggr.damage_dealt) OVER w AS damage_dealt,
 				session.updated_at AS updated_at
 			FROM user_session cte
 			INNER JOIN session_aggregated aggr ON aggr.id = cte.aggr_id
 			INNER JOIN session ON session.id = aggr.session_id
-			INNER JOIN session_diff diff ON diff.session_id = session.id
+			LEFT JOIN session_diff diff ON diff.session_id = session.id
 			WINDOW w AS (partition by session.id)
 			ORDER BY %v %v
 			LIMIT %v, %v

@@ -1,8 +1,6 @@
 package difficulty
 
-import (
-	"github.com/theggv/kf2-stats-backend/pkg/common/models"
-)
+import "github.com/theggv/kf2-stats-backend/pkg/common/models"
 
 type DifficultyCalculatorGameScore struct {
 	AvgZedsDifficulty    float64 `json:"avg_zeds_difficulty"`
@@ -81,38 +79,4 @@ func (d *DifficultyCalculatorGame) GetLastWave() (*DifficultyCalculatorGameWave,
 	}
 
 	return nil, false
-}
-
-type GetSessionDifficultyResponseWave struct {
-	WaveId int `json:"wave_id"`
-
-	ZedsDifficulty float64 `json:"zeds_difficulty"`
-
-	Duration               float64 `json:"duration"`
-	PredictedDuration      float64 `json:"predicted_duration"`
-	PredictedDurationError float64 `json:"predicted_duration_err"`
-
-	KitingPenalty       float64 `json:"kiting_penalty"`
-	WaveSizePenalty     float64 `json:"wave_size_penalty"`
-	TotalPlayersPenalty float64 `json:"total_players_penalty"`
-
-	Score float64 `json:"score"`
-}
-
-type GetSessionDifficultyResponseSummary struct {
-	AvgZedsDifficulty float64 `json:"avg_zeds_difficulty"`
-	MapBonus          float64 `json:"map_bonus"`
-
-	CompletionPercent float64 `json:"completion_p"`
-	RestartsPenalty   float64 `json:"restarts_penalty"`
-
-	PotentialScore float64 `json:"potential_score"`
-	FinalScore     float64 `json:"final_score"`
-}
-
-type GetSessionDifficultyResponse struct {
-	SessionId int `json:"session_id"`
-
-	Summary *GetSessionDifficultyResponseSummary `json:"summary"`
-	Waves   []*GetSessionDifficultyResponseWave  `json:"waves"`
 }

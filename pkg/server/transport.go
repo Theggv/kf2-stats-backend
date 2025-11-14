@@ -44,6 +44,8 @@ type RecentUsersResponseUserSession struct {
 
 	MapName string `json:"map_name"`
 
+	Metadata models.SessionMetadata `json:"metadata"`
+
 	Perks []int `json:"perks"`
 
 	PlayerId int `json:"-"`
