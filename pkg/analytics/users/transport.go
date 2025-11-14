@@ -3,6 +3,7 @@ package users
 import (
 	"time"
 
+	"github.com/theggv/kf2-stats-backend/pkg/analytics"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 )
@@ -302,4 +303,16 @@ type FindUserSessionsResponseItem struct {
 type FindUserSessionsResponse struct {
 	Items    []*FindUserSessionsResponseItem `json:"items"`
 	Metadata *models.PaginationResponse      `json:"metadata"`
+}
+
+type GetUserDifficultyHistRequest struct {
+	UserId int `json:"user_id" binding:"required"`
+
+	From   *time.Time           `json:"date_from"`
+	To     *time.Time           `json:"date_to"`
+	Period analytics.TimePeriod `json:"period" binding:"required"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+	MapIds    []int `json:"map_ids"`
 }

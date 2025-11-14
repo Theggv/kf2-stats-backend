@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/theggv/kf2-stats-backend/pkg/analytics"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
 	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
@@ -84,7 +85,7 @@ func (s *UserAnalyticsService) GetPerksAnalytics(
 	req UserPerksAnalyticsRequest,
 ) (*UserPerksAnalyticsResponse, error) {
 	conds := []string{}
-	args := []interface{}{}
+	args := []any{}
 
 	if req.From != nil && req.To != nil {
 		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
@@ -1190,4 +1191,75 @@ func (s *UserAnalyticsService) getUserSessions(
 	res.Metadata.TotalResults = count
 
 	return &res, nil
+}
+
+func (s *UserAnalyticsService) getDifficultyHist(
+	req GetUserDifficultyHistRequest,
+) ([]*models.PeriodData, error) {
+	conds := make([]string, 0)
+	args := make([]any, 0)
+
+	conds = append(conds, "session.started_at is not null")
+
+	conds = append(conds, "aggr.user_id = ?")
+	args = append(args, req.UserId)
+
+	if len(req.ServerIds) > 0 {
+		conds = append(conds, fmt.Sprintf(
+			"session.server_id IN (%v)", util.IntArrayToString(req.ServerIds, ",")),
+		)
+	}
+
+	if len(req.MapIds) > 0 {
+		conds = append(conds, fmt.Sprintf(
+			"session.map_id IN (%v)", util.IntArrayToString(req.MapIds, ",")),
+		)
+	}
+
+	if len(req.Perks) > 0 {
+		conds = append(conds, fmt.Sprintf(
+			"aggr.perk IN (%v)", util.IntArrayToString(req.Perks, ",")),
+		)
+	}
+
+	var period string
+	switch req.Period {
+	case analytics.Hour:
+		period = "HOUR(session.started_at)"
+	case analytics.Day, analytics.Week:
+		period = "DAY(session.started_at)"
+	case analytics.Month:
+		period = "DATE_FORMAT(session.started_at, '%Y-%m-01 00:00:00')"
+	case analytics.Year:
+		period = "DATE_FORMAT(session.started_at, '%Y-01-01 00:00:00')"
+	case analytics.Date:
+		period = "DATE_FORMAT(session.started_at, '%Y-%m-%d 00:00:00')"
+	case analytics.DateHour:
+		period = "DATE_FORMAT(session.started_at, '%Y-%m-%d %H:00:00')"
+	default:
+		return nil, analytics.NewIncorrectPeriod(req.Period)
+	}
+
+	if req.From != nil && req.To != nil {
+		conds = append(conds, "DATE(session.started_at) BETWEEN ? AND ?")
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	}
+
+	stmt := fmt.Sprintf(`
+		SELECT DISTINCT
+			period,
+			avg(final_score) over (partition by period) as value
+		FROM (
+			SELECT DISTINCT
+				%v as period,
+				diff.final_score * diff.final_score as final_score
+			FROM session
+			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
+			INNER JOIN session_diff diff ON diff.session_id = session.id
+			WHERE %v
+		) t`,
+		period, strings.Join(conds, " AND "),
+	)
+
+	return analytics.ExecuteHistoricalQuery(s.db, stmt, args...)
 }

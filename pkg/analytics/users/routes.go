@@ -15,21 +15,22 @@ func RegisterRoutes(
 		service: service,
 	}
 
-	routes := r.Group("/analytics/")
+	routes := r.Group("/analytics/users")
 
-	routes.POST("/users", controller.getUserAnalytics)
-	routes.POST("/users/perks", controller.getPerksAnalytics)
-	routes.POST("/users/perks/playtime",
+	routes.POST("/", controller.getUserAnalytics)
+	routes.POST("/perks", controller.getPerksAnalytics)
+	routes.POST("/perks/playtime",
 		middleware.OptionalAuthMiddleWave, controller.getPlaytimeHist)
-	routes.POST("/users/perks/accuracy",
+	routes.POST("/perks/accuracy",
 		middleware.OptionalAuthMiddleWave, controller.getAccuracyHist)
-	routes.POST("/users/teammates",
+	routes.POST("/teammates",
 		middleware.OptionalAuthMiddleWave, controller.getTeammates)
-	routes.POST("/users/maps", controller.getPlayedMaps)
-	routes.POST("/users/sessions",
+	routes.POST("/maps", controller.getPlayedMaps)
+	routes.POST("/difficulty", controller.getDifficultyHist)
+	routes.POST("/sessions",
 		middleware.OptionalAuthMiddleWave, controller.getUserSessions)
-	routes.POST("/users/lastseen",
+	routes.POST("/lastseen",
 		middleware.AuthMiddleWave, controller.getLastSeenUsers)
-	routes.POST("/users/lastgameswithuser",
+	routes.POST("/lastgameswithuser",
 		middleware.AuthMiddleWave, controller.getLastGamesWithUser)
 }

@@ -16,7 +16,7 @@ type controller struct {
 // @Tags 	Analytics
 // @Produce json
 // @Param   body body 		UserAnalyticsRequest true "Body"
-// @Success 200 {object} 	UserAnalyticsResponse
+// @Success 201 {object} 	UserAnalyticsResponse
 // @Router /analytics/users [post]
 func (c *controller) getUserAnalytics(ctx *gin.Context) {
 	var req UserAnalyticsRequest
@@ -31,14 +31,14 @@ func (c *controller) getUserAnalytics(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusCreated, res)
 }
 
 // @Summary Get user perks analytics
 // @Tags 	Analytics
 // @Produce json
 // @Param   body body 		UserPerksAnalyticsRequest true "Body"
-// @Success 200 {object} 	UserPerksAnalyticsResponse
+// @Success 201 {object} 	UserPerksAnalyticsResponse
 // @Router /analytics/users/perks [post]
 func (c *controller) getPerksAnalytics(ctx *gin.Context) {
 	var req UserPerksAnalyticsRequest
@@ -53,14 +53,14 @@ func (c *controller) getPerksAnalytics(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusCreated, res)
 }
 
 // @Summary Get user perk playtime histogram
 // @Tags 	Analytics
 // @Produce json
 // @Param   body body 		UserPerkHistRequest true "Body"
-// @Success 200 {object} 	PlayTimeHist
+// @Success 201 {object} 	PlayTimeHist
 // @Router /analytics/users/perks/playtime [post]
 func (c *controller) getPlaytimeHist(ctx *gin.Context) {
 	var req UserPerkHistRequest
@@ -77,14 +77,14 @@ func (c *controller) getPlaytimeHist(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusCreated, res)
 }
 
 // @Summary Get user perk accuracy histogram
 // @Tags 	Analytics
 // @Produce json
 // @Param   body body 		UserPerkHistRequest true "Body"
-// @Success 200 {object} 	AccuracyHist
+// @Success 201 {object} 	AccuracyHist
 // @Router /analytics/users/perks/accuracy [post]
 func (c *controller) getAccuracyHist(ctx *gin.Context) {
 	var req UserPerkHistRequest
@@ -101,14 +101,36 @@ func (c *controller) getAccuracyHist(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusCreated, res)
+}
+
+// @Summary Get user sessions difficulty histogram
+// @Tags 	Analytics
+// @Produce json
+// @Param   body body 		GetUserDifficultyHistRequest true "Body"
+// @Success 201 {object} 	AccuracyHist
+// @Router /analytics/users/difficulty [post]
+func (c *controller) getDifficultyHist(ctx *gin.Context) {
+	var req GetUserDifficultyHistRequest
+	if err := ctx.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	res, err := c.service.getDifficultyHist(req)
+	if err != nil {
+		ctx.String(http.StatusBadRequest, err.Error())
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, res)
 }
 
 // @Summary Get user teammates
 // @Tags 	Analytics
 // @Produce json
 // @Param   body body 		GetTeammatesRequest true "Body"
-// @Success 200 {object} 	GetTeammatesResponse
+// @Success 201 {object} 	GetTeammatesResponse
 // @Router /analytics/users/teammates [post]
 func (c *controller) getTeammates(ctx *gin.Context) {
 	var req GetTeammatesRequest
@@ -125,14 +147,14 @@ func (c *controller) getTeammates(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusCreated, res)
 }
 
 // @Summary Get user played maps
 // @Tags 	Analytics
 // @Produce json
 // @Param   body body 		GetPlayedMapsRequest true "Body"
-// @Success 200 {object} 	GetPlayedMapsResponse
+// @Success 201 {object} 	GetPlayedMapsResponse
 // @Router /analytics/users/maps [post]
 func (c *controller) getPlayedMaps(ctx *gin.Context) {
 	var req GetPlayedMapsRequest
@@ -147,14 +169,14 @@ func (c *controller) getPlayedMaps(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusCreated, res)
 }
 
 // @Summary Get last seen users
 // @Tags 	Analytics
 // @Produce json
 // @Param   body body 		GetLastSeenUsersRequest true "Body"
-// @Success 200 {object} 	GetLastSeenUsersResponse
+// @Success 201 {object} 	GetLastSeenUsersResponse
 // @Router /analytics/users/lastseen [post]
 func (c *controller) getLastSeenUsers(ctx *gin.Context) {
 	user, _ := util.GetUserFromCtx(ctx)
@@ -176,14 +198,14 @@ func (c *controller) getLastSeenUsers(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusCreated, res)
 }
 
 // @Summary Get last games with user
 // @Tags 	Analytics
 // @Produce json
 // @Param   body body 		GetLastSessionsWithUserRequest true "Body"
-// @Success 200 {object} 	GetLastSessionsWithUserResponse
+// @Success 201 {object} 	GetLastSessionsWithUserResponse
 // @Router /analytics/users/lastgameswithuser [post]
 func (c *controller) getLastGamesWithUser(ctx *gin.Context) {
 	user, _ := util.GetUserFromCtx(ctx)
@@ -205,7 +227,7 @@ func (c *controller) getLastGamesWithUser(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusCreated, res)
 }
 
 // @Summary Get sessions for user by filter
@@ -229,5 +251,5 @@ func (c *controller) getUserSessions(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusCreated, res)
 }
