@@ -14,7 +14,7 @@ type matchesController struct {
 // @Tags 	Match
 // @Produce json
 // @Param   filter body 	FilterMatchesRequest true "Get matches by filter"
-// @Success 200 {array} 	FilterMatchesResponse
+// @Success 201 {array} 	FilterMatchesResponse
 // @Router /matches/filter/new [post]
 func (c *matchesController) filter(ctx *gin.Context) {
 	var req FilterMatchesRequest
@@ -29,5 +29,5 @@ func (c *matchesController) filter(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusCreated, res)
 }
