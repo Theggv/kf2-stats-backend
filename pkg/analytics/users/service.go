@@ -964,20 +964,17 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 func (s *UserAnalyticsService) getUserSessions(
 	req FindUserSessionsRequest,
 ) (*FindUserSessionsResponse, error) {
-	page, limit := util.ParsePagination(req.Pager)
+	page, limit := req.Pager.Parse()
 
-	sortBy := "updated_at"
-	switch req.SortBy.Field {
-	case "damage_dealt":
-		sortBy = "damage_dealt"
-	case "calc_difficulty":
-		sortBy = "calc_difficulty"
+	fieldsMapper := map[string]string{
+		"damage_dealt":    "damage_dealt",
+		"calc_difficulty": "calc_difficulty",
 	}
 
-	direction := "ASC"
-	if req.SortBy.Direction == models.Desc {
-		direction = "DESC"
-	}
+	sortBy, direction := req.SortBy.Transform(
+		fieldsMapper,
+		"updated_at",
+	)
 
 	conds := []string{}
 	args := []any{}
