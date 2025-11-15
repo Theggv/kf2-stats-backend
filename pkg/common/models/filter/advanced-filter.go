@@ -20,8 +20,6 @@ const (
 	Between
 )
 
-type AdvancedFilterType = int
-
 type AdvancedFilter struct {
 	Op   AdvancedFilterOp `json:"operator"`
 	Args []float64        `json:"args"`

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
+	"github.com/theggv/kf2-stats-backend/pkg/matches/filter"
 )
 
 type controller struct {
@@ -233,11 +234,11 @@ func (c *controller) getLastGamesWithUser(ctx *gin.Context) {
 // @Summary Get sessions for user by filter
 // @Tags 	Analytics
 // @Produce json
-// @Param   user body    FindUserSessionsRequest true "Filter JSON"
-// @Success 201 {object} FindUserSessionsResponse
+// @Param   user body    filter.FilterMatchesRequest true "Filter JSON"
+// @Success 201 {object} filter.FilterMatchesResponse
 // @Router /analytics/users/sessions [post]
 func (c *controller) getUserSessions(ctx *gin.Context) {
-	var req FindUserSessionsRequest
+	var req filter.FilterMatchesRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
 		return

@@ -13,6 +13,7 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/leaderboards"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/matches"
+	matchesFilter "github.com/theggv/kf2-stats-backend/pkg/matches/filter"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
@@ -32,7 +33,8 @@ type Store struct {
 	Matches  *matches.MatchesService
 	SteamApi *steamapi.SteamApiUserService
 
-	Difficulty *difficulty.DifficultyCalculatorService
+	MatchesFilter *matchesFilter.MatchesFilterService
+	Difficulty    *difficulty.DifficultyCalculatorService
 
 	AnalyticsMaps   *analyticsMaps.MapAnalyticsService
 	AnalyticsServer *analyticsServer.ServerAnalyticsService
@@ -55,7 +57,8 @@ func New(db *sql.DB, config *config.AppConfig) *Store {
 		Matches:  matches.NewMatchesService(db),
 		SteamApi: steamapi.NewSteamApiUserService(config.SteamApiKey),
 
-		Difficulty: difficulty.NewDifficultyCalculator(db),
+		MatchesFilter: matchesFilter.NewMatchesFilterService(db),
+		Difficulty:    difficulty.NewDifficultyCalculator(db),
 
 		AnalyticsMaps:   analyticsMaps.NewMapAnalyticsService(db),
 		AnalyticsServer: analyticsServer.NewServerAnalyticsService(db),
@@ -74,8 +77,13 @@ func New(db *sql.DB, config *config.AppConfig) *Store {
 		store.Difficulty, store.Maps,
 		store.Servers, store.SteamApi,
 	)
+	store.MatchesFilter.Inject(
+		store.Users, store.Sessions,
+		store.Difficulty, store.Maps,
+		store.Servers, store.SteamApi,
+	)
 	store.Users.Inject(store.SteamApi, store.Difficulty)
-	store.AnalyticsUsers.Inject(store.Users, store.Difficulty)
+	store.AnalyticsUsers.Inject(store.Users, store.Difficulty, store.MatchesFilter)
 	store.LeaderBoards.Inject(store.Users)
 
 	return &store

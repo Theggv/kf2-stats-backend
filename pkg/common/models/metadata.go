@@ -1,7 +1,7 @@
 package models
 
 type SessionMetadata struct {
-	Difficulty *SessionMetadataDifficulty `json:"diff"`
+	Difficulty *SessionMetadataDifficulty `json:"diff,omitempty"`
 }
 
 type SessionMetadataDifficultyWave struct {

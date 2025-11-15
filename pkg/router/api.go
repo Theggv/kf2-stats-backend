@@ -12,6 +12,7 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/leaderboards"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/matches"
+	matchesFilter "github.com/theggv/kf2-stats-backend/pkg/matches/filter"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
@@ -30,6 +31,7 @@ func RegisterApiRoutes(r *gin.Engine, store *store.Store, memoryStore *persist.M
 	users.RegisterRoutes(api, store.Users)
 	matches.RegisterRoutes(api, store.Matches, memoryStore)
 
+	matchesFilter.RegisterRoutes(api, store.MatchesFilter, memoryStore)
 	difficulty.RegisterRoutes(api, store.Difficulty)
 
 	analyticsMaps.RegisterRoutes(api, store.AnalyticsMaps, memoryStore)

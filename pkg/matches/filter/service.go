@@ -29,25 +29,354 @@ type MatchesFilterService struct {
 func (s *MatchesFilterService) Inject(
 	userService *users.UserService,
 	sessionService *session.SessionService,
-	difficultyService *difficulty.DifficultyCalculatorService,
+	diffService *difficulty.DifficultyCalculatorService,
 	mapsService *maps.MapsService,
 	serverService *server.ServerService,
 	steamApiService *steamapi.SteamApiUserService,
 ) {
 	s.userService = userService
 	s.sessionService = sessionService
-	s.diffService = difficultyService
+	s.diffService = diffService
 	s.mapsService = mapsService
 	s.serverService = serverService
 	s.steamApiService = steamApiService
 }
 
-func NewMatchesService(db *sql.DB) *MatchesFilterService {
+func NewMatchesFilterService(db *sql.DB) *MatchesFilterService {
 	service := MatchesFilterService{
 		db: db,
 	}
 
 	return &service
+}
+
+func (s *MatchesFilterService) Filter(req FilterMatchesRequest) (*FilterMatchesResponse, error) {
+	page, limit := req.Pager.Parse()
+
+	isComplexQuery := false
+	fields := []string{}
+	joins := []string{}
+	conds := []string{}
+	args := []any{}
+
+	// Prepare fields
+	fields = append(fields,
+		"session.id", "session.server_id", "session.map_id",
+		"session.mode", "session.length", "session.diff",
+		"session.status", "session.created_at", "session.updated_at",
+		"session.started_at", "session.completed_at",
+	)
+
+	defaultSortBy := "session.updated_at"
+	fieldsMapper := map[string]string{
+		"diff_final_score":     "diff.final_score",
+		"diff_potential_score": "diff.potential_score",
+	}
+	sortBy, direction := req.SortBy.Transform(fieldsMapper, defaultSortBy)
+
+	if sortBy != defaultSortBy {
+		isComplexQuery = true
+	}
+
+	// Prepare filter query
+	conds = append(conds, "1") // in case if no filters passed
+
+	if req.From != nil && req.To != nil {
+		conds = append(conds, "DATE(session.updated_at) BETWEEN ? AND ?")
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	}
+
+	if len(req.ServerIds) > 0 {
+		conds = append(conds,
+			fmt.Sprintf("session.server_id in (%s)", util.IntArrayToString(req.ServerIds, ",")),
+		)
+	}
+
+	if len(req.MapIds) > 0 {
+		conds = append(conds,
+			fmt.Sprintf("session.map_id in (%s)", util.IntArrayToString(req.MapIds, ",")),
+		)
+	}
+
+	if len(req.Statuses) > 0 {
+		conds = append(conds,
+			fmt.Sprintf("session.status in (%s)", util.IntArrayToString(req.Statuses, ",")),
+		)
+	}
+
+	if req.Difficulty != nil {
+		conds = append(conds, fmt.Sprintf("session.diff = %v", *req.Difficulty))
+	}
+
+	if req.Length != nil {
+		if *req.Length == models.Custom {
+			conds = append(conds, fmt.Sprintf("session.length NOT IN (%v, %v, %v)",
+				models.Short, models.Medium, models.Long))
+		} else {
+			conds = append(conds, fmt.Sprintf("session.length = %v", *req.Length))
+		}
+	}
+
+	if req.Mode != nil {
+		conds = append(conds, fmt.Sprintf("session.mode = %v", *req.Mode))
+	}
+
+	if req.Exclude != nil {
+		exclude := req.Exclude
+
+		if len(exclude.ServerIds) > 0 {
+			conds = append(conds,
+				fmt.Sprintf("session.server_id not in (%s)", util.IntArrayToString(exclude.ServerIds, ",")),
+			)
+		}
+
+		if len(exclude.MapIds) > 0 {
+			conds = append(conds,
+				fmt.Sprintf("session.map_id not in (%s)", util.IntArrayToString(exclude.MapIds, ",")),
+			)
+		}
+
+		if len(exclude.Statuses) > 0 {
+			conds = append(conds,
+				fmt.Sprintf("session.status not in (%s)", util.IntArrayToString(exclude.Statuses, ",")),
+			)
+		}
+
+	}
+
+	if req.Extra != nil {
+		isComplexQuery = true
+		filters := req.Extra
+
+		if filters.Wave != nil {
+			if stmt, a, ok := filters.Wave.ToStatement("gd.wave"); ok {
+				conds = append(conds, stmt)
+				args = append(args, a...)
+			}
+		}
+
+		if filters.Difficulty != nil {
+			if stmt, a, ok := filters.Difficulty.ToStatement("diff.final_score * diff.final_score"); ok {
+				conds = append(conds, stmt)
+				args = append(args, a...)
+			}
+		}
+
+		if filters.MaxMonsters != nil {
+			if stmt, a, ok := filters.MaxMonsters.ToStatement("extra.max_monsters"); ok {
+				conds = append(conds, stmt)
+				args = append(args, a...)
+			}
+		}
+
+		if filters.SpawnCycle != nil {
+			conds = append(conds, "extra.spawn_cycle LIKE ?")
+			args = append(args, fmt.Sprintf("%%%v%%", *filters.SpawnCycle))
+		}
+
+		if filters.ZedsType != nil {
+			conds = append(conds, "extra.zeds_type LIKE ?")
+			args = append(args, fmt.Sprintf("%v%%", *filters.ZedsType))
+		}
+	}
+
+	if isComplexQuery {
+		joins = append(joins,
+			"INNER JOIN session_game_data gd ON gd.session_id = session.id",
+			"INNER JOIN session_diff diff ON diff.session_id = session.id",
+			"LEFT JOIN session_game_data_extra extra ON extra.session_id = session.id",
+		)
+	}
+
+	stmt := fmt.Sprintf(`
+		WITH pagination AS (
+			SELECT session.id as session_id
+			FROM session
+			%v
+			WHERE %v
+			ORDER BY %v %v
+			LIMIT %v, %v
+		)
+		SELECT %v
+		FROM pagination cte
+		INNER JOIN session ON session.id = cte.session_id
+		`,
+		strings.Join(joins, "\n"),
+		strings.Join(conds, " AND "),
+		sortBy, direction,
+		page*limit, limit,
+		strings.Join(fields, ", "),
+	)
+
+	// Execute filter query
+	rows, err := s.db.Query(stmt, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	items := []*Match{}
+
+	defer rows.Close()
+	for rows.Next() {
+		item := Match{}
+		sessionData := MatchSession{}
+
+		fields := []any{
+			&sessionData.Id, &sessionData.ServerId, &sessionData.MapId,
+			&sessionData.Mode, &sessionData.Length, &sessionData.Difficulty,
+			&sessionData.Status, &sessionData.CreatedAt, &sessionData.UpdatedAt,
+			&sessionData.StartedAt, &sessionData.CompletedAt,
+		}
+
+		err := rows.Scan(fields...)
+		if err != nil {
+			fmt.Print(err)
+			continue
+		}
+
+		item.Session = sessionData
+
+		items = append(items, &item)
+	}
+
+	var total int
+	{
+		stmt := fmt.Sprintf(`
+			SELECT count(session.id) as count
+			FROM session
+			%v
+			WHERE %v`,
+			strings.Join(joins, "\n"),
+			strings.Join(conds, " AND "),
+		)
+
+		row := s.db.QueryRow(stmt, args...)
+
+		err := row.Scan(&total)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	items, err = s.HandleIncludes(req.Includes, items)
+	if err != nil {
+		return nil, err
+	}
+
+	return &FilterMatchesResponse{
+		Items: items,
+		Metadata: &models.PaginationResponse{
+			Page:           page,
+			ResultsPerPage: limit,
+			TotalResults:   total,
+		},
+	}, nil
+}
+
+func (s *MatchesFilterService) HandleIncludes(
+	includes *FilterMatchesRequestIncludes,
+	items []*Match,
+) ([]*Match, error) {
+	if includes == nil {
+		return items, nil
+	}
+
+	sessionIds := s.GetSessionIdsFromMatches(items)
+
+	if includes.ServerData != nil && *includes.ServerData {
+		serverData, err := s.getServerData(sessionIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range items {
+			for j := range serverData {
+				if items[i].Session.Id == serverData[j].MatchId {
+					items[i].Details.Server = serverData[j].Server
+				}
+			}
+		}
+	}
+
+	if includes.MapData != nil && *includes.MapData {
+		mapData, err := s.getMapData(sessionIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range items {
+			for j := range mapData {
+				if items[i].Session.Id == mapData[j].MatchId {
+					items[i].Details.Map = mapData[j].Map
+				}
+			}
+		}
+	}
+
+	if includes.GameData != nil && *includes.GameData {
+		gameData, err := s.getGameData(sessionIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range items {
+			for j := range gameData {
+				if items[i].Session.Id == gameData[j].MatchId {
+					items[i].Details.GameData = gameData[j].GameData
+				}
+			}
+		}
+	}
+
+	if includes.ExtraGameData != nil && *includes.ExtraGameData {
+		cdData, err := s.getExtraGameData(sessionIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range items {
+			for j := range cdData {
+				if items[i].Session.Id == cdData[j].MatchId {
+					items[i].Details.ExtraGameData = cdData[j].ExtraData
+				}
+			}
+		}
+	}
+
+	if includes.LiveData != nil && *includes.LiveData {
+		playerData, err := s.getPlayerData(sessionIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range items {
+			items[i].Details.LiveData = &MatchLiveData{}
+
+			for j := range playerData {
+				if items[i].Session.Id == playerData[j].MatchId {
+					items[i].Details.LiveData.Players = playerData[j].Players
+					items[i].Details.LiveData.Spectators = playerData[j].Spectators
+				}
+			}
+		}
+	}
+
+	{
+		difficulty, err := s.diffService.GetByIds(sessionIds)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range items {
+			for j := range difficulty {
+				if items[i].Session.Id == difficulty[j].SessionId {
+					items[i].Metadata.Difficulty = difficulty[j]
+				}
+			}
+		}
+	}
+
+	return items, nil
 }
 
 type filterServerData struct {
@@ -170,14 +499,14 @@ func (s *MatchesFilterService) getGameData(matchId []int) ([]*filterGameData, er
 	return items, nil
 }
 
-type filterCDGameData struct {
-	MatchId int
-	CDData  *models.ExtraGameData
+type filterExtraGameData struct {
+	MatchId   int
+	ExtraData *models.ExtraGameData
 }
 
-func (s *MatchesFilterService) getExtraGameData(matchId []int) ([]*filterCDGameData, error) {
+func (s *MatchesFilterService) getExtraGameData(matchId []int) ([]*filterExtraGameData, error) {
 	if len(matchId) == 0 {
-		return []*filterCDGameData{}, nil
+		return []*filterExtraGameData{}, nil
 	}
 
 	sql := fmt.Sprintf(`
@@ -196,18 +525,18 @@ func (s *MatchesFilterService) getExtraGameData(matchId []int) ([]*filterCDGameD
 	}
 
 	defer rows.Close()
-	items := []*filterCDGameData{}
+	items := []*filterExtraGameData{}
 
 	for rows.Next() {
-		cdData := models.ExtraGameData{}
-		item := filterCDGameData{}
+		extraData := models.ExtraGameData{}
+		item := filterExtraGameData{}
 
 		rows.Scan(&item.MatchId,
-			&cdData.SpawnCycle, &cdData.MaxMonsters,
-			&cdData.WaveSizeFakes, &cdData.ZedsType,
+			&extraData.SpawnCycle, &extraData.MaxMonsters,
+			&extraData.WaveSizeFakes, &extraData.ZedsType,
 		)
 
-		item.CDData = &cdData
+		item.ExtraData = &extraData
 		items = append(items, &item)
 	}
 
@@ -319,295 +648,7 @@ func (s *MatchesFilterService) getPlayerData(matchId []int) ([]*filterPlayerData
 	return items, nil
 }
 
-func (s *MatchesFilterService) Filter(req FilterMatchesRequest) (*FilterMatchesResponse, error) {
-	page, limit := req.Pager.Parse()
-
-	fields := []string{}
-	conds := []string{}
-	args := []any{}
-
-	// Prepare fields
-	fields = append(fields,
-		"session.id", "session.server_id", "session.map_id",
-		"session.mode", "session.length", "session.diff",
-		"session.status", "session.created_at", "session.updated_at",
-		"session.started_at", "session.completed_at",
-	)
-
-	fieldsMapper := map[string]string{
-		"updated_at":           "updated_at",
-		"diff_final_score":     "final_score",
-		"diff_potential_score": "potential_score",
-	}
-	sortBy, direction := req.SortBy.Transform(fieldsMapper, "updated_at")
-
-	// Prepare filter query
-	conds = append(conds, "1") // in case if no filters passed
-
-	if req.From != nil && req.To != nil {
-		conds = append(conds, "DATE(session.updated_at) BETWEEN ? AND ?")
-		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
-	}
-
-	if len(req.ServerIds) > 0 {
-		conds = append(conds,
-			fmt.Sprintf("session.server_id in (%s)", util.IntArrayToString(req.ServerIds, ",")),
-		)
-	}
-
-	if len(req.MapIds) > 0 {
-		conds = append(conds,
-			fmt.Sprintf("session.map_id in (%s)", util.IntArrayToString(req.MapIds, ",")),
-		)
-	}
-
-	if len(req.Statuses) > 0 {
-		conds = append(conds,
-			fmt.Sprintf("session.status in (%s)", util.IntArrayToString(req.Statuses, ",")),
-		)
-	}
-
-	if req.Difficulty != nil {
-		conds = append(conds, fmt.Sprintf("session.diff = %v", *req.Difficulty))
-	}
-
-	if req.Length != nil {
-		if *req.Length == models.Custom {
-			conds = append(conds, fmt.Sprintf("session.length NOT IN (%v, %v, %v)",
-				models.Short, models.Medium, models.Long))
-		} else {
-			conds = append(conds, fmt.Sprintf("session.length = %v", *req.Length))
-		}
-	}
-
-	if req.Mode != nil {
-		conds = append(conds, fmt.Sprintf("session.mode = %v", *req.Mode))
-	}
-
-	if req.Extra != nil {
-		filters := req.Extra
-
-		if filters.Wave != nil {
-			if stmt, a, ok := filters.Wave.ToStatement("gd.wave"); ok {
-				conds = append(conds, stmt)
-				args = append(args, a...)
-			}
-		}
-
-		if filters.Difficulty != nil {
-			if stmt, a, ok := filters.Difficulty.ToStatement("diff.final_score"); ok {
-				conds = append(conds, stmt)
-				args = append(args, a...)
-			}
-		}
-
-		if filters.MaxMonsters != nil {
-			if stmt, a, ok := filters.MaxMonsters.ToStatement("extra.max_monsters"); ok {
-				conds = append(conds, stmt)
-				args = append(args, a...)
-			}
-		}
-
-		if filters.SpawnCycle != nil {
-			conds = append(conds, "extra.spawn_cycle LIKE ?")
-			args = append(args, fmt.Sprintf("%%%v%%", *filters.SpawnCycle))
-		}
-
-		if filters.ZedsType != nil {
-			conds = append(conds, "extra.zeds_type LIKE ?")
-			args = append(args, fmt.Sprintf("%v%%", *filters.ZedsType))
-		}
-	}
-
-	stmt := fmt.Sprintf(`
-		WITH filtered_matches AS (
-			SELECT 
-				session.id AS session_id,
-				coalesce(diff.final_score, 0) AS final_score,
-				coalesce(diff.potential_score, 0) AS potential_score,
-				session.updated_at AS updated_at
-			FROM session
-			INNER JOIN session_game_data gd ON gd.session_id = session.id
-			LEFT JOIN session_game_data_extra extra ON extra.session_id = session.id
-			LEFT JOIN session_diff diff ON diff.session_id = session.id
-			WHERE %v
-		), pagination AS (
-			SELECT session_id
-			FROM 
-			filtered_matches cte
-			ORDER BY %v %v
-			LIMIT %v, %v
-		), metadata AS (
-			SELECT count(*) as count
-			FROM filtered_matches
-		)
-		SELECT
-			metadata.count,
-			%v
-		FROM pagination cte
-		INNER JOIN session ON session.id = cte.session_id
-		CROSS JOIN metadata`,
-		strings.Join(conds, " AND "),
-		sortBy, direction,
-		page*limit, limit,
-		strings.Join(fields, ", "),
-	)
-
-	// Execute filter query
-	rows, err := s.db.Query(stmt, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	var total int
-	items := []*Match{}
-
-	defer rows.Close()
-	for rows.Next() {
-		item := Match{}
-		sessionData := MatchSession{}
-
-		fields := []any{
-			&total,
-			&sessionData.Id, &sessionData.ServerId, &sessionData.MapId,
-			&sessionData.Mode, &sessionData.Length, &sessionData.Difficulty,
-			&sessionData.Status, &sessionData.CreatedAt, &sessionData.UpdatedAt,
-			&sessionData.StartedAt, &sessionData.CompletedAt,
-		}
-
-		err := rows.Scan(fields...)
-		if err != nil {
-			fmt.Print(err)
-			continue
-		}
-
-		item.Session = sessionData
-
-		items = append(items, &item)
-	}
-
-	items, err = s.handleIncludes(req.Includes, items)
-	if err != nil {
-		return nil, err
-	}
-
-	return &FilterMatchesResponse{
-		Items: items,
-		Metadata: models.PaginationResponse{
-			Page:           page,
-			ResultsPerPage: limit,
-			TotalResults:   total,
-		},
-	}, nil
-}
-
-func (s *MatchesFilterService) handleIncludes(
-	includes *FilterMatchesRequestIncludes,
-	items []*Match,
-) ([]*Match, error) {
-	if includes == nil {
-		return items, nil
-	}
-
-	sessionIds := s.getSessionIdsFromMatches(items)
-
-	if includes.ServerData != nil && *includes.ServerData {
-		serverData, err := s.getServerData(sessionIds)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := range items {
-			for j := range serverData {
-				if items[i].Session.Id == serverData[j].MatchId {
-					items[i].Details.Server = serverData[j].Server
-				}
-			}
-		}
-	}
-
-	if includes.MapData != nil && *includes.MapData {
-		mapData, err := s.getMapData(sessionIds)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := range items {
-			for j := range mapData {
-				if items[i].Session.Id == mapData[j].MatchId {
-					items[i].Details.Map = mapData[j].Map
-				}
-			}
-		}
-	}
-
-	if includes.GameData != nil && *includes.GameData {
-		gameData, err := s.getGameData(sessionIds)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := range items {
-			for j := range gameData {
-				if items[i].Session.Id == gameData[j].MatchId {
-					items[i].Details.GameData = gameData[j].GameData
-				}
-			}
-		}
-	}
-
-	if includes.ExtraGameData != nil && *includes.ExtraGameData {
-		cdData, err := s.getExtraGameData(sessionIds)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := range items {
-			for j := range cdData {
-				if items[i].Session.Id == cdData[j].MatchId {
-					items[i].Details.ExtraGameData = cdData[j].CDData
-				}
-			}
-		}
-	}
-
-	if includes.LiveData != nil && *includes.LiveData {
-		playerData, err := s.getPlayerData(sessionIds)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := range items {
-			items[i].Details.LiveData = &MatchLiveData{}
-
-			for j := range playerData {
-				if items[i].Session.Id == playerData[j].MatchId {
-					items[i].Details.LiveData.Players = playerData[j].Players
-					items[i].Details.LiveData.Spectators = playerData[j].Spectators
-				}
-			}
-		}
-	}
-
-	{
-		difficulty, err := s.diffService.GetByIds(sessionIds)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := range items {
-			for j := range difficulty {
-				if items[i].Session.Id == difficulty[j].SessionId {
-					items[i].Metadata.Difficulty = difficulty[j]
-				}
-			}
-		}
-	}
-
-	return items, nil
-}
-
-func (s *MatchesFilterService) getSessionIdsFromMatches(items []*Match) []int {
+func (s *MatchesFilterService) GetSessionIdsFromMatches(items []*Match) []int {
 	sessionIds := []int{}
 
 	for _, item := range items {

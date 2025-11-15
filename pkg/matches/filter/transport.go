@@ -23,10 +23,20 @@ type FilterMatchesRequestExtra struct {
 	ZedsType    *string                `json:"zeds_type"`
 }
 
-type FilterMatchesRequest struct {
-	UserIds   []int `json:"user_ids"`
+type FilterMatchesRequestExclude struct {
 	ServerIds []int `json:"server_ids"`
 	MapIds    []int `json:"map_ids"`
+
+	Statuses []models.GameStatus `json:"statuses"`
+}
+
+type FilterMatchesRequest struct {
+	UserIds []int `json:"user_ids"`
+
+	ServerIds []int `json:"server_ids"`
+	MapIds    []int `json:"map_ids"`
+
+	Exclude *FilterMatchesRequestExclude `json:"exclude"`
 
 	Perks    []models.Perk       `json:"perks"`
 	Statuses []models.GameStatus `json:"statuses"`
@@ -50,5 +60,5 @@ type FilterMatchesRequest struct {
 type FilterMatchesResponse struct {
 	Items []*Match `json:"items"`
 
-	Metadata models.PaginationResponse `json:"metadata"`
+	Metadata *models.PaginationResponse `json:"metadata"`
 }

@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/theggv/kf2-stats-backend/pkg/analytics"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
+	"github.com/theggv/kf2-stats-backend/pkg/matches/filter"
 	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
@@ -17,6 +19,8 @@ type UserAnalyticsService struct {
 
 	userService *users.UserService
 	diffService *difficulty.DifficultyCalculatorService
+
+	matchesFilterService *filter.MatchesFilterService
 }
 
 func NewUserAnalyticsService(db *sql.DB) *UserAnalyticsService {
@@ -30,9 +34,11 @@ func NewUserAnalyticsService(db *sql.DB) *UserAnalyticsService {
 func (s *UserAnalyticsService) Inject(
 	userService *users.UserService,
 	diffService *difficulty.DifficultyCalculatorService,
+	matchesFilterService *filter.MatchesFilterService,
 ) {
 	s.userService = userService
 	s.diffService = diffService
+	s.matchesFilterService = matchesFilterService
 }
 
 func (s *UserAnalyticsService) GetUserAnalytics(
@@ -962,83 +968,147 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 }
 
 func (s *UserAnalyticsService) getUserSessions(
-	req FindUserSessionsRequest,
-) (*FindUserSessionsResponse, error) {
+	req filter.FilterMatchesRequest,
+) (*filter.FilterMatchesResponse, error) {
+	if len(req.UserIds) != 1 {
+		return nil, fmt.Errorf("user_ids len != 1")
+	}
+
+	userId := req.UserIds[0]
+
 	page, limit := req.Pager.Parse()
 
+	defaultSortBy := "updated_at"
 	fieldsMapper := map[string]string{
 		"damage_dealt":    "damage_dealt",
 		"calc_difficulty": "calc_difficulty",
 	}
-
-	sortBy, direction := req.SortBy.Transform(
-		fieldsMapper,
-		"updated_at",
-	)
+	sortBy, direction := req.SortBy.Transform(fieldsMapper, defaultSortBy)
 
 	conds := []string{}
 	args := []any{}
 
 	conds = append(conds, "aggr.user_id = ?")
-	args = append(args, req.UserId)
+	args = append(args, userId)
 
-	if req.AuthUser != nil && req.AuthUser.UserId == req.UserId {
-		conds = append(conds, "DATE(session.updated_at) BETWEEN ? AND ?")
-		if req.From != nil && req.To != nil {
+	conds = append(conds, "DATE(session.updated_at) BETWEEN ? AND ?")
+	if req.From != nil && req.To != nil {
+		if req.AuthUser != nil && req.AuthUser.UserId == userId {
+			// Allow search by date for profile owner
+			args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+		} else if req.To.Sub(*req.From) <= time.Hour*24 {
+			// Or if time period equals 1 day
 			args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 		} else {
 			args = append(args, "2000-01-01", "3000-01-01")
 		}
+	} else {
+		args = append(args, "2000-01-01", "3000-01-01")
 	}
 
 	if len(req.Perks) > 0 {
 		conds = append(conds, fmt.Sprintf("aggr.perk IN (%v)", util.IntArrayToString(req.Perks, ",")))
 	}
 
-	if len(req.MapIds) > 0 {
-		conds = append(conds, fmt.Sprintf("map_id IN (%v)", util.IntArrayToString(req.MapIds, ",")))
+	if len(req.ServerIds) > 0 {
+		conds = append(conds,
+			fmt.Sprintf("session.server_id in (%s)", util.IntArrayToString(req.ServerIds, ",")),
+		)
 	}
 
-	if len(req.ServerIds) > 0 {
-		conds = append(conds, fmt.Sprintf("server_id IN (%v)", util.IntArrayToString(req.ServerIds, ",")))
+	if len(req.MapIds) > 0 {
+		conds = append(conds,
+			fmt.Sprintf("session.map_id in (%s)", util.IntArrayToString(req.MapIds, ",")),
+		)
+	}
+
+	if len(req.Statuses) > 0 {
+		conds = append(conds,
+			fmt.Sprintf("session.status in (%s)", util.IntArrayToString(req.Statuses, ",")),
+		)
+	}
+
+	if req.Difficulty != nil {
+		conds = append(conds, fmt.Sprintf("session.diff = %v", *req.Difficulty))
+	}
+
+	if req.Length != nil {
+		if *req.Length == models.Custom {
+			conds = append(conds, fmt.Sprintf("session.length NOT IN (%v, %v, %v)",
+				models.Short, models.Medium, models.Long))
+		} else {
+			conds = append(conds, fmt.Sprintf("session.length = %v", *req.Length))
+		}
 	}
 
 	if req.Mode != nil {
 		conds = append(conds, fmt.Sprintf("session.mode = %v", *req.Mode))
 	}
 
-	if req.Mode == nil || *req.Mode != models.ControlledDifficulty {
-		if req.Difficulty != nil {
-			conds = append(conds, fmt.Sprintf("session.diff = %v", *req.Difficulty))
+	if req.Exclude != nil {
+		exclude := req.Exclude
+
+		if len(exclude.ServerIds) > 0 {
+			conds = append(conds,
+				fmt.Sprintf("session.server_id not in (%s)", util.IntArrayToString(exclude.ServerIds, ",")),
+			)
+		}
+
+		if len(exclude.MapIds) > 0 {
+			conds = append(conds,
+				fmt.Sprintf("session.map_id not in (%s)", util.IntArrayToString(exclude.MapIds, ",")),
+			)
+		}
+
+		if len(exclude.Statuses) > 0 {
+			conds = append(conds,
+				fmt.Sprintf("session.status not in (%s)", util.IntArrayToString(exclude.Statuses, ",")),
+			)
+		}
+
+	}
+
+	if req.Extra != nil {
+		filters := req.Extra
+
+		if filters.Wave != nil {
+			if stmt, a, ok := filters.Wave.ToStatement("gd.wave"); ok {
+				conds = append(conds, stmt)
+				args = append(args, a...)
+			}
+		}
+
+		if filters.Difficulty != nil {
+			if stmt, a, ok := filters.Difficulty.ToStatement("diff.final_score * diff.final_score"); ok {
+				conds = append(conds, stmt)
+				args = append(args, a...)
+			}
+		}
+
+		if filters.MaxMonsters != nil {
+			if stmt, a, ok := filters.MaxMonsters.ToStatement("extra.max_monsters"); ok {
+				conds = append(conds, stmt)
+				args = append(args, a...)
+			}
+		}
+
+		if filters.SpawnCycle != nil {
+			conds = append(conds, "extra.spawn_cycle LIKE ?")
+			args = append(args, fmt.Sprintf("%%%v%%", *filters.SpawnCycle))
+		}
+
+		if filters.ZedsType != nil {
+			conds = append(conds, "extra.zeds_type LIKE ?")
+			args = append(args, fmt.Sprintf("%v%%", *filters.ZedsType))
 		}
 	}
 
-	if req.Status != nil {
-		conds = append(conds, fmt.Sprintf("session.status = %v", *req.Status))
-	}
-
-	if req.Length != nil {
-		conds = append(conds, fmt.Sprintf("session.length = %v", *req.Length))
-	}
-
-	if req.MinWave != nil {
-		conds = append(conds, fmt.Sprintf("gd.wave >= %v", *req.MinWave))
-	}
-
-	if req.Mode != nil && *req.Mode == models.ControlledDifficulty {
-		if req.SpawnCycle != nil {
-			conds = append(conds, "cd.spawn_cycle LIKE ?")
-			args = append(args, fmt.Sprintf("%%%v%%", *req.SpawnCycle))
-		}
-
-		if req.ZedsType != nil {
-			conds = append(conds, "cd.zeds_type LIKE ?")
-			args = append(args, fmt.Sprintf("%v%%", *req.ZedsType))
-		}
-
-		if req.MaxMonsters != nil {
-			conds = append(conds, fmt.Sprintf("cd.max_monsters = %v", *req.MaxMonsters))
-		}
+	fields := []string{
+		"session.id", "session.server_id", "session.map_id",
+		"session.mode", "session.length", "session.diff",
+		"session.status", "session.created_at", "session.updated_at",
+		"session.started_at", "session.completed_at",
+		"user_perks.perk", "cte.damage_dealt", "metadata.total_results",
 	}
 
 	stmt := fmt.Sprintf(`
@@ -1046,8 +1116,9 @@ func (s *UserAnalyticsService) getUserSessions(
 			SELECT aggr.id AS aggr_id
 			FROM session
 			INNER JOIN session_aggregated aggr ON aggr.session_id = session.id
+			INNER JOIN session_diff diff on diff.session_id = session.id
 			INNER JOIN session_game_data gd on gd.session_id = session.id
-			LEFT JOIN session_game_data_extra cd on cd.session_id = session.id
+			LEFT JOIN session_game_data_extra extra on extra.session_id = session.id
 			WHERE %v
 		), pagination AS (
 			SELECT DISTINCT
@@ -1058,7 +1129,7 @@ func (s *UserAnalyticsService) getUserSessions(
 			FROM user_session cte
 			INNER JOIN session_aggregated aggr ON aggr.id = cte.aggr_id
 			INNER JOIN session ON session.id = aggr.session_id
-			LEFT JOIN session_diff diff ON diff.session_id = session.id
+			INNER JOIN session_diff diff ON diff.session_id = session.id
 			WINDOW w AS (partition by session.id)
 			ORDER BY %v %v
 			LIMIT %v, %v
@@ -1074,43 +1145,16 @@ func (s *UserAnalyticsService) getUserSessions(
 			INNER JOIN session_aggregated aggr ON aggr.session_id = cte.session_id
 			WHERE user_id = %v
 		)
-		SELECT DISTINCT
-			session.id,
-			session.mode,
-			session.length,
-			session.diff,
-			session.status,
-
-			extra.spawn_cycle,
-			extra.max_monsters,
-			extra.wave_size_fakes,
-			extra.zeds_type,
-
-			gd.wave,
-			gd.zeds_left,
-			user_perks.perk,
-			cte.damage_dealt,
-			
-			server.id AS server_id,
-			server.name AS server_name,
-
-			maps.id AS map_id,
-			maps.name AS map_name,
-
-			session.updated_at,
-			metadata.total_results
+		SELECT DISTINCT %v
 		FROM pagination cte
 		INNER JOIN session ON session.id = cte.session_id
 		INNER JOIN user_perks ON user_perks.session_id = session.id
-		INNER JOIN server ON server.id = session.server_id
-		INNER JOIN maps ON maps.id = session.map_id
-		INNER JOIN session_game_data gd on gd.session_id = session.id
-		LEFT JOIN session_game_data_extra extra on extra.session_id = session.id
 		CROSS JOIN metadata
 		`, strings.Join(conds, " AND "),
 		sortBy, direction,
 		page*limit, limit,
-		req.UserId,
+		userId,
+		strings.Join(fields, ", "),
 	)
 
 	rows, err := s.db.Query(stmt, args...)
@@ -1119,8 +1163,8 @@ func (s *UserAnalyticsService) getUserSessions(
 	}
 
 	var count int
-	res := FindUserSessionsResponse{
-		Items: []*FindUserSessionsResponseItem{},
+	res := filter.FilterMatchesResponse{
+		Items: []*filter.Match{},
 		Metadata: &models.PaginationResponse{
 			Page:           page,
 			ResultsPerPage: limit,
@@ -1130,62 +1174,44 @@ func (s *UserAnalyticsService) getUserSessions(
 	defer rows.Close()
 	for rows.Next() {
 		var perk int
-		item := FindUserSessionsResponseItem{
-			Session:  SessionData{},
-			Server:   ServerData{},
-			Map:      MapData{},
-			GameData: FindUserSessionsResponseItemGameData{},
-			Stats:    FindUserSessionsResponseItemStats{},
-			Perks:    []int{},
-		}
-		extraGameData := models.ExtraGameData{}
+		item := filter.Match{}
+		sessionData := filter.MatchSession{}
+		userData := filter.MatchUserData{}
 
-		rows.Scan(
-			&item.Session.Id, &item.Session.Mode, &item.Session.Length,
-			&item.Session.Difficulty, &item.Session.Status,
-			&extraGameData.SpawnCycle, &extraGameData.MaxMonsters,
-			&extraGameData.WaveSizeFakes, &extraGameData.ZedsType,
-			&item.GameData.Wave, &item.GameData.ZedsLeft, &perk,
-			&item.Stats.DamageDealt,
-			&item.Server.Id, &item.Server.Name,
-			&item.Map.Id, &item.Map.Name,
-			&item.UpdatedAt, &count,
-		)
-
-		if extraGameData.SpawnCycle != nil {
-			item.ExtraGameData = &extraGameData
+		fields := []any{
+			&sessionData.Id, &sessionData.ServerId, &sessionData.MapId,
+			&sessionData.Mode, &sessionData.Length, &sessionData.Difficulty,
+			&sessionData.Status, &sessionData.CreatedAt, &sessionData.UpdatedAt,
+			&sessionData.StartedAt, &sessionData.CompletedAt,
+			&perk, &userData.Stats.DamageDealt, &count,
 		}
+
+		err := rows.Scan(fields...)
+		if err != nil {
+			fmt.Print(err)
+			continue
+		}
+
+		item.Session = sessionData
+		item.Details.UserData = &userData
 
 		if len(res.Items) > 0 && res.Items[len(res.Items)-1].Session.Id == item.Session.Id {
 			last := res.Items[len(res.Items)-1]
-			last.Perks = append(last.Perks, perk)
+			last.Details.UserData.Perks = append(last.Details.UserData.Perks, perk)
 		} else {
-			item.Perks = append(item.Perks, perk)
+			item.Details.UserData.Perks = append(item.Details.UserData.Perks, perk)
 			res.Items = append(res.Items, &item)
 		}
 	}
 
-	{
-		sessionIds := []int{}
-		for _, item := range res.Items {
-			sessionIds = append(sessionIds, item.Session.Id)
-		}
+	res.Metadata.TotalResults = count
 
-		difficulty, err := s.diffService.GetByIds(sessionIds)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := range res.Items {
-			for j := range difficulty {
-				if res.Items[i].Session.Id == difficulty[j].SessionId {
-					res.Items[i].Metadata.Difficulty = difficulty[j]
-				}
-			}
-		}
+	items, err := s.matchesFilterService.HandleIncludes(req.Includes, res.Items)
+	if err != nil {
+		return nil, err
 	}
 
-	res.Metadata.TotalResults = count
+	res.Items = items
 
 	return &res, nil
 }

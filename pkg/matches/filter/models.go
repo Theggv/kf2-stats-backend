@@ -34,15 +34,15 @@ type MatchSession struct {
 }
 
 type MatchDetails struct {
-	Map    *MatchMap    `json:"map"`
-	Server *MatchServer `json:"server"`
+	Map    *MatchMap    `json:"map,omitempty"`
+	Server *MatchServer `json:"server,omitempty"`
 
-	GameData      *models.GameData      `json:"game_data"`
-	ExtraGameData *models.ExtraGameData `json:"extra_data"`
+	GameData      *models.GameData      `json:"game_data,omitempty"`
+	ExtraGameData *models.ExtraGameData `json:"extra_data,omitempty"`
 
-	LiveData *MatchLiveData `json:"live_data"`
+	LiveData *MatchLiveData `json:"live_data,omitempty"`
 
-	UserData *MatchUserData `json:"user_data"`
+	UserData *MatchUserData `json:"user_data,omitempty"`
 }
 
 type MatchMap struct {
