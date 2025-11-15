@@ -1,18 +1,22 @@
 package matches
 
 import (
+	"time"
+
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
-	"github.com/theggv/kf2-stats-backend/pkg/stats"
 )
 
 type FilterMatchesRequest struct {
-	ServerId []int               `json:"server_id"`
-	MapId    []int               `json:"map_id"`
-	Status   []models.GameStatus `json:"status"`
+	ServerIds []int               `json:"server_ids"`
+	MapIds    []int               `json:"map_ids"`
+	Statuses  []models.GameStatus `json:"statuses"`
 
 	Mode       *models.GameMode       `json:"mode"`
 	Length     *models.GameLength     `json:"length"`
 	Difficulty *models.GameDifficulty `json:"diff"`
+
+	From *time.Time `json:"date_from"`
+	To   *time.Time `json:"date_to"`
 
 	IncludeServer   *bool `json:"include_server"`
 	IncludeMap      *bool `json:"include_map"`
@@ -56,7 +60,7 @@ type PlayerWaveStats struct {
 	ZedTimeCount  int     `json:"zedtime_count"`
 	ZedTimeLength float32 `json:"zedtime_length"`
 
-	Kills stats.ZedCounter `json:"kills"`
+	Kills models.ZedCounter `json:"kills"`
 
 	HuskBackpackKills int `json:"husk_b"`
 	HuskRages         int `json:"husk_r"`
@@ -122,8 +126,8 @@ type GetMatchLiveDataResponsePlayer struct {
 type GetMatchLiveDataResponse struct {
 	Status models.GameStatus `json:"status"`
 
-	GameData models.GameData    `json:"game_data"`
-	CDData   *models.CDGameData `json:"cd_data"`
+	GameData models.GameData       `json:"game_data"`
+	CDData   *models.ExtraGameData `json:"cd_data"`
 
 	Players    []*GetMatchLiveDataResponsePlayer `json:"players"`
 	Spectators []*GetMatchLiveDataResponsePlayer `json:"spectators"`

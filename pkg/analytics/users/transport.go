@@ -3,6 +3,7 @@ package users
 import (
 	"time"
 
+	"github.com/theggv/kf2-stats-backend/pkg/analytics"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 )
 
@@ -59,11 +60,26 @@ type UserPerksAnalyticsResponse struct {
 }
 
 type UserPerkHistRequest struct {
-	UserId int  `json:"user_id" binding:"required"`
-	Perk   *int `json:"perk"`
+	UserId int `json:"user_id" binding:"required"`
 
 	From *time.Time `json:"date_from"`
 	To   *time.Time `json:"date_to"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+	MapIds    []int `json:"map_ids"`
+
+	Mode       *models.GameMode       `json:"mode"`
+	Length     *models.GameLength     `json:"length"`
+	Difficulty *models.GameDifficulty `json:"diff"`
+	Status     *models.GameStatus     `json:"status"`
+
+	SpawnCycle  *string `json:"spawn_cycle"`
+	ZedsType    *string `json:"zeds_type"`
+	MinWave     *int    `json:"min_wave"`
+	MaxMonsters *int    `json:"max_monsters"`
+
+	AuthUser *models.TokenPayload `json:"-"`
 }
 
 type AccuracyHistItem struct {
@@ -89,8 +105,11 @@ type PlayTimeHist struct {
 }
 
 type GetTeammatesRequest struct {
-	UserId int  `json:"user_id" binding:"required"`
-	Limit  *int `json:"limit"`
+	UserId int `json:"user_id" binding:"required"`
+
+	Pager models.PaginationRequest `json:"pager"`
+
+	AuthUser *models.TokenPayload `json:"-"`
 }
 
 type GetTeammatesResponseItem struct {
@@ -108,5 +127,187 @@ type GetTeammatesResponseItem struct {
 }
 
 type GetTeammatesResponse struct {
-	Items []*GetTeammatesResponseItem `json:"items"`
+	Items    []*GetTeammatesResponseItem `json:"items"`
+	Metadata *models.PaginationResponse  `json:"metadata"`
+}
+
+type GetPlayedMapsRequest struct {
+	UserId int `json:"user_id" binding:"required"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+
+	From *time.Time `json:"date_from"`
+	To   *time.Time `json:"date_to"`
+}
+
+type GetPlayedMapsResponseItem struct {
+	Name string `json:"name"`
+
+	TotalGames int `json:"total_games"`
+	TotalWins  int `json:"total_wins"`
+
+	LastPlayed *time.Time `json:"last_played"`
+}
+
+type GetPlayedMapsResponse struct {
+	Items []*GetPlayedMapsResponseItem `json:"items"`
+}
+
+type GetLastSeenUsersRequest struct {
+	UserId     int    `json:"user_id" binding:"required"`
+	SearchText string `json:"search_text"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+
+	From *time.Time `json:"date_from"`
+	To   *time.Time `json:"date_to"`
+
+	Pager models.PaginationRequest `json:"pager"`
+}
+
+type SessionData struct {
+	Id int `json:"id"`
+
+	Mode       models.GameMode       `json:"mode"`
+	Length     int                   `json:"length"`
+	Difficulty models.GameDifficulty `json:"diff"`
+
+	Status models.GameStatus `json:"status"`
+}
+
+type ServerData struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type MapData struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+type GetLastSeenUsersResponseItem struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
+
+	ProfileUrl *string `json:"profile_url"`
+	Avatar     *string `json:"avatar"`
+
+	Session SessionData `json:"session"`
+	Server  ServerData  `json:"server"`
+	Map     MapData     `json:"map"`
+
+	Perks []int `json:"perks"`
+
+	Metadata models.SessionMetadata `json:"metadata"`
+
+	LastSeen *time.Time `json:"last_seen"`
+
+	AuthId string          `json:"-"`
+	Type   models.AuthType `json:"-"`
+}
+
+type GetLastSeenUsersResponse struct {
+	Items    []*GetLastSeenUsersResponseItem `json:"items"`
+	Metadata *models.PaginationResponse      `json:"metadata"`
+}
+
+type GetLastSessionsWithUserRequest struct {
+	UserId      int `json:"user_id" binding:"required"`
+	OtherUserId int `json:"other_user_id" binding:"required"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+
+	From *time.Time `json:"date_from"`
+	To   *time.Time `json:"date_to"`
+
+	Pager models.PaginationRequest `json:"pager"`
+}
+
+type GetLastSessionsWithUserResponseItem struct {
+	Session SessionData `json:"session"`
+	Server  ServerData  `json:"server"`
+	Map     MapData     `json:"map"`
+
+	Perks []int `json:"perks"`
+
+	Metadata models.SessionMetadata `json:"metadata"`
+
+	LastSeen *time.Time `json:"last_seen"`
+}
+
+type GetLastSessionsWithUserResponse struct {
+	Items    []*GetLastSessionsWithUserResponseItem `json:"items"`
+	Metadata *models.PaginationResponse             `json:"metadata"`
+}
+
+type FindUserSessionsRequest struct {
+	UserId int `json:"user_id"`
+
+	From *time.Time `json:"date_from"`
+	To   *time.Time `json:"date_to"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+	MapIds    []int `json:"map_ids"`
+
+	Mode       *models.GameMode       `json:"mode"`
+	Length     *models.GameLength     `json:"length"`
+	Difficulty *models.GameDifficulty `json:"diff"`
+	Status     *models.GameStatus     `json:"status"`
+
+	SpawnCycle  *string `json:"spawn_cycle"`
+	ZedsType    *string `json:"zeds_type"`
+	MinWave     *int    `json:"min_wave"`
+	MaxMonsters *int    `json:"max_monsters"`
+
+	SortBy models.SortByRequest     `json:"sort_by"`
+	Pager  models.PaginationRequest `json:"pager"`
+
+	AuthUser *models.TokenPayload `json:"-"`
+}
+
+type FindUserSessionsResponseItemGameData struct {
+	Wave     int `json:"wave"`
+	ZedsLeft int `json:"zeds_left"`
+}
+
+type FindUserSessionsResponseItemStats struct {
+	DamageDealt int `json:"damage_dealt"`
+}
+
+type FindUserSessionsResponseItem struct {
+	Session SessionData `json:"session"`
+	Server  ServerData  `json:"server"`
+	Map     MapData     `json:"map"`
+	Perks   []int       `json:"perks"`
+
+	GameData FindUserSessionsResponseItemGameData `json:"game_data"`
+
+	ExtraGameData *models.ExtraGameData `json:"extra_game_data,omitempty"`
+
+	Stats FindUserSessionsResponseItemStats `json:"stats"`
+
+	Metadata models.SessionMetadata `json:"metadata"`
+
+	UpdatedAt *time.Time `json:"updated_at"`
+}
+
+type FindUserSessionsResponse struct {
+	Items    []*FindUserSessionsResponseItem `json:"items"`
+	Metadata *models.PaginationResponse      `json:"metadata"`
+}
+
+type GetUserDifficultyHistRequest struct {
+	UserId int `json:"user_id" binding:"required"`
+
+	From   *time.Time           `json:"date_from"`
+	To     *time.Time           `json:"date_to"`
+	Period analytics.TimePeriod `json:"period" binding:"required"`
+
+	Perks     []int `json:"perks"`
+	ServerIds []int `json:"server_ids"`
+	MapIds    []int `json:"map_ids"`
 }

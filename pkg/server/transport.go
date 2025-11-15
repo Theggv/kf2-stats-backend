@@ -39,10 +39,12 @@ type RecentUsersResponseUserSession struct {
 
 	Status models.GameStatus `json:"status"`
 
-	Wave   int                `json:"wave"`
-	CDData *models.CDGameData `json:"cd_data"`
+	Wave   int                   `json:"wave"`
+	CDData *models.ExtraGameData `json:"cd_data"`
 
 	MapName string `json:"map_name"`
+
+	Metadata models.SessionMetadata `json:"metadata"`
 
 	Perks []int `json:"perks"`
 

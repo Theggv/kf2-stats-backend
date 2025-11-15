@@ -43,6 +43,33 @@ func initSchema(db *sql.DB) error {
 		)`,
 	)
 	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS users_steam_data (
+			user_id INTEGER PRIMARY KEY NOT NULL,
+
+			steam_id VARCHAR(32) NOT NULL,
+			name VARCHAR(128) NOT NULL,
+			avatar VARCHAR(128) NOT NULL,
+			profile_url VARCHAR(128) NOT NULL,
+
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+		
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			UNIQUE INDEX idx_uniq_users_steam_data (steam_id)
+		)`,
+	)
+	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS users_token (
+			id INTEGER PRIMARY KEY AUTO_INCREMENT,
+			user_id INTEGER NOT NULL,
+			
+			token TEXT NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
+		
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
+		)`,
+	)
+	tx.Exec(`
 		CREATE TABLE IF NOT EXISTS session (
 			id INTEGER PRIMARY KEY AUTO_INCREMENT,
 			server_id INTEGER NOT NULL,
@@ -114,6 +141,24 @@ func initSchema(db *sql.DB) error {
 		)
 	`)
 	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS session_diff (
+			session_id INTEGER PRIMARY KEY NOT NULL,
+
+			avg_zeds_diff REAL NOT NULL DEFAULT 0,
+			stddev_zeds_diff REAL NOT NULL DEFAULT 0,
+			max_zeds_diff REAL NOT NULL DEFAULT 0,
+
+			completion_p REAL NOT NULL DEFAULT 0,
+			restarts_penalty REAL NOT NULL DEFAULT 0,
+			map_bonus REAL NOT NULL DEFAULT 0,
+
+			potential_score REAL NOT NULL DEFAULT 0,
+			final_score REAL NOT NULL DEFAULT 0,
+
+			FOREIGN KEY (session_id) REFERENCES session(id) ON UPDATE CASCADE ON DELETE CASCADE
+		)
+	`)
+	tx.Exec(`
 		CREATE TABLE IF NOT EXISTS wave_stats (
 			id INTEGER PRIMARY KEY AUTO_INCREMENT,
 			session_id INTEGER NOT NULL,
@@ -126,6 +171,24 @@ func initSchema(db *sql.DB) error {
 			FOREIGN KEY (session_id) REFERENCES session(id) ON UPDATE CASCADE ON DELETE CASCADE,
 
 			UNIQUE INDEX idx_uniq_wave_stats (session_id, wave, attempt)
+		)
+	`)
+	tx.Exec(`
+		CREATE TABLE IF NOT EXISTS wave_stats_diff (
+			stats_id INTEGER PRIMARY KEY NOT NULL,
+
+			zeds_diff REAL NOT NULL DEFAULT 0,
+
+			duration REAL NOT NULL DEFAULT 0,
+			predicted_duration REAL NOT NULL DEFAULT 0,
+
+			kiting_penalty REAL NOT NULL DEFAULT 0,
+			wave_size_penalty REAL NOT NULL DEFAULT 0,
+			total_players_penalty REAL NOT NULL DEFAULT 0,
+
+			score REAL NOT NULL DEFAULT 0,
+
+			FOREIGN KEY (stats_id) REFERENCES wave_stats(id) ON UPDATE CASCADE ON DELETE CASCADE
 		)
 	`)
 	tx.Exec(`

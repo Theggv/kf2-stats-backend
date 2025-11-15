@@ -12,9 +12,9 @@ func RegisterRoutes(r *gin.RouterGroup, service *SessionService) {
 
 	routes := r.Group("/sessions")
 
-	routes.POST("/", middleware.AuthMiddleware, controller.create)
-	routes.PUT("/status", middleware.AuthMiddleware, controller.updateStatus)
-	routes.PUT("/game-data", middleware.AuthMiddleware, controller.updateGameData)
+	routes.POST("/", middleware.MutatorAuthMiddleWave, controller.create)
+	routes.PUT("/status", middleware.MutatorAuthMiddleWave, controller.updateStatus)
+	routes.PUT("/game-data", middleware.MutatorAuthMiddleWave, controller.updateGameData)
 	routes.GET("/demo/:id", controller.getDemo)
-	routes.POST("/demo", middleware.AuthMiddleware, controller.uploadDemo)
+	routes.POST("/demo", middleware.MutatorAuthMiddleWave, controller.uploadDemo)
 }

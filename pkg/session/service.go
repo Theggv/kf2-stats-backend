@@ -12,6 +12,7 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
+	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
@@ -21,6 +22,7 @@ type SessionService struct {
 	mapsService   *maps.MapsService
 	serverService *server.ServerService
 	usersService  *users.UserService
+	diffService   *difficulty.DifficultyCalculatorService
 }
 
 func NewSessionService(db *sql.DB) *SessionService {
@@ -35,10 +37,12 @@ func (s *SessionService) Inject(
 	mapsService *maps.MapsService,
 	serverService *server.ServerService,
 	usersService *users.UserService,
+	diffService *difficulty.DifficultyCalculatorService,
 ) {
 	s.mapsService = mapsService
 	s.serverService = serverService
 	s.usersService = usersService
+	s.diffService = diffService
 }
 
 func (s *SessionService) Create(req CreateSessionRequest) (int, error) {
@@ -75,6 +79,11 @@ func (s *SessionService) Create(req CreateSessionRequest) (int, error) {
 	}
 
 	_, err = s.db.Exec(`INSERT INTO session_game_data (session_id) VALUES (?)`, id)
+	if err != nil {
+		return 0, err
+	}
+
+	_, err = s.db.Exec(`INSERT INTO session_diff (session_id) VALUES (?)`, id)
 
 	return int(id), err
 }
@@ -122,7 +131,7 @@ func (s *SessionService) GetGameData(id int) (*models.GameData, error) {
 	return &item, err
 }
 
-func (s *SessionService) GetCDData(id int) (*models.CDGameData, error) {
+func (s *SessionService) GetExtraData(id int) (*models.ExtraGameData, error) {
 	row := s.db.QueryRow(`
 		SELECT spawn_cycle, max_monsters, wave_size_fakes, zeds_type
 		FROM session
@@ -133,7 +142,7 @@ func (s *SessionService) GetCDData(id int) (*models.CDGameData, error) {
 		LIMIT 1`, id,
 	)
 
-	item := models.CDGameData{}
+	item := models.ExtraGameData{}
 
 	err := row.Scan(
 		&item.SpawnCycle, &item.MaxMonsters,
@@ -144,6 +153,8 @@ func (s *SessionService) GetCDData(id int) (*models.CDGameData, error) {
 }
 
 func (s *SessionService) UpdateStatus(data UpdateStatusRequest) error {
+	defer s.diffService.AddToQueue(data.Id)
+
 	_, err := s.db.Exec(`
 		UPDATE session 
 		SET status = ?, updated_at = CURRENT_TIMESTAMP 

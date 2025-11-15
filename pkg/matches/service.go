@@ -8,7 +8,7 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
-	"github.com/theggv/kf2-stats-backend/pkg/stats"
+	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
@@ -25,22 +25,25 @@ type getMatchWavesPlayersStatsResponse struct {
 type MatchesService struct {
 	db *sql.DB
 
-	userService     *users.UserService
-	sessionService  *session.SessionService
-	mapsService     *maps.MapsService
-	serverService   *server.ServerService
-	steamApiService *steamapi.SteamApiUserService
+	userService       *users.UserService
+	sessionService    *session.SessionService
+	difficultyService *difficulty.DifficultyCalculatorService
+	mapsService       *maps.MapsService
+	serverService     *server.ServerService
+	steamApiService   *steamapi.SteamApiUserService
 }
 
 func (s *MatchesService) Inject(
 	userService *users.UserService,
 	sessionService *session.SessionService,
+	difficultyService *difficulty.DifficultyCalculatorService,
 	mapsService *maps.MapsService,
 	serverService *server.ServerService,
 	steamApiService *steamapi.SteamApiUserService,
 ) {
 	s.userService = userService
 	s.sessionService = sessionService
+	s.difficultyService = difficultyService
 	s.mapsService = mapsService
 	s.serverService = serverService
 	s.steamApiService = steamApiService
@@ -96,9 +99,14 @@ func (s *MatchesService) GetById(id int) (*Match, error) {
 		match.GameData = gameData
 	}
 
-	cdData, err := s.sessionService.GetCDData(session.Id)
-	if err == nil && cdData.SpawnCycle != nil {
-		match.CDData = cdData
+	extraData, err := s.sessionService.GetExtraData(session.Id)
+	if err == nil && extraData.SpawnCycle != nil {
+		match.CDData = extraData
+	}
+
+	diff, err := s.difficultyService.GetById(session.Id)
+	if err == nil {
+		match.Metadata.Difficulty = diff
 	}
 
 	return &match, nil
@@ -285,7 +293,7 @@ func (s *MatchesService) getMatchWavesPlayersStats(sessionId int) (
 			playerStatsId int
 		)
 		s := MatchWavePlayerStats{}
-		kills := stats.ZedCounter{}
+		kills := models.ZedCounter{}
 
 		err := rows.Scan(&playerStatsId,
 			&s.ShotsFired, &s.ShotsHit, &s.ShotsHS,
@@ -345,7 +353,7 @@ func (s *MatchesService) GetMatchPlayerStats(sessionId, userId int) (*GetMatchPl
 	for rows.Next() {
 		var useless int
 		player := PlayerWaveStats{}
-		kills := stats.ZedCounter{}
+		kills := models.ZedCounter{}
 
 		err := rows.Scan(&player.PlayerStatsId,
 			&player.ShotsFired, &player.ShotsHit, &player.ShotsHS,
@@ -432,7 +440,7 @@ func (s *MatchesService) GetMatchLiveData(sessionId int) (*GetMatchLiveDataRespo
 		WHERE gd.session_id = ?`
 
 	gameData := models.GameData{}
-	cdData := models.CDGameData{}
+	cdData := models.ExtraGameData{}
 
 	err := s.db.QueryRow(sql, sessionId).Scan(
 		&gameData.MaxPlayers, &gameData.PlayersOnline, &gameData.PlayersAlive,

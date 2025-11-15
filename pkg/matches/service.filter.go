@@ -130,7 +130,7 @@ func (s *MatchesService) getGameData(matchId []int) ([]*filterGameData, error) {
 
 type filterCDGameData struct {
 	MatchId int
-	CDData  *models.CDGameData
+	CDData  *models.ExtraGameData
 }
 
 func (s *MatchesService) getCDGameData(matchId []int) ([]*filterCDGameData, error) {
@@ -157,7 +157,7 @@ func (s *MatchesService) getCDGameData(matchId []int) ([]*filterCDGameData, erro
 	items := []*filterCDGameData{}
 
 	for rows.Next() {
-		cdData := models.CDGameData{}
+		cdData := models.ExtraGameData{}
 		item := filterCDGameData{}
 
 		rows.Scan(&item.MatchId,
@@ -281,7 +281,8 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 	page, limit := util.ParsePagination(req.Pager)
 
 	attributes := []string{}
-	conditions := []string{}
+	conds := []string{}
+	args := []any{}
 	joins := []string{}
 	order := "asc"
 
@@ -294,40 +295,45 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 	)
 
 	// Prepare filter query
-	conditions = append(conditions, "1") // in case if no filters passed
+	conds = append(conds, "1") // in case if no filters passed
 
-	if len(req.ServerId) > 0 {
-		conditions = append(conditions,
-			fmt.Sprintf("session.server_id in (%s)", util.IntArrayToString(req.ServerId, ",")),
+	if req.From != nil && req.To != nil {
+		conds = append(conds, "DATE(session.updated_at) BETWEEN ? AND ?")
+		args = append(args, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	}
+
+	if len(req.ServerIds) > 0 {
+		conds = append(conds,
+			fmt.Sprintf("session.server_id in (%s)", util.IntArrayToString(req.ServerIds, ",")),
 		)
 	}
 
-	if len(req.MapId) > 0 {
-		conditions = append(conditions,
-			fmt.Sprintf("session.map_id in (%s)", util.IntArrayToString(req.MapId, ",")),
+	if len(req.MapIds) > 0 {
+		conds = append(conds,
+			fmt.Sprintf("session.map_id in (%s)", util.IntArrayToString(req.MapIds, ",")),
 		)
 	}
 
 	if req.Difficulty != nil {
-		conditions = append(conditions, fmt.Sprintf("session.diff = %v", *req.Difficulty))
+		conds = append(conds, fmt.Sprintf("session.diff = %v", *req.Difficulty))
 	}
 
 	if req.Length != nil {
 		if *req.Length == models.Custom {
-			conditions = append(conditions, fmt.Sprintf("session.length NOT IN (%v, %v, %v)",
+			conds = append(conds, fmt.Sprintf("session.length NOT IN (%v, %v, %v)",
 				models.Short, models.Medium, models.Long))
 		} else {
-			conditions = append(conditions, fmt.Sprintf("session.length = %v", *req.Length))
+			conds = append(conds, fmt.Sprintf("session.length = %v", *req.Length))
 		}
 	}
 
 	if req.Mode != nil {
-		conditions = append(conditions, fmt.Sprintf("session.mode = %v", *req.Mode))
+		conds = append(conds, fmt.Sprintf("session.mode = %v", *req.Mode))
 	}
 
-	if len(req.Status) > 0 {
-		conditions = append(conditions,
-			fmt.Sprintf("session.status in (%s)", util.IntArrayToString(req.Status, ",")),
+	if len(req.Statuses) > 0 {
+		conds = append(conds,
+			fmt.Sprintf("session.status in (%s)", util.IntArrayToString(req.Statuses, ",")),
 		)
 	}
 
@@ -336,24 +342,38 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		order = "desc"
 	}
 
-	sql := fmt.Sprintf(`
-		SELECT %v FROM session
-		%v
-		WHERE %v
-		ORDER BY session.updated_at %v
-		LIMIT %v, %v`,
+	stmt := fmt.Sprintf(`
+		WITH filtered_matches AS (
+			SELECT %v FROM session
+			%v
+			WHERE %v
+		), pagination AS (
+			SELECT * FROM 
+			filtered_matches cte
+			ORDER BY session.updated_at %v
+			LIMIT %v, %v
+		), metadata AS (
+			SELECT count(*) as count
+			FROM filtered_matches
+		)
+		SELECT
+			metadata.count,
+			pagination.*
+		FROM pagination
+		CROSS JOIN metadata`,
 		strings.Join(attributes, ", "),
 		strings.Join(joins, "\n"),
-		strings.Join(conditions, " AND "), order, page*limit, limit,
+		strings.Join(conds, " AND "), order, page*limit, limit,
 	)
 
 	// Execute filter query
-	rows, err := s.db.Query(sql)
+	rows, err := s.db.Query(stmt, args...)
 	if err != nil {
 		return nil, err
 	}
 
-	matchId := []int{}
+	var total int
+	sessionIds := []int{}
 	items := []*Match{}
 
 	defer rows.Close()
@@ -362,6 +382,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		sessionData := MatchSession{}
 
 		fields := []any{
+			&total,
 			&sessionData.SessionId, &sessionData.ServerId, &sessionData.MapId,
 			&sessionData.Mode, &sessionData.Length, &sessionData.Difficulty,
 			&sessionData.Status, &sessionData.CreatedAt, &sessionData.UpdatedAt,
@@ -376,12 +397,12 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 
 		item.Session = sessionData
 
-		matchId = append(matchId, item.Session.SessionId)
+		sessionIds = append(sessionIds, item.Session.SessionId)
 		items = append(items, &item)
 	}
 
 	if req.IncludeServer != nil && *req.IncludeServer {
-		serverData, err := s.getServerData(matchId)
+		serverData, err := s.getServerData(sessionIds)
 		if err != nil {
 			return nil, err
 		}
@@ -396,7 +417,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 	}
 
 	if req.IncludeMap != nil && *req.IncludeMap {
-		mapData, err := s.getMapData(matchId)
+		mapData, err := s.getMapData(sessionIds)
 		if err != nil {
 			return nil, err
 		}
@@ -411,7 +432,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 	}
 
 	if req.IncludeGameData != nil && *req.IncludeGameData {
-		gameData, err := s.getGameData(matchId)
+		gameData, err := s.getGameData(sessionIds)
 		if err != nil {
 			return nil, err
 		}
@@ -426,7 +447,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 	}
 
 	if req.IncludeCDData != nil && *req.IncludeCDData {
-		cdData, err := s.getCDGameData(matchId)
+		cdData, err := s.getCDGameData(sessionIds)
 		if err != nil {
 			return nil, err
 		}
@@ -441,7 +462,7 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 	}
 
 	if req.IncludePlayers != nil && *req.IncludePlayers {
-		playerData, err := s.getPlayerData(matchId)
+		playerData, err := s.getPlayerData(sessionIds)
 		if err != nil {
 			return nil, err
 		}
@@ -456,18 +477,18 @@ func (s *MatchesService) Filter(req FilterMatchesRequest) (*FilterMatchesRespons
 		}
 	}
 
-	var total int
 	{
-		sql = fmt.Sprintf(`
-			SELECT count(*) FROM session
-			%v
-			WHERE %v`,
-			strings.Join(joins, "\n"),
-			strings.Join(conditions, " AND "),
-		)
-
-		if err := s.db.QueryRow(sql).Scan(&total); err != nil {
+		difficulty, err := s.difficultyService.GetByIds(sessionIds)
+		if err != nil {
 			return nil, err
+		}
+
+		for i := range items {
+			for j := range difficulty {
+				if items[i].Session.SessionId == difficulty[j].SessionId {
+					items[i].Metadata.Difficulty = difficulty[j]
+				}
+			}
 		}
 	}
 

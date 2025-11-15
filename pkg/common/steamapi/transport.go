@@ -14,3 +14,7 @@ type GetUserSummaryResponseResponse struct {
 type GetUserSummaryResponse struct {
 	Response *GetUserSummaryResponseResponse `json:"response"`
 }
+
+type ValidateOpenIdRequest struct {
+	Params string `json:"params"`
+}

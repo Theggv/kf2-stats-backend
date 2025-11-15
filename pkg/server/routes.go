@@ -15,6 +15,6 @@ func RegisterRoutes(r *gin.RouterGroup, serverService *ServerService) {
 	routes.GET("/", controller.getByPattern)
 	routes.GET("/:id", controller.getById)
 	routes.GET("/:id/last-session", controller.getLastSession)
-	routes.PUT("/name", middleware.AuthMiddleware, controller.updateName)
+	routes.PUT("/name", middleware.MutatorAuthMiddleWave, controller.updateName)
 	routes.POST("/users/recent", controller.getRecentUsers)
 }

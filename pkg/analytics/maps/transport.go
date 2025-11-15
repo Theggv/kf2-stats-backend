@@ -19,5 +19,5 @@ type MapAnalytics struct {
 }
 
 type MapAnalyticsResponse struct {
-	Items []MapAnalytics `json:"items"`
+	Items []*MapAnalytics `json:"items"`
 }

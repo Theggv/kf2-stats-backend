@@ -5,16 +5,22 @@ import (
 	"fmt"
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
+	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
 )
 
 type StatsService struct {
 	db          *sql.DB
 	userService *users.UserService
+	diffService *difficulty.DifficultyCalculatorService
 }
 
-func (s *StatsService) Inject(userService *users.UserService) {
+func (s *StatsService) Inject(
+	userService *users.UserService,
+	diffService *difficulty.DifficultyCalculatorService,
+) {
 	s.userService = userService
+	s.diffService = diffService
 }
 
 func NewStatsService(db *sql.DB) *StatsService {
@@ -119,6 +125,10 @@ func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRe
 		kills.Scrake, kills.FP, kills.QP, kills.Boss, kills.Custom,
 	)
 
+	if err != nil {
+		return err
+	}
+
 	_, err = s.db.Exec(`
 		INSERT INTO wave_stats_player_comms (player_stats_id,
 			request_healing, request_dosh, request_help, 
@@ -134,7 +144,7 @@ func (s *StatsService) createWaveStatsPlayer(statsId int, req *CreateWaveStatsRe
 	return err
 }
 
-func (s *StatsService) createWaveStatsCD(statsId int, req *models.CDGameData) error {
+func (s *StatsService) createWaveStatsCD(statsId int, req *models.ExtraGameData) error {
 	_, err := s.db.Exec(`
 		INSERT INTO wave_stats_extra (
 			stats_id, spawn_cycle, max_monsters, wave_size_fakes, zeds_type) 
@@ -148,6 +158,8 @@ func (s *StatsService) createWaveStatsCD(statsId int, req *models.CDGameData) er
 }
 
 func (s *StatsService) CreateWaveStats(req CreateWaveStatsRequest) error {
+	defer s.diffService.AddToQueue(req.SessionId)
+
 	statsId, err := s.createWaveStats(&req)
 	if err != nil {
 		return err

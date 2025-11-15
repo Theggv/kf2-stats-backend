@@ -49,7 +49,8 @@ func ExecuteAll(db *sql.DB) {
 
 	migration_2025_04_11_rename_tables(db)
 	migration_2025_04_11_update_fields(db)
-  migration_2025_05_02_idx_session_status(db)
+	migration_2025_05_02_idx_session_status(db)
 	migration_2025_05_23_0001_add_fields(db)
 	migration_2025_05_27_0001_migrate_leaderboard(db)
+	migration_2025_11_14_0001_clean_procs(db)
 }
