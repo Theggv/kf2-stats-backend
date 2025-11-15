@@ -79,6 +79,11 @@ func (s *SessionService) Create(req CreateSessionRequest) (int, error) {
 	}
 
 	_, err = s.db.Exec(`INSERT INTO session_game_data (session_id) VALUES (?)`, id)
+	if err != nil {
+		return 0, err
+	}
+
+	_, err = s.db.Exec(`INSERT INTO session_diff (session_id) VALUES (?)`, id)
 
 	return int(id), err
 }

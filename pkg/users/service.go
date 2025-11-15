@@ -414,6 +414,10 @@ func (s *UserService) GetUserProfiles(
 		return nil, err
 	}
 
+	if len(users) == 0 {
+		return []*models.UserProfile{}, nil
+	}
+
 	set := make(map[string]bool)
 	steamIds := []string{}
 
