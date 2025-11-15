@@ -47,5 +47,13 @@ func new() *AppConfig {
 		panic("SECRET_TOKEN is not set. Check your .env file.")
 	}
 
+	if config.JwtAccessSecretKey == "" || config.JwtAccessSecretKey == "long_access_token_secret_key" {
+		panic("JWT_ACCESS_SECRET_KEY is not set. Check your .env file.")
+	}
+
+	if config.JwtRefreshSecretKey == "" || config.JwtAccessSecretKey == "long_refresh_token_secret_key" {
+		panic("JWT_REFRESH_SECRET_KEY is not set. Check your .env file.")
+	}
+
 	return &config
 }
