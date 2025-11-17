@@ -5,6 +5,7 @@ import (
 
 	"github.com/theggv/kf2-stats-backend/pkg/analytics"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
+	"github.com/theggv/kf2-stats-backend/pkg/matches"
 )
 
 type UserAnalyticsRequest struct {
@@ -167,45 +168,10 @@ type GetLastSeenUsersRequest struct {
 	Pager models.PaginationRequest `json:"pager"`
 }
 
-type SessionData struct {
-	Id int `json:"id"`
-
-	Mode       models.GameMode       `json:"mode"`
-	Length     int                   `json:"length"`
-	Difficulty models.GameDifficulty `json:"diff"`
-
-	Status models.GameStatus `json:"status"`
-}
-
-type ServerData struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
-}
-
-type MapData struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
-}
-
 type GetLastSeenUsersResponseItem struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
+	UserProfile *models.UserProfile `json:"user_profile"`
 
-	ProfileUrl *string `json:"profile_url"`
-	Avatar     *string `json:"avatar"`
-
-	Session SessionData `json:"session"`
-	Server  ServerData  `json:"server"`
-	Map     MapData     `json:"map"`
-
-	Perks []int `json:"perks"`
-
-	Metadata models.SessionMetadata `json:"metadata"`
-
-	LastSeen *time.Time `json:"last_seen"`
-
-	AuthId string          `json:"-"`
-	Type   models.AuthType `json:"-"`
+	Match *matches.Match `json:"match"`
 }
 
 type GetLastSeenUsersResponse struct {
@@ -226,78 +192,9 @@ type GetLastSessionsWithUserRequest struct {
 	Pager models.PaginationRequest `json:"pager"`
 }
 
-type GetLastSessionsWithUserResponseItem struct {
-	Session SessionData `json:"session"`
-	Server  ServerData  `json:"server"`
-	Map     MapData     `json:"map"`
-
-	Perks []int `json:"perks"`
-
-	Metadata models.SessionMetadata `json:"metadata"`
-
-	LastSeen *time.Time `json:"last_seen"`
-}
-
 type GetLastSessionsWithUserResponse struct {
-	Items    []*GetLastSessionsWithUserResponseItem `json:"items"`
-	Metadata *models.PaginationResponse             `json:"metadata"`
-}
-
-type FindUserSessionsRequest struct {
-	UserId int `json:"user_id"`
-
-	From *time.Time `json:"date_from"`
-	To   *time.Time `json:"date_to"`
-
-	Perks     []int `json:"perks"`
-	ServerIds []int `json:"server_ids"`
-	MapIds    []int `json:"map_ids"`
-
-	Mode       *models.GameMode       `json:"mode"`
-	Length     *models.GameLength     `json:"length"`
-	Difficulty *models.GameDifficulty `json:"diff"`
-	Status     *models.GameStatus     `json:"status"`
-
-	SpawnCycle  *string `json:"spawn_cycle"`
-	ZedsType    *string `json:"zeds_type"`
-	MinWave     *int    `json:"min_wave"`
-	MaxMonsters *int    `json:"max_monsters"`
-
-	SortBy models.SortByRequest     `json:"sort_by"`
-	Pager  models.PaginationRequest `json:"pager"`
-
-	AuthUser *models.TokenPayload `json:"-"`
-}
-
-type FindUserSessionsResponseItemGameData struct {
-	Wave     int `json:"wave"`
-	ZedsLeft int `json:"zeds_left"`
-}
-
-type FindUserSessionsResponseItemStats struct {
-	DamageDealt int `json:"damage_dealt"`
-}
-
-type FindUserSessionsResponseItem struct {
-	Session SessionData `json:"session"`
-	Server  ServerData  `json:"server"`
-	Map     MapData     `json:"map"`
-	Perks   []int       `json:"perks"`
-
-	GameData FindUserSessionsResponseItemGameData `json:"game_data"`
-
-	ExtraGameData *models.ExtraGameData `json:"extra_game_data,omitempty"`
-
-	Stats FindUserSessionsResponseItemStats `json:"stats"`
-
-	Metadata models.SessionMetadata `json:"metadata"`
-
-	UpdatedAt *time.Time `json:"updated_at"`
-}
-
-type FindUserSessionsResponse struct {
-	Items    []*FindUserSessionsResponseItem `json:"items"`
-	Metadata *models.PaginationResponse      `json:"metadata"`
+	Items    []*matches.Match           `json:"items"`
+	Metadata *models.PaginationResponse `json:"metadata"`
 }
 
 type GetUserDifficultyHistRequest struct {

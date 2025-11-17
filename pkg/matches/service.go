@@ -65,7 +65,7 @@ func (s *MatchesService) GetById(id int) (*Match, error) {
 		return nil, err
 	}
 	match.Session = MatchSession{
-		SessionId:   session.Id,
+		Id:          session.Id,
 		ServerId:    session.ServerId,
 		MapId:       session.MapId,
 		Mode:        session.Mode,
@@ -80,28 +80,28 @@ func (s *MatchesService) GetById(id int) (*Match, error) {
 
 	mapData, err := s.mapsService.GetById(session.MapId)
 	if err == nil {
-		match.Map = &MatchMap{
-			Name:    &mapData.Name,
+		match.Details.Map = &MatchMap{
+			Name:    mapData.Name,
 			Preview: &mapData.Preview,
 		}
 	}
 
 	serverData, err := s.serverService.GetById(session.ServerId)
 	if err == nil {
-		match.Server = &MatchServer{
-			Name:    &serverData.Name,
-			Address: &serverData.Address,
+		match.Details.Server = &MatchServer{
+			Name:    serverData.Name,
+			Address: serverData.Address,
 		}
 	}
 
 	gameData, err := s.sessionService.GetGameData(session.Id)
 	if err == nil {
-		match.GameData = gameData
+		match.Details.GameData = gameData
 	}
 
 	extraData, err := s.sessionService.GetExtraData(session.Id)
 	if err == nil && extraData.SpawnCycle != nil {
-		match.CDData = extraData
+		match.Details.ExtraGameData = extraData
 	}
 
 	diff, err := s.difficultyService.GetById(session.Id)

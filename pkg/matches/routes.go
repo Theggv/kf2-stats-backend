@@ -13,7 +13,7 @@ func RegisterRoutes(
 	service *MatchesService,
 	memoryStore *persist.MemoryStore,
 ) {
-	controller := matchesController{
+	controller := controller{
 		service: service,
 	}
 
@@ -36,5 +36,4 @@ func RegisterRoutes(
 	routes.GET("/server/:id",
 		cache.CacheByRequestURI(memoryStore, 15*time.Second),
 		controller.getLastServerMatch)
-	routes.POST("/filter", controller.filter)
 }

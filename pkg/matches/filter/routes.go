@@ -10,11 +10,11 @@ func RegisterRoutes(
 	service *MatchesFilterService,
 	memoryStore *persist.MemoryStore,
 ) {
-	controller := matchesController{
+	controller := controller{
 		service: service,
 	}
 
 	routes := r.Group("/matches")
 
-	routes.POST("/filter/new", controller.filter)
+	routes.POST("/filter", controller.filter)
 }

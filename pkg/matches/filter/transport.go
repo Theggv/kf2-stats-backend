@@ -5,6 +5,7 @@ import (
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models/filter"
+	"github.com/theggv/kf2-stats-backend/pkg/matches"
 )
 
 type FilterMatchesRequestIncludes struct {
@@ -31,8 +32,7 @@ type FilterMatchesRequestExclude struct {
 }
 
 type FilterMatchesRequest struct {
-	UserIds []int `json:"user_ids"`
-
+	UserIds   []int `json:"user_ids"`
 	ServerIds []int `json:"server_ids"`
 	MapIds    []int `json:"map_ids"`
 
@@ -58,7 +58,7 @@ type FilterMatchesRequest struct {
 }
 
 type FilterMatchesResponse struct {
-	Items []*Match `json:"items"`
+	Items []*matches.Match `json:"items"`
 
 	Metadata *models.PaginationResponse `json:"metadata"`
 }

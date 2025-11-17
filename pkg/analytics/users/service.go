@@ -9,6 +9,7 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/analytics"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
+	"github.com/theggv/kf2-stats-backend/pkg/matches"
 	"github.com/theggv/kf2-stats-backend/pkg/matches/filter"
 	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
@@ -613,6 +614,7 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 ) (*GetLastSeenUsersResponse, error) {
 	page, limit := util.ParsePagination(req.Pager)
 
+	fields := []string{}
 	userSessionConds := []string{}
 	args := []any{}
 
@@ -650,6 +652,16 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 		args = append(args, fmt.Sprintf("%%%v%%", req.SearchText), req.SearchText)
 	}
 
+	fields = append(fields,
+		"users.id as user_id", "users.name", "users.auth_id", "users.auth_type",
+		"session.id", "session.server_id", "session.map_id",
+		"session.mode", "session.length", "session.diff",
+		"session.status", "session.created_at", "session.updated_at",
+		"session.started_at", "session.completed_at",
+		"last_seen.perk", "last_seen.created_at as last_seen",
+		"metadata.count",
+	)
+
 	stmt := fmt.Sprintf(`
 		WITH user_sessions AS (
 			SELECT DISTINCT session.id as session_id
@@ -686,23 +698,7 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 			SELECT count(*) as count
 			FROM user_played_with cte
 		)
-		SELECT DISTINCT
-			session.id AS session_id,
-			session.status AS session_status,
-			session.diff AS session_diff,
-			session.mode AS sesion_mode,
-			session.length AS session_length,
-			user_wsp.perk AS user_perk,
-			users.id AS user_id,
-			users.name AS user_name,
-			users.auth_id AS auth_id,
-			users.auth_type AS auth_type,
-			server.id AS server_id,
-			server.name AS server_name,
-			maps.id AS map_id,
-			maps.name AS map_name,
-			last_seen.created_at AS last_seen,
-			metadata.count AS count
+		SELECT DISTINCT %v
 		FROM pagination cte
 		INNER JOIN session ON session.id = cte.session_id
 		INNER JOIN server ON server.id = session.server_id
@@ -716,7 +712,9 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 		`,
 		strings.Join(userSessionConds, " AND "),
 		strings.Join(userRatingConds, " AND "),
-		page*limit, limit, req.UserId,
+		page*limit, limit,
+		strings.Join(fields, ", "),
+		req.UserId,
 	)
 
 	rows, err := s.db.Query(stmt, args...)
@@ -724,6 +722,7 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 		return nil, err
 	}
 
+	steamIdSet := make(map[string]bool)
 	res := GetLastSeenUsersResponse{
 		Items: []*GetLastSeenUsersResponseItem{},
 		Metadata: &models.PaginationResponse{
@@ -731,62 +730,69 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 			ResultsPerPage: limit,
 		},
 	}
-	steamIdSet := make(map[string]bool)
 
 	var count int
 	for rows.Next() {
 		var perk int
-		item := GetLastSeenUsersResponseItem{
-			Session: SessionData{},
-			Server:  ServerData{},
-			Map:     MapData{},
-			Perks:   []int{},
+
+		match := matches.Match{}
+		userProfile := models.UserProfile{}
+		sessionData := matches.MatchSession{}
+		userData := matches.MatchUserData{}
+
+		fields := []any{
+			&userProfile.Id, &userProfile.Name, &userProfile.AuthId, &userProfile.Type,
+			&sessionData.Id, &sessionData.ServerId, &sessionData.MapId,
+			&sessionData.Mode, &sessionData.Length, &sessionData.Difficulty,
+			&sessionData.Status, &sessionData.CreatedAt, &sessionData.UpdatedAt,
+			&sessionData.StartedAt, &sessionData.CompletedAt,
+			&perk, &userData.LastSeen, &count,
 		}
 
-		err := rows.Scan(
-			&item.Session.Id, &item.Session.Status,
-			&item.Session.Difficulty, &item.Session.Mode, &item.Session.Length,
-			&perk,
-			&item.Id, &item.Name,
-			&item.AuthId, &item.Type,
-			&item.Server.Id, &item.Server.Name,
-			&item.Map.Id, &item.Map.Name,
-			&item.LastSeen, &count,
-		)
+		err := rows.Scan(fields...)
 		if err != nil {
-			return nil, err
+			fmt.Print(err)
+			continue
 		}
 
-		if item.Type == models.Steam {
-			steamIdSet[item.AuthId] = true
+		steamIdSet[userProfile.AuthId] = true
+
+		match.Session = sessionData
+		match.Details.UserData = &userData
+
+		item := GetLastSeenUsersResponseItem{
+			UserProfile: &userProfile,
+			Match:       &match,
 		}
 
-		if len(res.Items) > 0 && res.Items[len(res.Items)-1].Id == item.Id {
+		if len(res.Items) > 0 && res.Items[len(res.Items)-1].UserProfile.Id == userProfile.Id {
 			last := res.Items[len(res.Items)-1]
-			last.Perks = append(last.Perks, perk)
+			last.Match.Details.UserData.Perks = append(last.Match.Details.UserData.Perks, perk)
 		} else {
-			item.Perks = append(item.Perks, perk)
+			match.Details.UserData.Perks = append(match.Details.UserData.Perks, perk)
 			res.Items = append(res.Items, &item)
 		}
 	}
 
 	{
-		sessionIds := []int{}
+		items := []*matches.Match{}
+
 		for _, item := range res.Items {
-			sessionIds = append(sessionIds, item.Session.Id)
+			items = append(items, item.Match)
 		}
 
-		difficulty, err := s.diffService.GetByIds(sessionIds)
+		shouldInclude := true
+		includes := filter.FilterMatchesRequestIncludes{
+			ServerData: &shouldInclude,
+			MapData:    &shouldInclude,
+		}
+		items, err := s.matchesFilterService.HandleIncludes(&includes, items)
 		if err != nil {
 			return nil, err
 		}
 
 		for i := range res.Items {
-			for j := range difficulty {
-				if res.Items[i].Session.Id == difficulty[j].SessionId {
-					res.Items[i].Metadata.Difficulty = difficulty[j]
-				}
-			}
+			res.Items[i].Match = items[i]
 		}
 	}
 
@@ -802,9 +808,9 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 		}
 
 		for _, item := range res.Items {
-			if data, ok := steamData[item.AuthId]; ok {
-				item.Avatar = &data.Avatar
-				item.ProfileUrl = &data.ProfileUrl
+			if data, ok := steamData[item.UserProfile.AuthId]; ok {
+				item.UserProfile.Avatar = &data.Avatar
+				item.UserProfile.ProfileUrl = &data.ProfileUrl
 			}
 		}
 	}
@@ -819,6 +825,7 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 ) (*GetLastSessionsWithUserResponse, error) {
 	page, limit := util.ParsePagination(req.Pager)
 
+	fields := []string{}
 	conds := []string{}
 	args := []any{}
 
@@ -847,6 +854,15 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 		)
 	}
 
+	fields = append(fields,
+		"session.id", "session.server_id", "session.map_id",
+		"session.mode", "session.length", "session.diff",
+		"session.status", "session.created_at", "session.updated_at",
+		"session.started_at", "session.completed_at",
+		"user_wsp.perk AS user_perk", "max(user_wsp.created_at) OVER w AS last_seen",
+		"metadata.count",
+	)
+
 	stmt := fmt.Sprintf(`
 		WITH user_sessions AS (
 			SELECT DISTINCT session.id as session_id
@@ -873,19 +889,7 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 			SELECT count(*) as count
 			FROM user_played_with cte
 		)
-		SELECT DISTINCT
-			session.id AS session_id,
-			session.status AS session_status,
-			session.diff AS session_diff,
-			session.mode AS sesion_mode,
-			session.length AS session_length,
-			user_wsp.perk AS user_perk,
-			server.id AS server_id,
-			server.name AS server_name,
-			maps.id AS map_id,
-			maps.name AS map_name,
-			max(user_wsp.created_at) OVER w AS last_seen,
-			metadata.count AS count
+		SELECT DISTINCT %v
 		FROM pagination cte
 		INNER JOIN session ON session.id = cte.session_id
 		INNER JOIN server ON server.id = session.server_id
@@ -895,7 +899,12 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 		CROSS JOIN metadata
 		WINDOW w AS (partition by session.id)
 		ORDER BY last_seen DESC, user_perk ASC
-		`, strings.Join(conds, " AND "), req.OtherUserId, page*limit, limit, req.UserId,
+		`,
+		strings.Join(conds, " AND "),
+		req.OtherUserId,
+		page*limit, limit,
+		strings.Join(fields, ", "),
+		req.UserId,
 	)
 
 	rows, err := s.db.Query(stmt, args...)
@@ -904,7 +913,7 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 	}
 
 	res := GetLastSessionsWithUserResponse{
-		Items: []*GetLastSessionsWithUserResponseItem{},
+		Items: []*matches.Match{},
 		Metadata: &models.PaginationResponse{
 			Page:           page,
 			ResultsPerPage: limit,
@@ -914,55 +923,49 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 	var count int
 	for rows.Next() {
 		var perk int
-		item := GetLastSessionsWithUserResponseItem{
-			Session: SessionData{},
-			Server:  ServerData{},
-			Map:     MapData{},
-			Perks:   []int{},
+		item := matches.Match{}
+		sessionData := matches.MatchSession{}
+		userData := matches.MatchUserData{}
+
+		fields := []any{
+			&sessionData.Id, &sessionData.ServerId, &sessionData.MapId,
+			&sessionData.Mode, &sessionData.Length, &sessionData.Difficulty,
+			&sessionData.Status, &sessionData.CreatedAt, &sessionData.UpdatedAt,
+			&sessionData.StartedAt, &sessionData.CompletedAt,
+			&perk, &userData.LastSeen, &count,
 		}
 
-		err := rows.Scan(
-			&item.Session.Id, &item.Session.Status,
-			&item.Session.Difficulty, &item.Session.Mode, &item.Session.Length,
-			&perk,
-			&item.Server.Id, &item.Server.Name,
-			&item.Map.Id, &item.Map.Name,
-			&item.LastSeen, &count,
-		)
+		err := rows.Scan(fields...)
 		if err != nil {
-			return nil, err
+			fmt.Print(err)
+			continue
 		}
+
+		item.Session = sessionData
+		item.Details.UserData = &userData
 
 		if len(res.Items) > 0 && res.Items[len(res.Items)-1].Session.Id == item.Session.Id {
 			last := res.Items[len(res.Items)-1]
-			last.Perks = append(last.Perks, perk)
+			last.Details.UserData.Perks = append(last.Details.UserData.Perks, perk)
 		} else {
-			item.Perks = append(item.Perks, perk)
+			item.Details.UserData.Perks = append(item.Details.UserData.Perks, perk)
 			res.Items = append(res.Items, &item)
 		}
 	}
 
-	{
-		sessionIds := []int{}
-		for _, item := range res.Items {
-			sessionIds = append(sessionIds, item.Session.Id)
-		}
+	res.Metadata.TotalResults = count
 
-		difficulty, err := s.diffService.GetByIds(sessionIds)
-		if err != nil {
-			return nil, err
-		}
-
-		for i := range res.Items {
-			for j := range difficulty {
-				if res.Items[i].Session.Id == difficulty[j].SessionId {
-					res.Items[i].Metadata.Difficulty = difficulty[j]
-				}
-			}
-		}
+	shouldInclude := true
+	includes := filter.FilterMatchesRequestIncludes{
+		ServerData: &shouldInclude,
+		MapData:    &shouldInclude,
+	}
+	items, err := s.matchesFilterService.HandleIncludes(&includes, res.Items)
+	if err != nil {
+		return nil, err
 	}
 
-	res.Metadata.TotalResults = count
+	res.Items = items
 
 	return &res, nil
 }
@@ -1065,7 +1068,6 @@ func (s *UserAnalyticsService) getUserSessions(
 				fmt.Sprintf("session.status not in (%s)", util.IntArrayToString(exclude.Statuses, ",")),
 			)
 		}
-
 	}
 
 	if req.Extra != nil {
@@ -1164,7 +1166,7 @@ func (s *UserAnalyticsService) getUserSessions(
 
 	var count int
 	res := filter.FilterMatchesResponse{
-		Items: []*filter.Match{},
+		Items: []*matches.Match{},
 		Metadata: &models.PaginationResponse{
 			Page:           page,
 			ResultsPerPage: limit,
@@ -1174,9 +1176,9 @@ func (s *UserAnalyticsService) getUserSessions(
 	defer rows.Close()
 	for rows.Next() {
 		var perk int
-		item := filter.Match{}
-		sessionData := filter.MatchSession{}
-		userData := filter.MatchUserData{}
+		item := matches.Match{}
+		sessionData := matches.MatchSession{}
+		userData := matches.MatchUserData{}
 
 		fields := []any{
 			&sessionData.Id, &sessionData.ServerId, &sessionData.MapId,

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type matchesController struct {
+type controller struct {
 	service *MatchesFilterService
 }
 
@@ -15,8 +15,8 @@ type matchesController struct {
 // @Produce json
 // @Param   filter body 	FilterMatchesRequest true "Get matches by filter"
 // @Success 201 {array} 	FilterMatchesResponse
-// @Router /matches/filter/new [post]
-func (c *matchesController) filter(ctx *gin.Context) {
+// @Router /matches/filter [post]
+func (c *controller) filter(ctx *gin.Context) {
 	var req FilterMatchesRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.String(http.StatusBadRequest, err.Error())
