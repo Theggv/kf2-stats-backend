@@ -1,8 +1,6 @@
 package server
 
 import (
-	"time"
-
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 )
 
@@ -30,40 +28,10 @@ type RecentUsersRequest struct {
 	Pager models.PaginationRequest `json:"pager"`
 }
 
-type RecentUsersResponseUserSession struct {
-	Id int `json:"id"`
-
-	Mode       models.GameMode       `json:"mode"`
-	Length     int                   `json:"length"`
-	Difficulty models.GameDifficulty `json:"diff"`
-
-	Status models.GameStatus `json:"status"`
-
-	Wave   int                   `json:"wave"`
-	CDData *models.ExtraGameData `json:"cd_data"`
-
-	MapName string `json:"map_name"`
-
-	Metadata models.SessionMetadata `json:"metadata"`
-
-	Perks []int `json:"perks"`
-
-	PlayerId int `json:"-"`
-}
-
 type RecentUsersResponseUser struct {
-	Id   int    `json:"id"`
-	Name string `json:"name"`
+	UserProfile *models.UserProfile `json:"user_profile"`
 
-	ProfileUrl *string `json:"profile_url"`
-	Avatar     *string `json:"avatar"`
-
-	Session *RecentUsersResponseUserSession `json:"session"`
-
-	UpdatedAt *time.Time `json:"updated_at"`
-
-	AuthId string          `json:"-"`
-	Type   models.AuthType `json:"-"`
+	Match *models.Match `json:"match"`
 
 	SessionId         int `json:"-"`
 	WaveStatsPlayerId int `json:"-"`

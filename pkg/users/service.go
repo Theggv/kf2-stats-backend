@@ -375,7 +375,7 @@ func (s *UserService) getSessions(sessionIds []int) (map[int]*FilterUsersRespons
 
 	// Join session difficulty
 	{
-		difficulty, err := s.diffService.GetByIds(sessionIds)
+		difficulty, err := s.diffService.GetByIds(sessionIds, false)
 		if err != nil {
 			return nil, err
 		}

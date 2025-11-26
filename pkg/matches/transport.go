@@ -29,12 +29,12 @@ type FilterMatchesRequest struct {
 }
 
 type FilterMatchesResponse struct {
-	Items    []*Match                  `json:"items"`
+	Items    []*models.Match           `json:"items"`
 	Metadata models.PaginationResponse `json:"metadata"`
 }
 
 type GetLiveMatchesResponse struct {
-	Items []Match `json:"items"`
+	Items []models.Match `json:"items"`
 }
 
 type GetMatchWavesResponse struct {

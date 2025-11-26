@@ -5,7 +5,6 @@ import (
 
 	"github.com/theggv/kf2-stats-backend/pkg/analytics"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
-	"github.com/theggv/kf2-stats-backend/pkg/matches"
 )
 
 type UserAnalyticsRequest struct {
@@ -171,7 +170,7 @@ type GetLastSeenUsersRequest struct {
 type GetLastSeenUsersResponseItem struct {
 	UserProfile *models.UserProfile `json:"user_profile"`
 
-	Match *matches.Match `json:"match"`
+	Match *models.Match `json:"match"`
 }
 
 type GetLastSeenUsersResponse struct {
@@ -193,7 +192,7 @@ type GetLastSessionsWithUserRequest struct {
 }
 
 type GetLastSessionsWithUserResponse struct {
-	Items    []*matches.Match           `json:"items"`
+	Items    []*models.Match            `json:"items"`
 	Metadata *models.PaginationResponse `json:"metadata"`
 }
 

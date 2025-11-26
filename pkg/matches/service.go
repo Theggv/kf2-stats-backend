@@ -57,14 +57,14 @@ func NewMatchesService(db *sql.DB) *MatchesService {
 	return &service
 }
 
-func (s *MatchesService) GetById(id int) (*Match, error) {
-	match := Match{}
+func (s *MatchesService) GetById(id int) (*models.Match, error) {
+	match := models.Match{}
 
 	session, err := s.sessionService.GetById(id)
 	if err != nil {
 		return nil, err
 	}
-	match.Session = MatchSession{
+	match.Session = models.MatchSession{
 		Id:          session.Id,
 		ServerId:    session.ServerId,
 		MapId:       session.MapId,
@@ -80,7 +80,7 @@ func (s *MatchesService) GetById(id int) (*Match, error) {
 
 	mapData, err := s.mapsService.GetById(session.MapId)
 	if err == nil {
-		match.Details.Map = &MatchMap{
+		match.Details.Map = &models.MatchMap{
 			Name:    mapData.Name,
 			Preview: &mapData.Preview,
 		}
@@ -88,7 +88,7 @@ func (s *MatchesService) GetById(id int) (*Match, error) {
 
 	serverData, err := s.serverService.GetById(session.ServerId)
 	if err == nil {
-		match.Details.Server = &MatchServer{
+		match.Details.Server = &models.MatchServer{
 			Name:    serverData.Name,
 			Address: serverData.Address,
 		}
@@ -112,7 +112,7 @@ func (s *MatchesService) GetById(id int) (*Match, error) {
 	return &match, nil
 }
 
-func (s *MatchesService) GetLastServerMatch(id int) (*Match, error) {
+func (s *MatchesService) GetLastServerMatch(id int) (*models.Match, error) {
 	row := s.db.QueryRow(`
 		SELECT session.id FROM session
 		WHERE server_id = ?

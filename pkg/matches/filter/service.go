@@ -9,7 +9,6 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/common/steamapi"
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
 	"github.com/theggv/kf2-stats-backend/pkg/maps"
-	"github.com/theggv/kf2-stats-backend/pkg/matches"
 	"github.com/theggv/kf2-stats-backend/pkg/server"
 	"github.com/theggv/kf2-stats-backend/pkg/session"
 	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
@@ -215,12 +214,12 @@ func (s *MatchesFilterService) Filter(req FilterMatchesRequest) (*FilterMatchesR
 		return nil, err
 	}
 
-	items := []*matches.Match{}
+	items := []*models.Match{}
 
 	defer rows.Close()
 	for rows.Next() {
-		item := matches.Match{}
-		sessionData := matches.MatchSession{}
+		item := models.Match{}
+		sessionData := models.MatchSession{}
 
 		fields := []any{
 			&sessionData.Id, &sessionData.ServerId, &sessionData.MapId,
@@ -276,8 +275,8 @@ func (s *MatchesFilterService) Filter(req FilterMatchesRequest) (*FilterMatchesR
 
 func (s *MatchesFilterService) HandleIncludes(
 	includes *FilterMatchesRequestIncludes,
-	items []*matches.Match,
-) ([]*matches.Match, error) {
+	items []*models.Match,
+) ([]*models.Match, error) {
 	if includes == nil {
 		return items, nil
 	}
@@ -345,25 +344,24 @@ func (s *MatchesFilterService) HandleIncludes(
 	}
 
 	if includes.LiveData != nil && *includes.LiveData {
-		playerData, err := s.getPlayerData(sessionIds)
+		liveData, err := s.getLiveData(sessionIds)
 		if err != nil {
 			return nil, err
 		}
 
 		for i := range items {
-			items[i].Details.LiveData = &matches.MatchLiveData{}
+			items[i].Details.LiveData = &models.MatchLiveData{}
 
-			for j := range playerData {
-				if items[i].Session.Id == playerData[j].MatchId {
-					items[i].Details.LiveData.Players = playerData[j].Players
-					items[i].Details.LiveData.Spectators = playerData[j].Spectators
+			for j := range liveData {
+				if items[i].Session.Id == liveData[j].MatchId {
+					items[i].Details.LiveData = liveData[j].LiveData
 				}
 			}
 		}
 	}
 
 	{
-		difficulty, err := s.diffService.GetByIds(sessionIds)
+		difficulty, err := s.diffService.GetByIds(sessionIds, false)
 		if err != nil {
 			return nil, err
 		}
@@ -382,7 +380,7 @@ func (s *MatchesFilterService) HandleIncludes(
 
 type filterServerData struct {
 	MatchId int
-	Server  *matches.MatchServer
+	Server  *models.MatchServer
 }
 
 func (s *MatchesFilterService) getServerData(matchId []int) ([]*filterServerData, error) {
@@ -406,7 +404,7 @@ func (s *MatchesFilterService) getServerData(matchId []int) ([]*filterServerData
 	items := []*filterServerData{}
 
 	for rows.Next() {
-		server := matches.MatchServer{}
+		server := models.MatchServer{}
 		item := filterServerData{}
 
 		rows.Scan(&item.MatchId, &server.Name, &server.Address)
@@ -420,7 +418,7 @@ func (s *MatchesFilterService) getServerData(matchId []int) ([]*filterServerData
 
 type filterMapData struct {
 	MatchId int
-	Map     *matches.MatchMap
+	Map     *models.MatchMap
 }
 
 func (s *MatchesFilterService) getMapData(matchId []int) ([]*filterMapData, error) {
@@ -444,7 +442,7 @@ func (s *MatchesFilterService) getMapData(matchId []int) ([]*filterMapData, erro
 	items := []*filterMapData{}
 
 	for rows.Next() {
-		mapData := matches.MatchMap{}
+		mapData := models.MatchMap{}
 		item := filterMapData{}
 
 		rows.Scan(&item.MatchId, &mapData.Name, &mapData.Preview)
@@ -545,12 +543,11 @@ func (s *MatchesFilterService) getExtraGameData(matchId []int) ([]*filterExtraGa
 }
 
 type filterPlayerData struct {
-	MatchId    int
-	Players    []*matches.MatchPlayer
-	Spectators []*matches.MatchPlayer
+	MatchId  int
+	LiveData *models.MatchLiveData
 }
 
-func (s *MatchesFilterService) getPlayerData(matchId []int) ([]*filterPlayerData, error) {
+func (s *MatchesFilterService) getLiveData(matchId []int) ([]*filterPlayerData, error) {
 	if len(matchId) == 0 {
 		return []*filterPlayerData{}, nil
 	}
@@ -574,7 +571,7 @@ func (s *MatchesFilterService) getPlayerData(matchId []int) ([]*filterPlayerData
 		UserId      int
 		MatchId     int
 		IsSpectator bool
-		Player      *matches.MatchPlayer
+		Player      *models.MatchPlayer
 	}
 
 	players := []*playerData{}
@@ -583,7 +580,7 @@ func (s *MatchesFilterService) getPlayerData(matchId []int) ([]*filterPlayerData
 	defer rows.Close()
 	for rows.Next() {
 		player := playerData{}
-		matchData := matches.MatchPlayer{}
+		matchData := models.MatchPlayer{}
 
 		rows.Scan(&player.MatchId, &player.UserId,
 			&matchData.Perk, &matchData.Level, &matchData.Prestige,
@@ -627,18 +624,20 @@ func (s *MatchesFilterService) getPlayerData(matchId []int) ([]*filterPlayerData
 
 		if !ok {
 			val = &filterPlayerData{
-				MatchId:    item.MatchId,
-				Players:    []*matches.MatchPlayer{},
-				Spectators: []*matches.MatchPlayer{},
+				MatchId: item.MatchId,
+				LiveData: &models.MatchLiveData{
+					Players:    []*models.MatchPlayer{},
+					Spectators: []*models.MatchPlayer{},
+				},
 			}
 
 			itemsMap[item.MatchId] = val
 		}
 
 		if item.IsSpectator {
-			val.Spectators = append(val.Spectators, item.Player)
+			val.LiveData.Spectators = append(val.LiveData.Spectators, item.Player)
 		} else {
-			val.Players = append(val.Players, item.Player)
+			val.LiveData.Players = append(val.LiveData.Players, item.Player)
 		}
 	}
 
@@ -649,7 +648,7 @@ func (s *MatchesFilterService) getPlayerData(matchId []int) ([]*filterPlayerData
 	return items, nil
 }
 
-func (s *MatchesFilterService) GetSessionIdsFromMatches(items []*matches.Match) []int {
+func (s *MatchesFilterService) GetSessionIdsFromMatches(items []*models.Match) []int {
 	sessionIds := []int{}
 
 	for _, item := range items {

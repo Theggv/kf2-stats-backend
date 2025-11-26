@@ -9,7 +9,6 @@ import (
 	"github.com/theggv/kf2-stats-backend/pkg/analytics"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/util"
-	"github.com/theggv/kf2-stats-backend/pkg/matches"
 	"github.com/theggv/kf2-stats-backend/pkg/matches/filter"
 	"github.com/theggv/kf2-stats-backend/pkg/session/difficulty"
 	"github.com/theggv/kf2-stats-backend/pkg/users"
@@ -735,10 +734,10 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 	for rows.Next() {
 		var perk int
 
-		match := matches.Match{}
+		match := models.Match{}
 		userProfile := models.UserProfile{}
-		sessionData := matches.MatchSession{}
-		userData := matches.MatchUserData{}
+		sessionData := models.MatchSession{}
+		userData := models.MatchUserData{}
 
 		fields := []any{
 			&userProfile.Id, &userProfile.Name, &userProfile.AuthId, &userProfile.Type,
@@ -775,7 +774,7 @@ func (s *UserAnalyticsService) getLastSeenUsers(
 	}
 
 	{
-		items := []*matches.Match{}
+		items := []*models.Match{}
 
 		for _, item := range res.Items {
 			items = append(items, item.Match)
@@ -913,7 +912,7 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 	}
 
 	res := GetLastSessionsWithUserResponse{
-		Items: []*matches.Match{},
+		Items: []*models.Match{},
 		Metadata: &models.PaginationResponse{
 			Page:           page,
 			ResultsPerPage: limit,
@@ -923,9 +922,9 @@ func (s *UserAnalyticsService) getLastGamesWithUser(
 	var count int
 	for rows.Next() {
 		var perk int
-		item := matches.Match{}
-		sessionData := matches.MatchSession{}
-		userData := matches.MatchUserData{}
+		item := models.Match{}
+		sessionData := models.MatchSession{}
+		userData := models.MatchUserData{}
 
 		fields := []any{
 			&sessionData.Id, &sessionData.ServerId, &sessionData.MapId,
@@ -1166,7 +1165,7 @@ func (s *UserAnalyticsService) getUserSessions(
 
 	var count int
 	res := filter.FilterMatchesResponse{
-		Items: []*matches.Match{},
+		Items: []*models.Match{},
 		Metadata: &models.PaginationResponse{
 			Page:           page,
 			ResultsPerPage: limit,
@@ -1176,9 +1175,11 @@ func (s *UserAnalyticsService) getUserSessions(
 	defer rows.Close()
 	for rows.Next() {
 		var perk int
-		item := matches.Match{}
-		sessionData := matches.MatchSession{}
-		userData := matches.MatchUserData{}
+		item := models.Match{}
+		sessionData := models.MatchSession{}
+		userData := models.MatchUserData{
+			Stats: &models.MatchUserDataStats{},
+		}
 
 		fields := []any{
 			&sessionData.Id, &sessionData.ServerId, &sessionData.MapId,

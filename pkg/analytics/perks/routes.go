@@ -23,7 +23,7 @@ func RegisterRoutes(
 
 	routes.POST("/perks/playtime",
 		cache.Cache(memoryStore, 5*time.Minute,
-			strategy.CacheByRequestBody[PerksPlayTimeRequest](func(req PerksPlayTimeRequest) string {
+			strategy.CacheByRequestBody(func(req PerksPlayTimeRequest) string {
 				return fmt.Sprintf("%v/%v/%v/%v",
 					req.ServerId, req.UserId, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 			}),
@@ -31,7 +31,7 @@ func RegisterRoutes(
 		controller.getPerksPlayTime)
 	routes.POST("/perks/kills",
 		cache.Cache(memoryStore, 5*time.Minute,
-			strategy.CacheByRequestBody[PerksKillsRequest](func(req PerksKillsRequest) string {
+			strategy.CacheByRequestBody(func(req PerksKillsRequest) string {
 				return fmt.Sprintf("%v/%v/%v/%v",
 					req.ServerId, req.UserId, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
 			}),

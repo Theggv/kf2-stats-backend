@@ -112,11 +112,6 @@ func (s *ServerService) UpdateName(data UpdateNameRequest) error {
 	return err
 }
 
-type userIdTuple struct {
-	SessionId         int
-	WaveStatsPlayerId int
-}
-
 func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResponse, error) {
 	page, limit := util.ParsePagination(req.Pager)
 
@@ -154,7 +149,6 @@ func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResp
 			users.auth_type,
 			ws.session_id,
 			wsp.id wsp_id,
-			wsp.created_at,
 			metadata.total as total_players
 		FROM pagination cte
 		INNER JOIN wave_stats_player wsp ON wsp.id = cte.wsp_id
@@ -169,28 +163,30 @@ func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResp
 		return nil, err
 	}
 
-	waveStatsPlayerIdSet := make(map[int]userIdTuple)
+	wspIds := []int{}
 	steamIdSet := make(map[string]bool)
 	items := []*RecentUsersResponseUser{}
 
 	var total int
 	for rows.Next() {
 		item := RecentUsersResponseUser{}
+		profile := models.UserProfile{}
 
-		rows.Scan(
-			&item.Id, &item.Name, &item.AuthId, &item.Type,
-			&item.SessionId, &item.WaveStatsPlayerId, &item.UpdatedAt,
+		fields := []any{
+			&profile.Id, &profile.Name, &profile.AuthId, &profile.Type,
+			&item.SessionId, &item.WaveStatsPlayerId,
 			&total,
-		)
-
-		waveStatsPlayerIdSet[item.Id] = userIdTuple{
-			SessionId:         item.SessionId,
-			WaveStatsPlayerId: item.WaveStatsPlayerId,
 		}
 
-		if item.Type == models.Steam {
-			steamIdSet[item.AuthId] = true
+		rows.Scan(fields...)
+
+		wspIds = append(wspIds, item.WaveStatsPlayerId)
+
+		if profile.Type == models.Steam {
+			steamIdSet[profile.AuthId] = true
 		}
+
+		item.UserProfile = &profile
 
 		items = append(items, &item)
 	}
@@ -207,22 +203,22 @@ func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResp
 		}
 
 		for _, item := range items {
-			if data, ok := steamData[item.AuthId]; ok {
-				item.Avatar = &data.Avatar
-				item.ProfileUrl = &data.ProfileUrl
+			if data, ok := steamData[item.UserProfile.AuthId]; ok {
+				item.UserProfile.Avatar = &data.Avatar
+				item.UserProfile.ProfileUrl = &data.ProfileUrl
 			}
 		}
 	}
 
 	{
-		sessions, err := s.getSessions(waveStatsPlayerIdSet)
+		sessions, err := s.getSessions(wspIds)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, item := range items {
-			if data, ok := sessions[item.Id]; ok {
-				item.Session = data
+			if data, ok := sessions[item.UserProfile.Id]; ok {
+				item.Match = data
 			}
 		}
 	}
@@ -238,35 +234,31 @@ func (s *ServerService) GetRecentUsers(req RecentUsersRequest) (*RecentUsersResp
 }
 
 func (s *ServerService) getSessions(
-	userIds map[int]userIdTuple,
-) (map[int]*RecentUsersResponseUserSession, error) {
-	wspIds := []int{}
-	for _, value := range userIds {
-		wspIds = append(wspIds, value.WaveStatsPlayerId)
-	}
+	wspIds []int,
+) (map[int]*models.Match, error) {
+	fields := []string{}
+
+	fields = append(fields,
+		"wsp.player_id", "wsp.created_at",
+		"session.id", "session.server_id", "session.map_id",
+		"session.mode", "session.length", "session.diff",
+		"session.status", "session.created_at", "session.updated_at",
+		"session.started_at", "session.completed_at",
+		"maps.name", "gd.wave",
+		"extra.spawn_cycle", "extra.max_monsters", "extra.wave_size_fakes", "extra.zeds_type",
+	)
 
 	stmt := fmt.Sprintf(`
 		SELECT
-			wsp.player_id,
-			session.id,
-			session.mode,
-			session.length,
-			session.diff,
-			session.status,
-			gd.wave,
-			cd.spawn_cycle,
-			cd.max_monsters,
-			cd.wave_size_fakes,
-			cd.zeds_type,
-			maps.name
+		%v
 		FROM session
 		INNER JOIN wave_stats ws ON ws.session_id = session.id
 		INNER JOIN wave_stats_player wsp ON wsp.stats_id = ws.id
 		INNER JOIN maps ON maps.id = session.map_id
 		INNER JOIN session_game_data gd ON gd.session_id = session.id
-		LEFT JOIN session_game_data_extra cd ON cd.session_id = session.id
+		LEFT JOIN session_game_data_extra extra ON extra.session_id = session.id
 		WHERE wsp.id IN (%v)
-		`, util.IntArrayToString(wspIds, ","),
+		`, strings.Join(fields, ", "), util.IntArrayToString(wspIds, ","),
 	)
 
 	rows, err := s.db.Query(stmt)
@@ -275,32 +267,52 @@ func (s *ServerService) getSessions(
 	}
 
 	perkConds := []string{}
-	items := map[int]*RecentUsersResponseUserSession{}
+	items := map[int]*models.Match{}
 	lookup := map[int]bool{}
+
 	for rows.Next() {
-		item := RecentUsersResponseUserSession{}
-		cdData := models.ExtraGameData{}
+		var userId int
+		sessionData := models.MatchSession{}
+		gameData := models.GameData{}
+		extraData := models.ExtraGameData{}
+		mapData := models.MatchMap{}
+		userData := models.MatchUserData{}
 
-		rows.Scan(
-			&item.PlayerId, &item.Id, &item.Mode, &item.Length, &item.Difficulty, &item.Status, &item.Wave,
-			&cdData.SpawnCycle, &cdData.MaxMonsters, &cdData.WaveSizeFakes, &cdData.ZedsType,
-			&item.MapName,
-		)
-
-		if cdData.SpawnCycle != nil {
-			item.CDData = &cdData
+		fields := []any{
+			&userId, &userData.LastSeen,
+			&sessionData.Id, &sessionData.ServerId, &sessionData.MapId,
+			&sessionData.Mode, &sessionData.Length, &sessionData.Difficulty,
+			&sessionData.Status, &sessionData.CreatedAt, &sessionData.UpdatedAt,
+			&sessionData.StartedAt, &sessionData.CompletedAt,
+			&mapData.Name, &gameData.Wave,
+			&extraData.SpawnCycle, &extraData.MaxMonsters, &extraData.WaveSizeFakes, &extraData.ZedsType,
 		}
 
-		items[item.PlayerId] = &item
-		lookup[item.Id] = true
+		rows.Scan(fields...)
+
+		item := models.Match{
+			Session: sessionData,
+			Details: models.MatchDetails{
+				Map:      &mapData,
+				GameData: &gameData,
+				UserData: &userData,
+			},
+		}
+
+		if extraData.SpawnCycle != nil {
+			item.Details.ExtraGameData = &extraData
+		}
+
+		items[userId] = &item
+		lookup[sessionData.Id] = true
 		perkConds = append(perkConds,
-			fmt.Sprintf("(session.id = %v AND wsp.player_id = %v)", item.Id, item.PlayerId),
+			fmt.Sprintf("(session.id = %v AND wsp.player_id = %v)", sessionData.Id, userId),
 		)
 	}
 
 	// Join perks
 	{
-		stmt = fmt.Sprintf(`
+		stmt := fmt.Sprintf(`
 			SELECT DISTINCT wsp.player_id, perk
 			FROM session
 			INNER JOIN wave_stats ws ON ws.session_id = session.id
@@ -316,12 +328,12 @@ func (s *ServerService) getSessions(
 		}
 
 		for rows.Next() {
-			var playerId, perk int
+			var userId, perk int
 
-			rows.Scan(&playerId, &perk)
+			rows.Scan(&userId, &perk)
 
-			if data, ok := items[playerId]; ok {
-				data.Perks = append(data.Perks, perk)
+			if data, ok := items[userId]; ok {
+				data.Details.UserData.Perks = append(data.Details.UserData.Perks, perk)
 			}
 		}
 	}
@@ -333,14 +345,14 @@ func (s *ServerService) getSessions(
 			sessionIds = append(sessionIds, sessionId)
 		}
 
-		difficulty, err := s.diffService.GetByIds(sessionIds)
+		difficulty, err := s.diffService.GetByIds(sessionIds, false)
 		if err != nil {
 			return nil, err
 		}
 
 		for i := range items {
 			for j := range difficulty {
-				if items[i].Id == difficulty[j].SessionId {
+				if items[i].Session.Id == difficulty[j].SessionId {
 					items[i].Metadata.Difficulty = difficulty[j]
 				}
 			}

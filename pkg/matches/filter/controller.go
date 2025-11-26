@@ -11,6 +11,7 @@ type controller struct {
 }
 
 // @Summary Get matches by filter
+// @Description Available sort fields: "updated_at", "diff_final_score", "diff_potential_score"
 // @Tags 	Match
 // @Produce json
 // @Param   filter body 	FilterMatchesRequest true "Get matches by filter"

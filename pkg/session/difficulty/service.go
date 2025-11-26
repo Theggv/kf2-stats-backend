@@ -72,7 +72,7 @@ func (s *DifficultyCalculatorService) processQueue() {
 }
 
 func (s *DifficultyCalculatorService) GetById(sessionId int) (*models.SessionMetadataDifficulty, error) {
-	items, err := s.GetByIds([]int{sessionId})
+	items, err := s.GetByIds([]int{sessionId}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,10 @@ func (s *DifficultyCalculatorService) GetById(sessionId int) (*models.SessionMet
 	return items[0], nil
 }
 
-func (s *DifficultyCalculatorService) GetByIds(sessionIds []int) ([]*models.SessionMetadataDifficulty, error) {
+func (s *DifficultyCalculatorService) GetByIds(
+	sessionIds []int,
+	withWaves bool,
+) ([]*models.SessionMetadataDifficulty, error) {
 	if len(sessionIds) == 0 {
 		return []*models.SessionMetadataDifficulty{}, nil
 	}
@@ -129,7 +132,7 @@ func (s *DifficultyCalculatorService) GetByIds(sessionIds []int) ([]*models.Sess
 		}
 	}
 
-	{
+	if withWaves {
 		stmt := fmt.Sprintf(`
 			SELECT
 				session.id as session_id,

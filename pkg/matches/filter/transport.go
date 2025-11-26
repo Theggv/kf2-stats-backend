@@ -5,7 +5,6 @@ import (
 
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models/filter"
-	"github.com/theggv/kf2-stats-backend/pkg/matches"
 )
 
 type FilterMatchesRequestIncludes struct {
@@ -58,7 +57,7 @@ type FilterMatchesRequest struct {
 }
 
 type FilterMatchesResponse struct {
-	Items []*matches.Match `json:"items"`
+	Items []*models.Match `json:"items"`
 
 	Metadata *models.PaginationResponse `json:"metadata"`
 }

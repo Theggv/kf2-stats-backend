@@ -15,7 +15,7 @@ type controller struct {
 // @Tags 	Match
 // @Produce json
 // @Param   id path   	 	int true "Session id"
-// @Success 200 {object} 	Match
+// @Success 200 {object} 	models.Match
 // @Router /matches/{id} [get]
 func (c *controller) getById(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))
@@ -59,7 +59,7 @@ func (c *controller) getMatchLiveData(ctx *gin.Context) {
 // @Tags 	Match
 // @Produce json
 // @Param   id path   	 	int true "Server id"
-// @Success 200 {object} 	Match
+// @Success 200 {object} 	models.Match
 // @Router /matches/server/{id} [get]
 func (c *controller) getLastServerMatch(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Params.ByName("id"))
