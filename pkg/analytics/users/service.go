@@ -226,7 +226,7 @@ func (s *UserAnalyticsService) getPlaytimeHist(
 	} else {
 		conds = append(conds, `
 			DATE(session.updated_at) BETWEEN 
-				CURRENT_TIMESTAMP - INTERVAL 180 DAY AND CURRENT_TIMESTAMP`,
+				CURRENT_TIMESTAMP - INTERVAL 45 DAY AND CURRENT_TIMESTAMP`,
 		)
 	}
 
