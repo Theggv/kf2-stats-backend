@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/theggv/kf2-stats-backend/pkg/common/config"
 	"github.com/theggv/kf2-stats-backend/pkg/common/models"
 )
 
@@ -75,7 +76,7 @@ func SetCookies(ctx *gin.Context, refreshToken string, expiresIn string) error {
 		Name:     "refreshToken",
 		Value:    refreshToken,
 		Path:     "/",
-		Domain:   "localhost",
+		Domain:   config.Instance.Domain,
 		SameSite: http.SameSiteStrictMode,
 		MaxAge:   int(duration.Seconds()),
 		Secure:   false,
